@@ -1,0 +1,4 @@
+solve;
+#option display_1col 10000000;
+option omit_0_rows 1;
+display Trans;
