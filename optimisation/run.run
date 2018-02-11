@@ -1,4 +1,5 @@
 solve;
-#option display_1col 10000000;
+option display_1col 10000000;
 option omit_0_rows 1;
-display Trans;
+option omit_0_cols 1;
+display {(id,l) in CHAINS: Trans[id,l] >= 1} (Trans[id,l]);
