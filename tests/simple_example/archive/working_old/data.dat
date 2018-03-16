@@ -1,0 +1,20 @@
+data;
+
+param: LEGS: trips :=
+	HA 10 
+    AH 2 
+    AW 8
+    WB 4
+	BH 4
+    HW 5
+	WH 9;
+
+set CHAIN_IDS :=
+tc1 tc2 tc3 tc4 tc5;
+
+set CHAINS :=
+(tc1,*) HA AW WH 	
+(tc2,*) HA AH
+(tc3,*) HA AW WB BH
+(tc4,*) HW WH
+(tc5,*) HW WB BH;

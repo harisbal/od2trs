@@ -1,0 +1,5 @@
+solve;
+option display_1col 10000000;
+option omit_0_rows 1;
+option omit_0_cols 1;
+display {(id,l) in CHAINS: nchains[id,l] >= 1} (nchains[id,l]);
