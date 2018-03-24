@@ -3,9 +3,9 @@ import prepare_AMPL_input as pai
 
 def main():
 
-    infilepath = r'./inputs/od_purpose_mode_timeperiod_noExtToExt_OPsplit.csv'
-    max_legs = [5, 5, 5, 5]
-    max_trips = [20, 30, 15, 10]
+    infilepath = r'./inputs/od_mnd_greenwich_noExtToExt_OPsplit.csv'
+    max_legs = [4, 5]
+    max_trips = [10, 20]
 
     params = zip(max_legs, max_trips)
 

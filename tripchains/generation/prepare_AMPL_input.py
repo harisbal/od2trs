@@ -41,11 +41,11 @@ def prepare_chains(df_grouped):
 
 def main(max_legs_in_chain, max_trips):
 
-    infile_tripchains = r'./outputs/OPsplit/tripchains_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
-    infile_tripchains_groups = r'../grouping/outputs/tripchains_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
-    infile_od = r'./outputs/OPsplit/tripchains_od_over{}trips.csv'.format(max_trips)
+    infile_tripchains = r'./outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
+    infile_tripchains_groups = r'../grouping/outputs/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
+    infile_od = r'./outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(max_trips)
 
-    outfilepath_data = './outputs/data_{}legs_over{}trips.dat'.format(max_legs_in_chain, max_trips)
+    outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs_in_chain, max_trips)
 
     od = pd.read_csv(infile_od)
     od.Trips = od.Trips.astype(int)

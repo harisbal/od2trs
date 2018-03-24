@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import itertools
 import collections
@@ -19,21 +20,23 @@ def is_ascending(lst):
     return True
 
 
-def purpose_viable_tripchains(G, tripchain_nodes):
-    def filter_edges_purpose(start_node, end_node, purpose):
+def purpose_viable_tripchains(G, tripchain_nodes,
+                              origin_purposes, destination_purposes, intermediate_purposes):
+
+    def filter_edges_purpose(start_node, end_node, purposes):
         edges_data = G.get_edge_data(start_node, end_node)
-        filt_edges = [v for k, v in edges_data.items() if v['Purpose'] == purpose]
+        filt_edges = [v for k, v in edges_data.items() if v['Purpose'] in purposes]
 
         if filt_edges:
             od_pair = (start_node, end_node)
             return od_pair, filt_edges
         else:
-            return None
+            return None, None
 
     def filter_interm_edges(interm_edges):
         filt_interm_edges = collections.OrderedDict()
         for u, v in pairwise(interm_edges):
-            od, filt_edges = filter_edges_purpose(u, v, 'NHB')
+            od, filt_edges = filter_edges_purpose(u, v, intermediate_purposes)
 
             if filt_edges:
                 filt_interm_edges[od] = filt_edges
@@ -53,8 +56,8 @@ def purpose_viable_tripchains(G, tripchain_nodes):
             # Append the last node which is the same as the first
             tcn.append(tcn[0])
 
-            first_od, first_edges = filter_edges_purpose(tcn[0], tcn[1], 'HB')
-            last_od, last_edges = filter_edges_purpose(tcn[-2], tcn[-1], 'HB')
+            first_od, first_edges = filter_edges_purpose(tcn[0], tcn[1], origin_purposes)
+            last_od, last_edges = filter_edges_purpose(tcn[-2], tcn[-1], destination_purposes)
 
             # Check if first and last leg fulfil the criteria
             # If they don't function has returned NaN
@@ -154,7 +157,7 @@ def tripchains_to_csv(tripchains, max_legs_in_chain, max_trips):
     cols = ['TripChainID', 'OrigID', 'DestID', 'Purpose', 'TimePeriod']
     df = pd.DataFrame(data, columns=cols)
 
-    filename = r'./outputs/tripchains_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
+    filename = r'./outputs/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
     df.to_csv(filename, index=False)
 
 def encode_df(df):
@@ -170,56 +173,91 @@ def encode_df(df):
     return df, d_encoding
 
 
+def filter_G_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
+    """
+    Reduces iteratively the network so that first and last edges of cycle are HB
+    and NHB for the rest of the edges
+    """
+
+    if filter_edge_purpose_names:
+        hb_from_home_names, hb_to_home_names, nhb_names = filter_edge_purpose_names
+    else:
+        nhb_names = ['NHB'],
+        hb_from_home_names = ['HB'],
+        hb_to_home_names = ['HB']
+
+    # Give better name
+    # Creates a graph that origins edges from and to
+    subG = nx.MultiDiGraph()
+    for source, target, attr in G.edges(data=True):
+        if attr['Purpose'] in nhb_names:
+            # NHB trips are added only when the source is not home
+            if not (source == home_node or target == home_node):
+                subG.add_edge(source, target, Purpose=attr['Purpose'])
+        elif attr['Purpose'] in hb_from_home_names:
+            if (source == home_node):
+                subG.add_edge(source, target, Purpose=attr['Purpose'])
+        elif attr['Purpose'] in hb_to_home_names:
+            if (target == home_node):
+                subG.add_edge(source, target, Purpose=attr['Purpose'])
+
+    return subG
+
 def main(max_legs_in_chain, max_trips, infilepath):
 
     print('Reading...')
-    odtemp = pd.read_csv(infilepath, nrows=10)
 
-    dtypes_keys = list(odtemp.columns)
-    dtypes_vals = ['category', 'category', 'category',
-                   'category', 'category', 'float']
+    od = pd.read_csv(infilepath)
+    od.set_index(['OrigZoneId', 'DestZoneId', 'Purpose', 'Mode', 'TimePeriod'], inplace=True)
+    od = od.squeeze()
 
-    dtypes = dict(zip(dtypes_keys, dtypes_vals))
+    d_grp_purp = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
+                  'HBW_ToHome': 'HB_ToHome', 'HBO_ToHome': 'HB_ToHome',
+                  'NHB_NonHomeBased': 'NHB_NonHomeBased'}
 
-    od = pd.read_csv(infilepath, index_col=list(range(0, 5)))
-    # od.sort_index(inplace=True)
-
-    d_grp_purp = {'HBW': 'HB', 'HBO': 'HB', 'NHB': 'NHB'}
     grp_keys = [None, None, d_grp_purp, None, None]
 
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
-    odg.reset_index(inplace=True)
-    odg.Purpose = odg.Purpose.astype('category')
-
-    odg.set_index(['OrigID', 'DestID', 'Purpose', 'Mode', 'TimePeriod'], inplace=True)
-
-    od_car = odg.xs('CarDriver', level='Mode')
-
-    od_car.reset_index(inplace=True)
+    od_car = odg.xs('Motorised', level='Mode')
+    od_car = od_car.reset_index()
 
     # Reduce
     od_car_reduced = od_car[od_car.Trips >= max_trips]
     # Remove intrazonals
-    od_car_reduced = od_car_reduced[od_car_reduced.OrigID != od_car_reduced.DestID]
+    # od_car_reduced = od_car_reduced[od_car_reduced.OrigID != od_car_reduced.DestID]
     # Round
     od_car_reduced = od_car_reduced.round()
 
     # Export OD
-    od_car_reduced.to_csv('./outputs/tripchains_od_over{}trips.csv'.format(max_trips))
+    od_car_reduced.to_csv('./outputs/tripchains_mnd_od_over{}trips.csv'.format(max_trips))
 
-    G = nx.from_pandas_edgelist(od_car_reduced, 'OrigID', 'DestID', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
+    G = nx.from_pandas_edgelist(od_car_reduced, 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
 
+    origin_purposes = ['HB_FromHome']
+    destination_purposes = ['HB_ToHome']
+    intermediate_purposes = ['NHB_NonHomeBased']
+
+    filter_edge_purpose_names = [origin_purposes, destination_purposes, intermediate_purposes]
     print('Creating Chains...')
-    potential_tripchains = nx.simple_cycles(G, max_legs_in_chain, True)
 
-    vtc = purpose_viable_tripchains(G, potential_tripchains)
+    potential_tripchains = [] # list of generators
+
+    tripchains = nx.simple_cycles(G, max_legs_in_chain)
+    for tc in tripchains:
+        potential_tripchains.append(tc)
+
+    print('Filtering...')
+    vtc = purpose_viable_tripchains(G, potential_tripchains,
+                                    origin_purposes, destination_purposes, intermediate_purposes)
+
     chron_vtc = chronologically_viable_tripchains(vtc, ['OP1', 'AM', 'IP', 'PM', 'OP2'])
 
     print('Exporting...')
     tripchains_to_csv(chron_vtc, max_legs_in_chain, max_trips)
 
     print('End Phase 1 (Creating trip chains from OD)')
+
 
 if __name__ == '__main__':
     main()
