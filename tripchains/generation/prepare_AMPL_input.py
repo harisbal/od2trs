@@ -41,14 +41,24 @@ def prepare_chains(df_grouped):
 
 def main(max_legs_in_chain, max_trips):
 
-    infile_tripchains = r'./outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
-    infile_tripchains_groups = r'../grouping/outputs/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
-    infile_od = r'./outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(max_trips)
-
+    infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
+    infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
+    infile_od = r'outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(max_trips)
+    infile_nts_distr = r'inputs/nts_tripchains_distribution.csv'
     outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs_in_chain, max_trips)
 
+    # OD
     od = pd.read_csv(infile_od)
-    od.Trips = od.Trips.astype(int)
+    od.DailyTrips = od.DailyTrips.astype(int)
+
+    # NTS distribution
+    nts_distr = pd.read_csv(infile_nts_distr)
+
+    # Recalculate the percentages for the maximum number of stages
+    mask = nts_distr.NumStages <= max_legs_in_chain
+    nts_distr = nts_distr.loc[mask]
+    nts_distr.Percentage = nts_distr.Percentage.div(nts_distr.Percentage.sum())
+
     #tripchains
     tcs = pd.read_csv(infile_tripchains)
     # Get the group each tripchain belongs into (number of stages, timeperiod start, timeperiod end, distance band)
@@ -59,12 +69,14 @@ def main(max_legs_in_chain, max_trips):
     # Use the encoding to replace names in the tripchains file
     tcs.replace(d_encoding_tcs, inplace=True)
     # Use the encoding to replace names in the tripchain_grouping file
-    tcs_groups, d_encoding_distrGroups = encode_df(tcs_groups)
+    nts_distr, d_encoding_distrGroups = encode_df(nts_distr)
+    tcs_groups.replace(d_encoding_distrGroups, inplace=True)
 
     # Add the concatenated description of the od/tripchain
     od = insert_id_col(od, id_col_prefix='Leg')
     tcs = insert_id_col(tcs, id_col_prefix='Leg')
     tcs_groups = insert_id_col(tcs_groups, id_col_prefix='DistrGroup')
+    nts_distr = insert_id_col(nts_distr, id_col_prefix='DistrGroup')
 
     tripchain_ids = tcs.TripChainID.unique().tolist()
 
@@ -75,7 +87,7 @@ def main(max_legs_in_chain, max_trips):
         print('Preparing LEGS...')
         print('param: LEGS: trips:=', file=f)
         for od_pair in od.itertuples():
-            outline = od_pair.LegID + ' ' + str(od_pair.Trips)
+            outline = od_pair.LegID + ' ' + str(od_pair.DailyTrips)
 
             print(outline, file=f)
 
@@ -115,7 +127,7 @@ def main(max_legs_in_chain, max_trips):
 
         print('Preparing Distribution group size param...')
         print('param: GROUP_IDS: group_sizes:=', file=f)
-        distrg_sum = distrg.TripChainID.sum()
+        distrg_sum = distrg.TripChainID.count()
         for item in distrg_sum.iteritems():
             # Convert to string so join can work
             item_str = tuple(map(str, item))
