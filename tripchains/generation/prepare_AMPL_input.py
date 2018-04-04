@@ -1,26 +1,31 @@
-import pandas as pd
-import numpy as np
-import json
+import os
+
 from multiprocessing import Pool, cpu_count
+from functools import partial
+
+import pandas as pd
+import zipfile
+import json
 import tqdm
 
-def insert_id_col(df, id_col_prefix=None):
-    if id_col_prefix:
-        id_col_name = '{}ID'.format(id_col_prefix)
-    else:
-        id_col_name = 'ID'
+def concat_columns(df, concat_cols, concat_col_name, drop_concat_cols=True):
+    dft = df.copy()
+    for c in concat_cols:
+        dft[c] = df[c].astype(str)
 
-    for c in df.columns[1:]:
-        df[c] = df[c].astype(str)
+    concat_col = dft[concat_cols].apply(lambda x: '_'.join(x), axis=1)
+    df.insert(0, concat_col_name, concat_col)
 
-    df[id_col_name] = df[df.columns[1:]].apply(lambda x: '_'.join(x), axis=1)
+    if drop_concat_cols:
+        df.drop(concat_cols, axis=1, inplace=True)
+
     return df
 
-def encode_df(df):
-    non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns.values
+
+def encode_df(df, cols_to_encode):
     d_encoding = {}
     # Replace names with codes to save space
-    for c in non_numeric_cols:
+    for c in cols_to_encode:
         df[c] = df[c].astype('category')
         keys = df[c].values.tolist()
         df[c] = df[c].cat.codes
@@ -28,9 +33,10 @@ def encode_df(df):
         d_encoding[c] = dict(zip(keys, vals))
     return df, d_encoding
 
-def prepare_chains(df_grouped):
+
+def prepare_chains(df_grouped, values_col):
     k, g = df_grouped
-    ids = g[g.columns[-1]].values # Last column's values
+    ids = g[values_col].astype(str).values # Last column's values
     ones = ['1'] * len(ids)
     values = list(zip(ids, ones))
     values_str = [' '.join(v) for v in values]
@@ -39,7 +45,7 @@ def prepare_chains(df_grouped):
     return res
 
 
-def main(max_legs_in_chain, max_trips):
+def main(max_legs_in_chain, max_trips, encode=False):
 
     infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
     infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
@@ -64,21 +70,44 @@ def main(max_legs_in_chain, max_trips):
     # Get the group each tripchain belongs into (number of stages, timeperiod start, timeperiod end, distance band)
     tcs_groups = pd.read_csv(infile_tripchains_groups)
 
-    # Encode the od (to save space)
-    od, d_encoding_tcs = encode_df(od)
-    # Use the encoding to replace names in the tripchains file
-    tcs.replace(d_encoding_tcs, inplace=True)
-    # Use the encoding to replace names in the tripchain_grouping file
-    nts_distr, d_encoding_distrGroups = encode_df(nts_distr)
-    tcs_groups.replace(d_encoding_distrGroups, inplace=True)
+    if encode:
+        # Encode the od (to save space)
+        cols_to_encode = ['OrigZoneId', 'DestZoneId', 'Purpose', 'TimePeriod']
+        od, d_encoding_tcs = encode_df(od, cols_to_encode)
+        # Use the encoding to replace names in the tripchains file
+        for c in cols_to_encode:
+            tcs[c] = tcs[c].map(d_encoding_tcs)
+
+        # Use the encoding to replace names in the tripchain_grouping file
+        cols_to_encode = ['NumStages', 'DistanceGroup', 'TimePeriodStart', 'TimePeriodEnd']
+        nts_distr, d_encoding_distrGroups = encode_df(nts_distr, cols_to_encode)
+
+        for c in cols_to_encode:
+            tcs_groups[c] = tcs_groups[c].map(d_encoding_distrGroups)
+
+        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips),
+                  'w') as file:
+            file.write(json.dumps(d_encoding_distrGroups))
+
+        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips),
+                  'w') as file:
+            file.write(json.dumps(d_encoding_tcs))
+
 
     # Add the concatenated description of the od/tripchain
-    od = insert_id_col(od, id_col_prefix='Leg')
-    tcs = insert_id_col(tcs, id_col_prefix='Leg')
-    tcs_groups = insert_id_col(tcs_groups, id_col_prefix='DistrGroup')
-    nts_distr = insert_id_col(nts_distr, id_col_prefix='DistrGroup')
+    concat_cols = ['OrigZoneId', 'DestZoneId', 'Purpose', 'TimePeriod']
 
-    tripchain_ids = tcs.TripChainID.unique().tolist()
+    od = concat_columns(od, concat_cols, 'LegID', True)
+    tcs = concat_columns(tcs, concat_cols, 'LegID', True)
+
+    concat_cols = ['NumStages', 'TimePeriodStart', 'TimePeriodEnd', 'DistanceGroup']
+    tcs_groups = concat_columns(tcs_groups, concat_cols, 'DistrGroupId', True)
+
+    nts_distr = concat_columns(nts_distr, concat_cols, 'DistrGroupId', True)
+    nts_distr = nts_distr.set_index('DistrGroupId').squeeze()
+
+    tc_ids = tcs.TripChainId.unique().tolist()
+    tcs_group_ids = tcs_groups.DistrGroupId.unique().tolist()
 
     with open(outfilepath_data, 'w') as f:
         print('data;', file=f)
@@ -96,7 +125,7 @@ def main(max_legs_in_chain, max_trips):
         # CHAIN_IDS part
         print('Preparing CHAIN_IDS...')
         print(r'set CHAIN_IDS :=', file=f)
-        for tc_id in tripchain_ids: 
+        for tc_id in tc_ids:
             print(tc_id, file=f)
         print(';', file=f)
 
@@ -105,9 +134,11 @@ def main(max_legs_in_chain, max_trips):
         # group for each tripchain_ID
         print('param: chains_descr:=', file=f)
 
-        tcsg = tcs.groupby('TripChainID')
+        tcsg = tcs.groupby('TripChainId')
         with Pool(cpu_count()-1) as p:
-            results_lst = tqdm.tqdm(p.imap_unordered(prepare_chains, tcsg),
+            results_lst = tqdm.tqdm(p.imap_unordered(partial(prepare_chains,
+                                                             values_col='LegID'),
+                                                     tcsg),
                                     total=len(tcsg))
             for res in results_lst:
                 print(res, file=f)
@@ -116,9 +147,11 @@ def main(max_legs_in_chain, max_trips):
 
         print('Preparing Distribution groups...')
         print('param: chains_distr:=', file=f)
-        distrg = tcs_groups.groupby('DistrGroupID')
+        distrg = tcs_groups.groupby('DistrGroupId')
         with Pool(cpu_count()-1) as p:
-            results_lst = tqdm.tqdm(p.imap_unordered(prepare_chains, distrg),
+            results_lst = tqdm.tqdm(p.imap_unordered(partial(prepare_chains,
+                                                             values_col='TripChainId'),
+                                                             distrg),
                                     total=len(distrg))
             for res in results_lst:
                 print(res, file=f)
@@ -126,24 +159,29 @@ def main(max_legs_in_chain, max_trips):
             print(';', file=f)
 
         print('Preparing Distribution group size param...')
-        print('param: GROUP_IDS: group_sizes:=', file=f)
-        distrg_sum = distrg.TripChainID.count()
-        for item in distrg_sum.iteritems():
+        print('param: GROUP_IDS: group_size_percs:=', file=f)
+
+        # The nts distribution contains the percentages for a plethora of tripchains
+        # We get the percentages the tripchains identified in the od
+        mask = nts_distr.index.get_level_values(0).isin(tcs_group_ids)
+        group_sizes = nts_distr.loc[mask]
+        # Normalise
+        group_sizes = group_sizes.div(group_sizes.sum())
+
+        for item in group_sizes.iteritems():
             # Convert to string so join can work
             item_str = tuple(map(str, item))
             outline = ' '.join(item_str)
             print(outline, file=f)
 
-    with open(r'./outputs/encoding_tripchains_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips), 'w') as file:
-        file.write(json.dumps(d_encoding_tcs))
+    # now put things into a ZIP archive
+    outfilepath_data_zipped = outfilepath_data + '.zip'
+    zipfile.ZipFile(outfilepath_data_zipped, 'w').write(outfilepath_data, compress_type=zipfile.ZIP_DEFLATED)
 
-    with open(r'./outputs/encoding_grouping_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips), 'w') as file:
-        file.write(json.dumps(d_encoding_distrGroups))
+    os.remove(outfilepath_data)
 
     print('END')
 
      
 if __name__ == '__main__':
-    max_legs_in_chain = 5
-    max_trips = 30
-    main(max_legs_in_chain, max_trips)
+    main()

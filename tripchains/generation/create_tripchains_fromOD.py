@@ -22,7 +22,7 @@ def is_ascending(lst):
     return True
 
 
-def purpose_viable_tripchains(G, tripchains, filter_edge_purpose_names):
+def purpose_possible_tripchains(G, tripchains, filter_edge_purpose_names):
 
     def filter_edges_purpose(start_node, end_node, purposes):
         edges_data = G.get_edge_data(start_node, end_node)
@@ -156,7 +156,7 @@ def tripchains_to_csv(tripchains, max_legs_in_chain, max_trips, outfilepath):
 
         tc_num += 1
 
-    cols = ['TripChainID', 'OrigZoneId', 'DestZoneId', 'Purpose', 'TimePeriod']
+    cols = ['TripChainId', 'OrigZoneId', 'DestZoneId', 'Purpose', 'TimePeriod']
     df = pd.DataFrame(data, columns=cols)
 
     df.to_csv(outfilepath, index=False)
@@ -200,42 +200,42 @@ def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
     return subG
 
 
-def create_potential_tripchains(node, G, filter_edge_purpose_names, max_legs_chain):
+def create_potential_node_sequences(node, G, filter_edge_purpose_names, max_legs_chain):
     """
     Create the potential trip chains. Reduce the feasible space by
     a) specifying the purpose names for origin, destination and intermediate legs.
     b) Searchinf for tripchgains originating in a specific (e.g. internal) area
-    c) limit the maximum number of legs for the returned tripchains
+    c) limit the maximum number of legs for the returned node_sequences
 
     :param node:
     :param filter_edge_purpose_names:
     :param max_legs_chain:
-    :return: tripchains
+    :return: node_sequences
     """
 
-    potential_tcs = []
+    potential_node_seqs = []
     filtG = filter_graph_edges_trip_purpose(G, node, filter_edge_purpose_names)
     strongly_connected_subGs = nx.strongly_connected_component_subgraphs(filtG)
     for sc_sbG in strongly_connected_subGs:
         if sc_sbG.has_node(node):
-            tripchains = nx.simple_cycles(sc_sbG, max_legs_chain)
+            node_sequences = nx.simple_cycles(sc_sbG, max_legs_chain)
 
             # Make the home node the initial node of the chain
-            for tc in tripchains:
-                if node == tc[0]:
+            for ns in node_sequences:
+                if node == ns[0]:
                     pass
-                elif node in tc:
+                elif node in ns:
                     # Re-arrange so the home node is in the beginning of the list
-                    tc = rearrange_trip_chain(tc, node)
+                    ns = rearrange_node_sequence(ns, node)
                 else:
                     continue
 
-                potential_tcs.append(tc)
+                potential_node_seqs.append(ns)
 
-    return potential_tcs
+    return potential_node_seqs
 
 
-def rearrange_trip_chain(tripchain, first_node):
+def rearrange_node_sequence(tripchain, first_node):
     # Re-arrange the tripchain so that he home node is first
     idx = tripchain.index(first_node)
     queue = collections.deque(tripchain)
@@ -271,7 +271,7 @@ def main(max_legs_chain, min_trips, infilepath):
     od_car_reduced = od_car_reduced.round()
 
     # Export OD
-    od_car_reduced.to_csv('./outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(min_trips))
+    od_car_reduced.to_csv('./outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(min_trips), index=False)
 
     G = nx.from_pandas_edgelist(od_car_reduced, 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
 
@@ -284,32 +284,36 @@ def main(max_legs_chain, min_trips, infilepath):
 
     internal_nodes = [n for n in G if n.startswith('E02')]
 
-    potential_tripchains = []
+    potential_node_sequences = []
     with Pool(processes=cpu_count()-2) as pool:
-        for tripchains in tqdm(pool.imap_unordered(
-                               partial(create_potential_tripchains,
+        for nodesequence in tqdm(pool.imap_unordered(
+                               partial(create_potential_node_sequences,
                                        G=G,
                                        filter_edge_purpose_names=filter_edge_purpose_names,
                                        max_legs_chain=max_legs_chain),
                                        internal_nodes), total=len(internal_nodes)):
-
-            potential_tripchains.extend(tripchains)
+            potential_node_sequences.extend(nodesequence)
 
     # Keep only the unique
-    potential_tripchains.sort()
-    potential_tripchains = list(k for k, _ in itertools.groupby(potential_tripchains))
+    potential_node_sequences.sort()
+    potential_node_sequences = list(k for k, _ in itertools.groupby(potential_node_sequences))
 
+
+    print('final:{}'.format(len(potential_node_sequences)))
+
+    """
     print('Filtering...')
-    vtc = purpose_viable_tripchains(G, potential_tripchains, filter_edge_purpose_names)
-
+    possible_tripchains = purpose_possible_tripchains(G, potential_node_sequences, filter_edge_purpose_names)
+    
     # Check for chronological order
-    chron_vtc = chronologically_viable_tripchains(vtc, ['OP1', 'AM', 'IP', 'PM', 'OP2'])
+    chron_possible_tripchains = chronologically_viable_tripchains(possible_tripchains, ['OP1', 'AM', 'IP', 'PM', 'OP2'])
 
-    print('Exporting {} trips chains'.format(len(chron_vtc)))
+    print('Exporting {} trips chains'.format(len(chron_possible_tripchains)))
     outfilepath = r'./outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_chain, min_trips)
-    tripchains_to_csv(chron_vtc, max_legs_chain, min_trips, outfilepath)
+    tripchains_to_csv(chron_possible_tripchains, max_legs_chain, min_trips, outfilepath)
 
     print('End Phase 1 (Creating trip chains from OD)')
+    """
 
 
 if __name__ == '__main__':

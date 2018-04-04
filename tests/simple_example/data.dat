@@ -9,9 +9,9 @@ param: LEGS: trips:=
     HW 5
 	WH 9;
 
-param: GROUP_IDS: group_sizes:=
-	g1 7
-	g2 8;
+param: GROUP_IDS: group_size_percs:=
+	g1 0.46
+	g2 0.54;
 
 set CHAIN_IDS:= tc1 tc2 tc3 tc4 tc5;
 
