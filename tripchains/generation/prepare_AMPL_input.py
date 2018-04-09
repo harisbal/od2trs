@@ -45,13 +45,13 @@ def prepare_chains(df_grouped, values_col):
     return res
 
 
-def main(max_legs_in_chain, max_trips, encode=False):
+def main(max_legs, min_trips, encode=False):
 
-    infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_in_chain, max_trips)
-    infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs_in_chain, max_trips)
-    infile_od = r'outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(max_trips)
+    infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs, min_trips)
+    infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs, min_trips)
+    infile_od = r'outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(min_trips)
     infile_nts_distr = r'inputs/nts_tripchains_distribution.csv'
-    outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs_in_chain, max_trips)
+    outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs, min_trips)
 
     # OD
     od = pd.read_csv(infile_od)
@@ -61,12 +61,17 @@ def main(max_legs_in_chain, max_trips, encode=False):
     nts_distr = pd.read_csv(infile_nts_distr)
 
     # Recalculate the percentages for the maximum number of stages
-    mask = nts_distr.NumStages <= max_legs_in_chain
+    mask = nts_distr.NumStages <= max_legs
     nts_distr = nts_distr.loc[mask]
     nts_distr.Percentage = nts_distr.Percentage.div(nts_distr.Percentage.sum())
 
     #tripchains
     tcs = pd.read_csv(infile_tripchains)
+
+    if tcs.empty:
+        print('No tripchains discovered for {} legs and over {} trips'.format(max_legs, min_trips))
+        return None
+
     # Get the group each tripchain belongs into (number of stages, timeperiod start, timeperiod end, distance band)
     tcs_groups = pd.read_csv(infile_tripchains_groups)
 
@@ -76,20 +81,20 @@ def main(max_legs_in_chain, max_trips, encode=False):
         od, d_encoding_tcs = encode_df(od, cols_to_encode)
         # Use the encoding to replace names in the tripchains file
         for c in cols_to_encode:
-            tcs[c] = tcs[c].map(d_encoding_tcs)
+            tcs[c] = tcs[c].map(d_encoding_tcs[c])
 
         # Use the encoding to replace names in the tripchain_grouping file
         cols_to_encode = ['NumStages', 'DistanceGroup', 'TimePeriodStart', 'TimePeriodEnd']
         nts_distr, d_encoding_distrGroups = encode_df(nts_distr, cols_to_encode)
 
         for c in cols_to_encode:
-            tcs_groups[c] = tcs_groups[c].map(d_encoding_distrGroups)
+            tcs_groups[c] = tcs_groups[c].map(d_encoding_distrGroups[c])
 
-        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips),
+        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips),
                   'w') as file:
             file.write(json.dumps(d_encoding_distrGroups))
 
-        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs_in_chain, max_trips),
+        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips),
                   'w') as file:
             file.write(json.dumps(d_encoding_tcs))
 
@@ -175,8 +180,10 @@ def main(max_legs_in_chain, max_trips, encode=False):
             print(outline, file=f)
 
     # now put things into a ZIP archive
+    filename = os.path.basename(outfilepath_data)
     outfilepath_data_zipped = outfilepath_data + '.zip'
-    zipfile.ZipFile(outfilepath_data_zipped, 'w').write(outfilepath_data, compress_type=zipfile.ZIP_DEFLATED)
+    zipfile.ZipFile(outfilepath_data_zipped, 'w').write(outfilepath_data, arcname=filename,
+                                                        compress_type=zipfile.ZIP_DEFLATED)
 
     os.remove(outfilepath_data)
 
