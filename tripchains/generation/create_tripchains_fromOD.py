@@ -211,7 +211,7 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
 
 
     node_seqs = []
-    simple_cycles = nx.simple_cycles(G, root=startnode, max_cycle_len=max_legs_chain)
+    simple_cycles = nx.simple_cycles(G, root=startnode ,max_cycle_len=max_legs_chain)
     # Make the home node the initial node of the chain
     for sc in simple_cycles:
         if (len(sc) > max_legs_chain) or (len(sc)) == 1:
@@ -249,7 +249,7 @@ def main(max_legs_chain, min_trips, infilepath):
     od_car_reduced = od_car_reduced.round()
 
     # Export OD
-    od_car_reduced.to_csv('./outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(min_trips), index=False)
+    od_car_reduced.to_csv('./outputs/OPsplit/od_mnd_over{}trips.csv'.format(min_trips), index=False)
 
     G = nx.from_pandas_edgelist(od_car_reduced, 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
 
@@ -282,9 +282,13 @@ def main(max_legs_chain, min_trips, infilepath):
     potential_node_sequences.sort()
     potential_node_sequences = list(k for k, _ in itertools.groupby(potential_node_sequences))
 
-    print(internal_nodes)
     print('final:{}'.format(len(potential_node_sequences)))
-    print(potential_node_sequences)
+
+    """
+    with open('outputs/tripchains_limitCyclesLen.txt', 'w') as f:
+        for item in potential_node_sequences:
+            f.write("%s\n" % item)
+    """
 
     print('Filtering...')
     purp_possible_tripchains = purpose_possible_tripchains(G, potential_node_sequences, filter_edge_purpose_names)

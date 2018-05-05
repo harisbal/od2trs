@@ -8,8 +8,8 @@ param group_size_percs {GROUP_IDS} >= 0;
 param chains_descr {CHAIN_IDS,LEGS} binary, default 0;
 param chains_distr {GROUP_IDS,CHAIN_IDS} binary, default 0;
 
-param upper_lim = 1.10;
-param lower_lim = 0.90;
+param upper_lim = 1.20;
+param lower_lim = 0.80;
 
 var nchains {CHAIN_IDS} >= 0, integer;
 

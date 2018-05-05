@@ -45,11 +45,11 @@ def prepare_chains(df_grouped, values_col):
     return res
 
 
-def main(max_legs, min_trips, encode=False):
+def main(max_legs, min_trips, distribution_dims, encode=False):
 
     infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs, min_trips)
     infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs, min_trips)
-    infile_od = r'outputs/OPsplit/tripchains_mnd_od_over{}trips.csv'.format(min_trips)
+    infile_od = r'outputs/OPsplit/od_mnd_over{}trips.csv'.format(min_trips)
     infile_nts_distr = r'inputs/nts_tripchains_distribution.csv'
     outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs, min_trips)
 
@@ -63,7 +63,9 @@ def main(max_legs, min_trips, encode=False):
     # Recalculate the percentages for the maximum number of stages
     mask = nts_distr.NumStages <= max_legs
     nts_distr = nts_distr.loc[mask]
-    nts_distr.Percentage = nts_distr.Percentage.div(nts_distr.Percentage.sum())
+    nts_distr = nts_distr.groupby(distribution_dims)['Percentage'].sum()
+    nts_distr = nts_distr.div(nts_distr.sum())
+    nts_distr = nts_distr.reset_index()
 
     #tripchains
     tcs = pd.read_csv(infile_tripchains)
@@ -81,21 +83,21 @@ def main(max_legs, min_trips, encode=False):
         od, d_encoding_tcs = encode_df(od, cols_to_encode)
         # Use the encoding to replace names in the tripchains file
         for c in cols_to_encode:
-            tcs[c] = tcs[c].map(d_encoding_tcs[c])
+            tcs[c] = tcs[c].map(d_encoding_tcs[c]).astype(int)
 
         # Use the encoding to replace names in the tripchain_grouping file
-        cols_to_encode = ['NumStages', 'DistanceGroup', 'TimePeriodStart', 'TimePeriodEnd']
+        cols_to_encode = distribution_dims
         nts_distr, d_encoding_distrGroups = encode_df(nts_distr, cols_to_encode)
 
         for c in cols_to_encode:
             tcs_groups[c] = tcs_groups[c].map(d_encoding_distrGroups[c])
 
-        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips),
-                  'w') as file:
+        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips), 'w')\
+                as file:
             file.write(json.dumps(d_encoding_distrGroups))
 
-        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips),
-                  'w') as file:
+        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips), 'w') \
+                as file:
             file.write(json.dumps(d_encoding_tcs))
 
 
@@ -105,7 +107,7 @@ def main(max_legs, min_trips, encode=False):
     od = concat_columns(od, concat_cols, 'LegID', True)
     tcs = concat_columns(tcs, concat_cols, 'LegID', True)
 
-    concat_cols = ['NumStages', 'TimePeriodStart', 'TimePeriodEnd', 'DistanceGroup']
+    concat_cols = distribution_dims
     tcs_groups = concat_columns(tcs_groups, concat_cols, 'DistrGroupId', True)
 
     nts_distr = concat_columns(nts_distr, concat_cols, 'DistrGroupId', True)
@@ -121,9 +123,9 @@ def main(max_legs, min_trips, encode=False):
         print('Preparing LEGS...')
         print('param: LEGS: trips:=', file=f)
         for od_pair in od.itertuples():
-            outline = od_pair.LegID + ' ' + str(od_pair.DailyTrips)
+            line_out = od_pair.LegID + ' ' + str(od_pair.DailyTrips)
 
-            print(outline, file=f)
+            print(line_out, file=f)
 
         print(';', file=f)
 
@@ -156,8 +158,7 @@ def main(max_legs, min_trips, encode=False):
         with Pool(cpu_count()-1) as p:
             results_lst = tqdm.tqdm(p.imap_unordered(partial(prepare_chains,
                                                              values_col='TripChainId'),
-                                                             distrg),
-                                    total=len(distrg))
+                                                             distrg), total=len(distrg))
             for res in results_lst:
                 print(res, file=f)
             # Add the missing ; at the end
@@ -168,16 +169,30 @@ def main(max_legs, min_trips, encode=False):
 
         # The nts distribution contains the percentages for a plethora of tripchains
         # We get the percentages the tripchains identified in the od
-        mask = nts_distr.index.get_level_values(0).isin(tcs_group_ids)
+
+        nts_group_ids = nts_distr.index.get_level_values(0)
+        mask = nts_group_ids.isin(tcs_group_ids)
         group_sizes = nts_distr.loc[mask]
+
+        # Some tcs_group_ids may not appear in the nts distribution
+        missing_tcs_group_ids = [tcsgid for tcsgid in tcs_group_ids if tcsgid not in nts_group_ids]
+
         # Normalise
         group_sizes = group_sizes.div(group_sizes.sum())
 
         for item in group_sizes.iteritems():
             # Convert to string so join can work
             item_str = tuple(map(str, item))
-            outline = ' '.join(item_str)
-            print(outline, file=f)
+            line_out = ' '.join(item_str)
+            print(line_out, file=f)
+
+        # Append the missing ids (percentage is 0)
+        for missing_id in missing_tcs_group_ids:
+            line_out = '{} 0.0'.format(missing_id)
+            print(line_out, file=f)
+
+        # Add the missing ; at the end
+        print(';', file=f)
 
     # now put things into a ZIP archive
     filename = os.path.basename(outfilepath_data)
