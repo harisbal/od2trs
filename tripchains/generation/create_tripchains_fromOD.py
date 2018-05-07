@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 import itertools
@@ -224,6 +225,8 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
 
 def main(max_legs_chain, min_trips, infilepath):
 
+    process_folder = r'./tmp'
+
     print('Reading...')
 
     od = pd.read_csv(infilepath)
@@ -249,7 +252,9 @@ def main(max_legs_chain, min_trips, infilepath):
     od_car_reduced = od_car_reduced.round()
 
     # Export OD
-    od_car_reduced.to_csv('./outputs/OPsplit/od_mnd_over{}trips.csv'.format(min_trips), index=False)
+    outfilename = 'od_over{}trips.csv'.format(min_trips)
+    outfilepath = os.path.join(process_folder, outfilename)
+    od_car_reduced.to_csv(outfilepath, index=False)
 
     G = nx.from_pandas_edgelist(od_car_reduced, 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
 
@@ -298,7 +303,10 @@ def main(max_legs_chain, min_trips, infilepath):
     chron_possible_tripchains = chronologically_possible_tripchains(purp_possible_tripchains, ordered_time_periods)
 
     print('Exporting {} trips chains'.format(len(chron_possible_tripchains)))
-    outfilepath = r'./outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs_chain, min_trips)
+
+    outfilename = 'tripchains_{}legs_over{}trips.csv'.format(max_legs_chain, min_trips)
+    outfilepath = os.path.join(process_folder, outfilename)
+
     tripchains_to_csv(chron_possible_tripchains, max_legs_chain, min_trips, outfilepath)
 
     print('End Phase 1 (Creating trip chains from OD)')

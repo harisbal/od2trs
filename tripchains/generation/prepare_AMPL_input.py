@@ -47,11 +47,13 @@ def prepare_chains(df_grouped, values_col):
 
 def main(max_legs, min_trips, distribution_dims, encode=False):
 
-    infile_tripchains = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips.csv'.format(max_legs, min_trips)
-    infile_tripchains_groups = r'outputs/OPsplit/tripchains_mnd_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs, min_trips)
-    infile_od = r'outputs/OPsplit/od_mnd_over{}trips.csv'.format(min_trips)
-    infile_nts_distr = r'inputs/nts_tripchains_distribution.csv'
-    outfilepath_data = './outputs/data_mnd_{}legs_over{}trips.dat'.format(max_legs, min_trips)
+    process_folder = r'./tmp'
+
+    infile_tripchains = os.path.join(process_folder, 'tripchains_{}legs_over{}trips.csv'.format(max_legs, min_trips))
+    infile_tripchains_groups = os.path.join(process_folder, 'tripchains_{}legs_over{}trips_grouped_nstages-time-distance.csv'.format(max_legs, min_trips))
+    infile_od = os.path.join(process_folder, 'od_over{}trips.csv'.format(min_trips))
+    infile_nts_distr = r'inputs/nts_tripchains_distribution_carDriver.csv'
+    outfilepath_data = os.path.join(process_folder, 'data_{}legs_over{}trips.dat'.format(max_legs, min_trips))
 
     # OD
     od = pd.read_csv(infile_od)
@@ -92,12 +94,12 @@ def main(max_legs, min_trips, distribution_dims, encode=False):
         for c in cols_to_encode:
             tcs_groups[c] = tcs_groups[c].map(d_encoding_distrGroups[c])
 
-        with open(r'./outputs/encoding_grouping_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips), 'w')\
-                as file:
+        outfilepath = 'encoding_grouping_{}legs_over{}trips.txt'.format(max_legs, min_trips)
+        with open(os.path.join(process_folder, outfilepath), 'w') as file:
             file.write(json.dumps(d_encoding_distrGroups))
 
-        with open(r'./outputs/encoding_tripchains_mnd_{}legs_over{}trips.txt'.format(max_legs, min_trips), 'w') \
-                as file:
+        outfilepath = 'encoding_tripchains_{}legs_over{}trips.txt'.format(max_legs, min_trips)
+        with open(os.path.join(process_folder, outfilepath), 'w') as file:
             file.write(json.dumps(d_encoding_tcs))
 
 
@@ -204,6 +206,5 @@ def main(max_legs, min_trips, distribution_dims, encode=False):
 
     print('END')
 
-     
 if __name__ == '__main__':
     main()
