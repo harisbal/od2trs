@@ -18,11 +18,12 @@ def move_results(source_fldr, dest_fldr):
 
 def main():
 
-    infilepath = r'./inputs/od_mnd_greenwich_IntToInt_OPsplit.csv'
+    trips_direction = 'IntToInt'
+    infilepath = r'./inputs/od_mnd_greenwich_{}_OPsplit.csv'.format(trips_direction)
     outfolderpath = r'./outputs/MND/IntToInt'
 
-    max_legs = [5]
-    min_trips = [50]
+    max_legs = [4]
+    min_trips = [15]
     params = zip(max_legs, min_trips)
 
     # Create a processing folder
@@ -30,8 +31,8 @@ def main():
     if not os.path.exists(processing_folder):
         os.makedirs(processing_folder)
 
-    for pair in params:
-        legs, trips = pair
+    for legs, trips in params:
+        print('Legs:{}, trips:{}'.format(legs, trips))
         print('Phase 1/3: Creating TripChains...')
         ctc.main(legs, trips, infilepath)
         print('Phase 2/3: Grouping TripChains...')
