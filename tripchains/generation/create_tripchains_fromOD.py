@@ -265,7 +265,8 @@ def main(max_legs_chain, min_trips, infilepath):
 
     print('Creating Chains...')
 
-    internal_nodes = [n for n in G if n.startswith('E02')]
+    #internal_nodes = [n for n in G if n.startswith('E02')]
+    internal_nodes = G.nodes()
 
     potential_node_sequences = []
 
