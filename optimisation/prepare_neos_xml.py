@@ -95,11 +95,13 @@ def prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infold
 def main():
 
     global data_source
+    global model_name
     global trips_direction
     global distr_constr
     global processing_folder
 
     data_source = 'mnd'
+    model_name = 'greenwich'
     trips_direction = 'IntToInt'
     distr_constr = 'off'
 
@@ -112,8 +114,8 @@ def main():
     infilepath_commands = os.path.join(infolder, 'commands', infile_commands)
     infilepath_xml = os.path.join(infolder, 'xml_templates', infile_xml_template)
 
-    infolder_data = r'./inputs/data/{}/{}'.format(data_source, trips_direction)
-    outfolder_neos_results = './outputs2/{}/{}'.format(data_source, trips_direction)
+    infolder_data = r'./inputs/data/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    outfolder_neos_results = './outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
     if not os.path.exists(outfolder_neos_results):
         os.makedirs(outfolder_neos_results)

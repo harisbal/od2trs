@@ -212,7 +212,7 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
 
 
     node_seqs = []
-    simple_cycles = nx.simple_cycles(G, root=startnode ,max_cycle_len=max_legs_chain)
+    simple_cycles = nx.simple_cycles_root(G, root=startnode, max_cycle_len=max_legs_chain)
     # Make the home node the initial node of the chain
     for sc in simple_cycles:
         if (len(sc) > max_legs_chain) or (len(sc)) == 1:
@@ -223,7 +223,7 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
 
     return node_seqs
 
-def main(max_legs_chain, min_trips, infilepath):
+def main(infilepath, max_legs_chain, min_trips):
 
     process_folder = r'./tmp'
 
@@ -266,6 +266,7 @@ def main(max_legs_chain, min_trips, infilepath):
     print('Creating Chains...')
 
     internal_nodes = [n for n in G if n.startswith('E02')]
+    #internal_nodes = G.nodes()
 
     potential_node_sequences = []
 
