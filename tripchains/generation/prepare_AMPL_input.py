@@ -54,18 +54,36 @@ def prepare_dist_labes_from_bins(bins, concat_char='to'):
     return labels
 
 def prepare_nts_distribution(nts, dist_bins):
+def prepare_dist_labes_from_bins(bins, concat_char='to'):
+    labels = []
+    for v, w in zip(bins[:-1], bins[1:]):
+        labels.append('{}{}{}'.format(v, concat_char, w))
+    labels[-1] = '{}+'.format(bins[-2])
+    return labels
+
+def prepare_nts_distribution(nts, distr_dims, dist_bins, outfilepath):
 
     #dist_labels = prepare_dist_labes_from_bins(dist_bins)
     # TripSstart and TripEnd are given in second with 0 seconds at 00:00
+    timeperiod_labels = ['OP1', 'AM', 'IP', 'PM', 'OP2']
     cutter = [nts.NumStages,
-          pd.cut(nts.Distance, dist_bins),
-          pd.cut(nts.TripStart, [0, 420, 600, 960, 1140, 1440], labels=['OP1', 'AM', 'IP', 'PM', 'OP2']),
-          pd.cut(nts.TripEnd, [0, 420, 600, 960, 1140, 1440], labels=['OP1', 'AM', 'IP', 'PM', 'OP2'])]
+              pd.cut(nts.Distance, dist_bins),
+              pd.cut(nts.TripStart, [0, 420, 600, 960, 1140, 1440], labels=timeperiod_labels),
+              pd.cut(nts.TripEnd, [0, 420, 600, 960, 1140, 1440], labels=timeperiod_labels)]
 
     distr = nts.groupby(cutter)['NumStages'].count()
     distr_perc = distr.div(distr.sum())
     distr_perc.name = 'Percentage'
     distr_perc.index.set_names(['NumStages', 'DistanceGroup', 'TImePeriodStart', 'TimePeriodEnd'], inplace=True)
+
+    if distr_dims is not None:
+        distr_perc = distr_perc.groupby(level=distr_dims).sum()
+
+    # Recalculate the percentages for the maximum number of stages
+    distr_perc = distr_perc.div(distr_perc.sum())
+
+    # Useful for post processing analysis
+    distr_perc.to_csv(outfilepath, header=True)
 
     return distr_perc
 
@@ -80,6 +98,9 @@ def main(max_legs, min_trips, distance_bins, distribution_dims, encode=False):
     infile_od = os.path.join(process_folder, 'od_over{}trips.csv'.format(min_trips))
     infile_nts_distr = r'inputs/nts_carDriver_trips_nstages_timeStart_timeEnd_distance.csv'
     outfilepath_data = os.path.join(process_folder, 'data_{}legs_over{}trips.dat'.format(max_legs, min_trips))
+    distribution_dims_str = '_'.join(distribution_dims)
+    # Assumes that NumStages is the 1st dimension..
+    outfilepath_nts_distr = os.path.join(process_folder, 'nts_distr_{}{}.csv'.format(max_legs, distribution_dims_str))
 
     # OD
     od = pd.read_csv(infile_od)
@@ -116,15 +137,17 @@ def main(max_legs, min_trips, distance_bins, distribution_dims, encode=False):
         # Use the encoding to replace names in the tripchains file
         # The keys in the d_encoding are always strings (defined in the function)
         # Thus the .astype(str) conversion
+
+        # old version tcs[c] = tcs[c].astype(str).map(d_encoding_tcs[c]).astype(int)
         for c in cols_to_encode:
-            tcs[c] = tcs[c].astype(str).map(d_encoding_tcs[c]).astype(int)
+            tcs[c] = tcs[c].astype(str).replace(d_encoding_tcs[c]).astype(int)
 
         # Use the encoding to replace names in the tripchain_grouping file
         cols_to_encode = distribution_dims
         nts_distr, d_encoding_distrGroups = encode_df(nts_distr, cols_to_encode)
 
         for c in cols_to_encode:
-            tcs_groups[c] = tcs_groups[c].astype(str).map(d_encoding_distrGroups[c]).astype(int)
+            tcs_groups[c] = tcs_groups[c].astype(str).replace(d_encoding_distrGroups[c]).astype(int)
 
         outfilepath = 'encoding_grouping_{}legs_over{}trips.txt'.format(max_legs, min_trips)
         with open(os.path.join(process_folder, outfilepath), 'w') as file:

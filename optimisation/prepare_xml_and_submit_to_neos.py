@@ -83,7 +83,7 @@ def prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infold
             outfilename_results = 'results_{}_{}legs_over{}trips_{}_{}DistrConstr.txt'.format(data_source, legs,
                                                                                                    trips,
                                                                                                    trips_direction,
-                                                                                                   distr_constr)
+                                                                                                   distr_constr_state)
             infilepath_neos_xml = os.path.join(processing_folder, infilename_neos_xml)
             outfilepath_neos_results = os.path.join(outfolder_neos_results, outfilename_results)
 
@@ -96,39 +96,41 @@ def main():
 
     global data_source
     global trips_direction
-    global distr_constr
+    global distr_constr_state
     global processing_folder
 
     data_source = 'mnd'
-    trips_direction = 'IntToInt'
-    distr_constr = 'off'
+    model_name = 'reverse_problem'
+    trips_direction = 'allDirections'
 
-    infile_model = 'model_{}DistrConstr.mod'.format(distr_constr)
-    infile_commands = 'run.run'
-    infile_xml_template = 'cplex.xml'
+    distr_constr_states = ['on', 'off']
 
-    infolder = r'./inputs'
-    infilepath_model = os.path.join(infolder, 'models', infile_model)
-    infilepath_commands = os.path.join(infolder, 'commands', infile_commands)
-    infilepath_xml = os.path.join(infolder, 'xml_templates', infile_xml_template)
+    for distr_constr_state in distr_constr_states:
+        infile_model = 'model_{}DistrConstr.mod'.format(distr_constr_state)
+        infile_commands = 'run.run'
+        infile_xml_template = 'cplex.xml'
 
-    infolder_data = r'./inputs/data/{}/{}'.format(data_source, trips_direction)
-    outfolder_neos_results = './outputs2/{}/{}'.format(data_source, trips_direction)
+        infolder = r'./inputs'
+        infilepath_model = os.path.join(infolder, 'models', infile_model)
+        infilepath_commands = os.path.join(infolder, 'commands', infile_commands)
+        infilepath_xml = os.path.join(infolder, 'xml_templates', infile_xml_template)
 
-    if not os.path.exists(outfolder_neos_results):
-        os.makedirs(outfolder_neos_results)
+        infolder_data = r'./inputs/data/{}/{}/{}'.format(data_source, model_name, trips_direction)
+        outfolder_neos_results = './outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
-    processing_folder = './processing'
+        if not os.path.exists(outfolder_neos_results):
+            os.makedirs(outfolder_neos_results)
 
-    if not os.path.exists(processing_folder):
-        os.makedirs(processing_folder)
+        processing_folder = './processing'
 
-    inputs = prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infolder_data, outfolder_neos_results)
+        if not os.path.exists(processing_folder):
+            os.makedirs(processing_folder)
 
-    for inpt in inputs:
-        print(inpt)
-        # No results need to be returned (function outputs)
-        submit_to_neos(inpt)
+        inputs = prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infolder_data, outfolder_neos_results)
+
+        for inpt in inputs:
+            print('Solving: {}'.format(inpt))
+            submit_to_neos(inpt)
 
     shutil.rmtree(processing_folder)
 
