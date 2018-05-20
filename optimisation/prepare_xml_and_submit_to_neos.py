@@ -101,7 +101,7 @@ def main():
 
     data_source = 'mnd'
     model_name = 'reverse_problem'
-    trips_direction = 'allDirections'
+    trips_direction = 'ExclExtToExt'
 
     distr_constr_states = ['on', 'off']
 

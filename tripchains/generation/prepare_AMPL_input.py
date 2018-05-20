@@ -53,7 +53,7 @@ def prepare_dist_labes_from_bins(bins, concat_char='to'):
     labels[-1] = '{}+'.format(bins[-2])
     return labels
 
-def prepare_nts_distribution(nts, dist_bins):
+
 def prepare_dist_labes_from_bins(bins, concat_char='to'):
     labels = []
     for v, w in zip(bins[:-1], bins[1:]):
@@ -111,7 +111,7 @@ def main(max_legs, min_trips, distance_bins, distribution_dims, encode=False):
     mask = nts_data.NumStages <= max_legs
     nts_data = nts_data.loc[mask]
 
-    nts_distr = prepare_nts_distribution(nts_data, distance_bins)
+    nts_distr = prepare_nts_distribution(nts_data, distribution_dims, distance_bins, outfilepath_nts_distr)
 
     if distribution_dims is not None:
         nts_distr = nts_distr.groupby(level=distribution_dims).sum()
@@ -243,10 +243,12 @@ def main(max_legs, min_trips, distance_bins, distribution_dims, encode=False):
             line_out = ' '.join(item_str)
             print(line_out, file=f)
 
+        """
         # Append the missing ids (percentage is 0)
         for missing_id in missing_tcs_group_ids:
             line_out = '{} 0.0'.format(missing_id)
             print(line_out, file=f)
+        """
 
         # Add the missing ; at the end
         print(';', file=f)

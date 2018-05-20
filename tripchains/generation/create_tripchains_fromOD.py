@@ -173,32 +173,6 @@ def encode_df(df):
     return df, d_encoding
 
 
-def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
-    """
-    Reduces iteratively the network so that first and last edges of cycle are HB
-    and NHB for the rest of the edges
-    """
-
-    hb_from_home_names, hb_to_home_names, nhb_names = filter_edge_purpose_names
-
-    # Give better name
-    # Creates a graph that origins edges from and to
-    subG = nx.MultiDiGraph()
-    for source, target, attr in G.edges(data=True):
-        if attr['Purpose'] in nhb_names:
-            # NHB trips are added only when the source is not home
-            if not (source == home_node or target == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hb_from_home_names:
-            if (source == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hb_to_home_names:
-            if (target == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-
-    return subG
-
-
 def create_potential_tripchains(startnode, G, max_legs_chain):
     """
     Create the potential trip chains. Reduce the feasible space by
@@ -210,8 +184,41 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
     :return: potential_tripchains
     """
 
+    # Filter the network so it doesn't contain
+    # a) FromHome and ToHome trips except the ones originating/endin in startnode
+    # b) NHB trips with origin or destination the startnode
+
+    def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
+        """
+        Reduces iteratively the network so that first and last edges of cycle are HB
+        and NHB for the rest of the edges
+        """
+
+        hb_from_home_names, hb_to_home_names, nhb_names = filter_edge_purpose_names
+
+        # Give better name
+        # Creates a graph that origins edges from and to
+        filt_G = nx.MultiDiGraph()
+        for source, target, attr in G.edges(data=True):
+            if attr['Purpose'] in nhb_names:
+                # NHB trips are added only when the source is not home
+                if not (source == home_node or target == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+            elif attr['Purpose'] in hb_from_home_names:
+                if (source == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+            elif attr['Purpose'] in hb_to_home_names:
+                if (target == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+
+        return filt_G
+
+    filter_edge_purpose_names = [['HB_FromHome'], ['HB_ToHome'], ['NHB_NonHomeBased']]
+
+    G_filt = filter_graph_edges_trip_purpose(G, startnode, filter_edge_purpose_names)
+
     node_seqs = []
-    simple_cycles = nx.simple_cycles_root(G, root=startnode, max_cycle_len=max_legs_chain)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=startnode, max_cycle_len=max_legs_chain)
     # Make the home node the initial node of the chain
     for sc in simple_cycles:
         if (len(sc) - 1 > max_legs_chain) or (len(sc)) == 1:
