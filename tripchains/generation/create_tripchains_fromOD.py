@@ -115,9 +115,9 @@ def chronologically_possible_tripchains(tripchains, timeperiod_sequence):
                 leg_timeperiod = timeperiod_sequence.index(leg_timeperiod)
                 leg_timeperiods[od].append(leg_timeperiod)
 
-        # Here I will create a list with the available timeperiods for each od in the tripchain
+        # Here I will create a list with the available timeperiods for each leg in the tripchain
         tripchain_leg_timeperiods = []  # e.g. [ [AM, IP, OP], [IP, PM], [PM, OP] ]
-        for od, timeperiods in leg_timeperiods.items():
+        for leg, timeperiods in leg_timeperiods.items():
             tripchain_leg_timeperiods.append(timeperiods)
 
         tripchain_timeperiod_combinations = list(itertools.product(*tripchain_leg_timeperiods))
@@ -127,13 +127,13 @@ def chronologically_possible_tripchains(tripchains, timeperiod_sequence):
             legs = {}
             if is_ascending(timeperiod_comb):
                 for tp_comb_idx, timeperiod_idx in enumerate(timeperiod_comb):
-                    od, edge_attrs = next(itertools.islice(tc.items(), tp_comb_idx, None))
-                    # Find the edges that corresponds to the identified timeperiod
+                    leg, edge_attrs = next(itertools.islice(tc.items(), tp_comb_idx, None))
+                    # Find the edges that correspond to the identified timeperiod
                     for attrs in edge_attrs:
                         tp = attrs['TimePeriod']
                         tp_idx = timeperiod_sequence.index(tp)
                         if tp_idx == timeperiod_idx:
-                            legs[od] = attrs
+                            legs[leg] = attrs
                             break
 
             if legs:
@@ -173,32 +173,6 @@ def encode_df(df):
     return df, d_encoding
 
 
-def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
-    """
-    Reduces iteratively the network so that first and last edges of cycle are HB
-    and NHB for the rest of the edges
-    """
-
-    hb_from_home_names, hb_to_home_names, nhb_names = filter_edge_purpose_names
-
-    # Give better name
-    # Creates a graph that origins edges from and to
-    subG = nx.MultiDiGraph()
-    for source, target, attr in G.edges(data=True):
-        if attr['Purpose'] in nhb_names:
-            # NHB trips are added only when the source is not home
-            if not (source == home_node or target == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hb_from_home_names:
-            if (source == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hb_to_home_names:
-            if (target == home_node):
-                subG.add_edge(source, target, Purpose=attr['Purpose'])
-
-    return subG
-
-
 def create_potential_tripchains(startnode, G, max_legs_chain):
     """
     Create the potential trip chains. Reduce the feasible space by
@@ -210,15 +184,45 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
     :return: potential_tripchains
     """
 
+    # Filter the network so it doesn't contain
+    # a) FromHome and ToHome trips except the ones originating/endin in startnode
+    # b) NHB trips with origin or destination the startnode
+
+    def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
+        """
+        Reduces iteratively the network so that first and last edges of cycle are HB
+        and NHB for the rest of the edges
+        """
+
+        hb_from_home_names, hb_to_home_names, nhb_names = filter_edge_purpose_names
+
+        # Give better name
+        # Creates a graph that origins edges from and to
+        filt_G = nx.MultiDiGraph()
+        for source, target, attr in G.edges(data=True):
+            if attr['Purpose'] in nhb_names:
+                # NHB trips are added only when the source is not home
+                if not (source == home_node or target == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+            elif attr['Purpose'] in hb_from_home_names:
+                if (source == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+            elif attr['Purpose'] in hb_to_home_names:
+                if (target == home_node):
+                    filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+
+        return filt_G
+
+    filter_edge_purpose_names = [['HB_FromHome'], ['HB_ToHome'], ['NHB_NonHomeBased']]
+
+    G_filt = filter_graph_edges_trip_purpose(G, startnode, filter_edge_purpose_names)
+
     node_seqs = []
-    simple_cycles = nx.simple_cycles_root(G, root=startnode, max_cycle_len=max_legs_chain)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=startnode, max_cycle_len=max_legs_chain)
     # Make the home node the initial node of the chain
     for sc in simple_cycles:
-        if (len(sc) - 1 > max_legs_chain) or (len(sc)) == 1:
-            continue
-        else:
-            sc.append(sc[0])
-            node_seqs.append(sc)
+        sc.append(sc[0])
+        node_seqs.append(sc)
 
     return node_seqs
 
@@ -245,7 +249,11 @@ def main(infilepath, max_legs_chain, min_trips):
 
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
-    od_car = odg.xs('Motorised', level='Mode')
+    try:
+        od_car = odg.xs('Motorised', level='Mode')
+    except:
+        od_car = odg.xs('CarDriver', level='Mode')
+
     od_car = od_car.reset_index()
 
     # Reduce

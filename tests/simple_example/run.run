@@ -1,5 +1,10 @@
-solve;
+model 'D:\Users\Work\OneDrive - Transport Systems Catapult\Research\PhD\Models\tripchains_from_ODs\tests\simple_example\model_chain_used.mod';
+data 'D:\Users\Work\OneDrive - Transport Systems Catapult\Research\PhD\Models\tripchains_from_ODs\tests\simple_example\data.dat';
+
+option solver ilogcp;
 option display_1col 10000000;
 option omit_0_rows 1;
 option omit_0_cols 1;
-display {id in CHAIN_IDS: nchains[id] >= 1} (nchains[id]);
+solve;
+display {id in CHAIN_IDS: chain_used[id] * nchains[id] >= 1} (nchains[id]);
+display sum{id in CHAIN_IDS} (chain_used[id]);

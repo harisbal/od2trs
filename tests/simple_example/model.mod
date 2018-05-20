@@ -24,6 +24,4 @@ subject to distribution_upper_lim {group in GROUP_IDS}:
    	sum {tc_id in CHAIN_IDS} nchains[tc_id] * chains_distr[group,tc_id] <= upper_lim * group_size_percs[group] * sum {tc_id in CHAIN_IDS} nchains[tc_id];
    	
 subject to distribution_lower_lim {group in GROUP_IDS}:
-   	sum {tc_id in CHAIN_IDS} nchains[tc_id] * chains_distr[group,tc_id] >= lower_lim * group_size_percs[group] * sum {tc_id in CHAIN_IDS} nchains[tc_id];
-
-   
+   	sum {tc_id in CHAIN_IDS} nchains[tc_id] * chains_distr[group,tc_id] >= lower_lim * group_size_percs[group] * sum {tc_id in CHAIN_IDS} nchains[tc_id];   

@@ -81,9 +81,9 @@ def prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infold
             infilename_neos_xml = 'neosXml_{}legs_over{}trips.xml'.format(legs, trips)
 
             outfilename_results = 'results_{}_{}legs_over{}trips_{}_{}DistrConstr.txt'.format(data_source, legs,
-                                                                                              trips,
-                                                                                              trips_direction,
-                                                                                              distr_constr_state)
+                                                                                                   trips,
+                                                                                                   trips_direction,
+                                                                                                   distr_constr_state)
             infilepath_neos_xml = os.path.join(processing_folder, infilename_neos_xml)
             outfilepath_neos_results = os.path.join(outfolder_neos_results, outfilename_results)
 
@@ -95,19 +95,18 @@ def prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infold
 def main():
 
     global data_source
-    global model_name
     global trips_direction
     global distr_constr_state
     global processing_folder
 
     data_source = 'mnd'
-    model_name = 'greenwich'
+    model_name = 'reverse_problem'
     trips_direction = 'ExclExtToExt'
 
-    distr_constr_states = ['on', 'off']
+    distr_constr_states = ['on']
 
     for distr_constr_state in distr_constr_states:
-        infile_model = 'model_{}DistrConstr.mod'.format(distr_constr_state)
+        infile_model = 'model_{}DistrConstr_limitUsedChains.mod'.format(distr_constr_state)
         infile_commands = 'run.run'
         infile_xml_template = 'cplex.xml'
 
@@ -132,7 +131,12 @@ def main():
         for inpt in inputs:
             print('Solving: {}'.format(inpt))
             submit_to_neos(inpt)
-
+            """
+            try:
+                submit_to_neos(inpt)
+            except:
+                print('Failed: {}'.format(inpt))
+            """
     shutil.rmtree(processing_folder)
 
 if __name__ == '__main__':
