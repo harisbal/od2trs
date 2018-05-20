@@ -19,14 +19,14 @@ def move_results(source_fldr, dest_fldr):
 def main():
 
     data_source = 'mnd'
-    model_name = 'greenwich'
-    trips_direction = 'exclExtToExt'
+    model_name = 'london'
+    trips_direction = 'allDirections'
 
     infilepath = r'./inputs/od_{}_{}_{}_OPsplit.csv'.format(data_source, model_name, trips_direction)
     outfolderpath = r'./outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
-    max_legs = [4]
-    min_trips = [25]
+    max_legs = [3, 4, 5]
+    min_trips = [50, 50, 50]
 
     dist_bins = [0, 10, 20, 30, 40, 50, 100]
 
@@ -45,7 +45,7 @@ def main():
         gtc.main(legs, trips, dist_bins)
         print('Phase 3/3: Exporting AMPL files...')
         pai.main(legs, trips,
-                 distribution_dims=['DistanceGroup'],
+                 distribution_dims=['NumStages', 'DistanceGroup'],
                  distance_bins=dist_bins,
                  encode=True)
 

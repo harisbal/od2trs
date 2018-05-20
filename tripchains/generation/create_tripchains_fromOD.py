@@ -142,7 +142,7 @@ def chronologically_possible_tripchains(tripchains, timeperiod_sequence):
     return chron_ordered_tripchains
 
 
-def tripchains_to_csv(tripchains, max_legs_in_chain, max_trips, outfilepath):
+def tripchains_to_csv(tripchains, outfilepath):
     data = []
     tc_num = 0
     for tc in tripchains:
@@ -210,12 +210,11 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
     :return: potential_tripchains
     """
 
-
     node_seqs = []
     simple_cycles = nx.simple_cycles_root(G, root=startnode, max_cycle_len=max_legs_chain)
     # Make the home node the initial node of the chain
     for sc in simple_cycles:
-        if (len(sc) > max_legs_chain) or (len(sc)) == 1:
+        if (len(sc) - 1 > max_legs_chain) or (len(sc)) == 1:
             continue
         else:
             sc.append(sc[0])
@@ -235,7 +234,12 @@ def main(infilepath, max_legs_chain, min_trips):
 
     d_grp_purp = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
                   'HBW_ToHome': 'HB_ToHome', 'HBO_ToHome': 'HB_ToHome',
-                  'NHB_NonHomeBased': 'NHB_NonHomeBased'}
+                  'NHBW_NonHomeBased': 'NHB_NonHomeBased',
+                  'NHBO_NonHomeBased': 'NHB_NonHomeBased',
+                  'HB_FromHome': 'HB_FromHome',
+                  'HB_ToHome': 'HB_ToHome',
+                  'NHB_NonHomeBased': 'NHB_NonHomeBased'
+                  }
 
     grp_keys = [None, None, d_grp_purp, None, None]
 
@@ -295,7 +299,6 @@ def main(infilepath, max_legs_chain, min_trips):
         for item in potential_node_sequences:
             f.write("%s\n" % item)
     """
-
     print('Filtering...')
     purp_possible_tripchains = purpose_possible_tripchains(G, potential_node_sequences, filter_edge_purpose_names)
     
@@ -308,7 +311,7 @@ def main(infilepath, max_legs_chain, min_trips):
     outfilename = 'tripchains_{}legs_over{}trips.csv'.format(max_legs_chain, min_trips)
     outfilepath = os.path.join(process_folder, outfilename)
 
-    tripchains_to_csv(chron_possible_tripchains, max_legs_chain, min_trips, outfilepath)
+    tripchains_to_csv(chron_possible_tripchains, outfilepath)
 
     print('End Phase 1 (Creating trip chains from OD)')
 

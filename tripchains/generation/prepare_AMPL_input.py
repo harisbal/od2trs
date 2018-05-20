@@ -80,6 +80,9 @@ def main(max_legs, min_trips, distribution_dims, distance_bins, encode=False):
     infile_od = os.path.join(process_folder, 'od_over{}trips.csv'.format(min_trips))
     infile_nts_distr = r'inputs/nts_carDriver_trips_nstages_timeStart_timeEnd_distance.csv'
     outfilepath_data = os.path.join(process_folder, 'data_{}legs_over{}trips.dat'.format(max_legs, min_trips))
+    distribution_dims_str = '_'.join(distribution_dims)
+    # Assumes that NumStages is the 1st dimension..
+    outfilepath_nts_distr = os.path.join(process_folder, 'nts_distr_{}{}.csv'.format(max_legs, distribution_dims_str))
 
     # OD
     od = pd.read_csv(infile_od)
@@ -116,15 +119,17 @@ def main(max_legs, min_trips, distribution_dims, distance_bins, encode=False):
         # Use the encoding to replace names in the tripchains file
         # The keys in the d_encoding are always strings (defined in the function)
         # Thus the .astype(str) conversion
+
+        # old version tcs[c] = tcs[c].astype(str).map(d_encoding_tcs[c]).astype(int)
         for c in cols_to_encode:
-            tcs[c] = tcs[c].astype(str).map(d_encoding_tcs[c]).astype(int)
+            tcs[c] = tcs[c].astype(str).replace(d_encoding_tcs[c]).astype(int)
 
         # Use the encoding to replace names in the tripchain_grouping file
         cols_to_encode = distribution_dims
         nts_distr, d_encoding_distrGroups = encode_df(nts_distr, cols_to_encode)
 
         for c in cols_to_encode:
-            tcs_groups[c] = tcs_groups[c].astype(str).map(d_encoding_distrGroups[c]).astype(int)
+            tcs_groups[c] = tcs_groups[c].astype(str).replace(d_encoding_distrGroups[c]).astype(int)
 
         outfilepath = 'encoding_grouping_{}legs_over{}trips.txt'.format(max_legs, min_trips)
         with open(os.path.join(process_folder, outfilepath), 'w') as file:
