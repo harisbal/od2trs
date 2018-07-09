@@ -23,69 +23,77 @@ def is_ascending(lst):
     return True
 
 
-def purpose_possible_tripchains(G, tripchains, filter_edge_purpose_names):
+def purpose_possible_tripchains(G, node_sequences, filter_edge_purpose_names):
 
-    def filter_edges_purpose(start_node, end_node, purposes):
-        edges_data = G.get_edge_data(start_node, end_node)
-        filt_edges = None
-        if edges_data:
-            filt_edges = [v for k, v in edges_data.items() if v['Purpose'] in purposes]
+    # Return a list of with the allowed purposes for this leg e.g. [HBW_FH, HBO_FH]
+    def filter_legs_by_allowed_purposes(start_node, end_node, allowed_purposes):
+        leg_data = G.get_edge_data(start_node, end_node)
+        purposes = None
+        timeperiods = None
+        if leg_data:
+            data = [v for k, v in leg_data.items() if v['Purpose'] in allowed_purposes]
+            if data:
+                purposes = []
+                timeperiods = []
 
-        if filt_edges:
-            od_pair = (start_node, end_node)
-            return od_pair, filt_edges
-        else:
-            return None, None
+                for edge_attrs in data:
+                    purposes.append(edge_attrs['Purpose'])
+                    timeperiods.append(edge_attrs['TimePeriod'])
 
-    def filter_interm_edges(interm_edges):
-        filt_interm_edges = collections.OrderedDict()
-        for u, v in pairwise(interm_edges):
-            od, filt_edges = filter_edges_purpose(u, v, intermediate_purposes)
-
-            if filt_edges:
-                filt_interm_edges[od] = filt_edges
-            else:
-                return None
-
-        return filt_interm_edges
+        return purposes, timeperiods
 
     origin_purposes, destination_purposes, intermediate_purposes = filter_edge_purpose_names
 
-    viable_tripchains = []
-    for tc in tripchains:
-        # We filter the edges of the tripchain according to purpose
-        edges = collections.OrderedDict()
-        # Filter intrazonals
-        if len(tc) > 1:
-            first_od, first_edges = filter_edges_purpose(tc[0], tc[1], origin_purposes)
-            last_od, last_edges = filter_edges_purpose(tc[-2], tc[-1], destination_purposes)
+    purpose_possible_tcs = {}
+    tc_id = 0
+    for ns in node_sequences:
+        tc_leg_attrs = None
+        if len(ns) > 1:
+            first_leg_purposes, first_leg_timeperiods  = filter_legs_by_allowed_purposes(ns[0], ns[1],
+                                                                                         origin_purposes)
+            last_leg_purposes, last_leg_timeperiods = filter_legs_by_allowed_purposes(ns[-2], ns[-1],
+                                                                                      destination_purposes)
 
             # Check if first and last leg fulfil the criteria
-            # If they don't function has returned NaN
-            if first_edges and last_edges:
-                edges[first_od] = first_edges
-                edges[last_od] = last_edges
+            # If they don't function has returned None
+            if first_leg_purposes and last_leg_purposes:
+                # list of tuples the allowed (purposes, timeperiods) for each leg
+                tc_leg_attrs = [list(zip(first_leg_purposes, first_leg_timeperiods)),
+                                list(zip(last_leg_purposes, last_leg_timeperiods))]
             else:
                 continue
 
-            if len(tc) - 1 > 2:  # -1 because we manually added the last node of the chain
+            if len(ns) - 1 > 2:  # -1 because we manually added the last node of the chain
                 # The rest can only be NHB trips
-                interm_edges = tc[1:-1]
+                interm_edges = ns[1:-1]
 
-                filt_interm_edges = filter_interm_edges(interm_edges)
+                for u, v in pairwise(interm_edges):
+                    interm_leg_purposes, interm_leg_timeperiods = filter_legs_by_allowed_purposes(u, v,
+                                                                                                  intermediate_purposes)
+                    if interm_leg_purposes:
+                        # Insert the attributes of the allowed leg before the last one
+                        tc_leg_attrs.insert(len(tc_leg_attrs)-1, list(zip(interm_leg_purposes, interm_leg_timeperiods)))
+                    else:
+                        # If even for one of the intermediate legs no allowed purposes can be retrieved then stop
+                        tc_leg_attrs = None
+                        break
 
-                if filt_interm_edges:
-                    for k, fie in filt_interm_edges.items():
-                        edges[k] = fie
-                else:
-                    continue
 
-            # The last_od key must be moved to the end
-            edges.move_to_end(last_od)
+        # For each leg of the tc a list of allowed purposes has been identified
+        # The following function will return all possible combinations
+        # e.g. [[(HBW_FH, AM) (HBO_FH, IP)], [(NHBW, OP), (NHBO, AM)], [(HBO_TH, IP)]] -->
+        # [(HBW_FH, AM), (NHBW, OP), (HBO_TH, IP)], [(HBW_FH, AM), (NHBO, AM), (HBO_TH, IP)], ..]
+        if tc_leg_attrs:
+            tcs = list(itertools.product(*tc_leg_attrs))
+            for tc in tcs:
+                purposes = [attrs[0] for attrs in tc]
+                timeperiods = [attrs[1] for attrs in tc]
 
-            viable_tripchains.append(edges)
+                purpose_possible_tcs[tc_id] = {'Nodes': ns, 'Purposes': purposes,
+                                               'TimePeriods': timeperiods}
+                tc_id += 1
 
-    return viable_tripchains
+    return purpose_possible_tcs
 
 
 def chronologically_possible_tripchains(tripchains, timeperiod_sequence):
@@ -102,60 +110,37 @@ def chronologically_possible_tripchains(tripchains, timeperiod_sequence):
     else:
         raise TypeError('timeperiod_sequence is not unique')
 
-    chron_ordered_tripchains = []
+    # List of tripchains ids that will be removed due to chronological inconsistency
+    tc_ids_to_remove = []
 
-    for tc in tripchains:
-        leg_timeperiods = {}  # dictionary with the available timeperiods for each leg (key=od pair)
-        # for each od I create a list of the available timeperiods
-        for od, edge_attrs in tc.items():
-            leg_timeperiods[od] = []
-            for attrs in edge_attrs:
-                leg_timeperiod = attrs['TimePeriod']
-                # Convert to number from the given sequence
-                leg_timeperiod = timeperiod_sequence.index(leg_timeperiod)
-                leg_timeperiods[od].append(leg_timeperiod)
+    for tc_id, tc_attrs in tripchains.items():
+        tc_timeperiods = tc_attrs['TimePeriods']
+        # list to store the time periods as indices e.g [AM, IP, IP] --> [1, 2, 2]
+        tc_timeperiods_indexed = []
+        for tp in tc_timeperiods:
+            timeperiod_index = timeperiod_sequence.index(tp)
+            tc_timeperiods_indexed.append(timeperiod_index)
 
-        # Here I will create a list with the available timeperiods for each leg in the tripchain
-        tripchain_leg_timeperiods = []  # e.g. [ [AM, IP, OP], [IP, PM], [PM, OP] ]
-        for leg, timeperiods in leg_timeperiods.items():
-            tripchain_leg_timeperiods.append(timeperiods)
+        if not is_ascending(tc_timeperiods_indexed):
+            tc_ids_to_remove.append(tc_id)
 
-        tripchain_timeperiod_combinations = list(itertools.product(*tripchain_leg_timeperiods))
+    # Remove the identified chronologicaly inconsistent tcs
+    for k in tc_ids_to_remove:
+        tripchains.pop(k, None)
 
-        for timeperiod_comb in tripchain_timeperiod_combinations:
-            # Store the legs of the chronologically ordered tripchains
-            legs = {}
-            if is_ascending(timeperiod_comb):
-                for tp_comb_idx, timeperiod_idx in enumerate(timeperiod_comb):
-                    leg, edge_attrs = next(itertools.islice(tc.items(), tp_comb_idx, None))
-                    # Find the edges that correspond to the identified timeperiod
-                    for attrs in edge_attrs:
-                        tp = attrs['TimePeriod']
-                        tp_idx = timeperiod_sequence.index(tp)
-                        if tp_idx == timeperiod_idx:
-                            legs[leg] = attrs
-                            break
-
-            if legs:
-                chron_ordered_tripchains.append(legs)
-
-    return chron_ordered_tripchains
+    return tripchains
 
 
 def tripchains_to_csv(tripchains, outfilepath):
     data = []
     tc_num = 0
-    for tc in tripchains:
-        for k, leg_attrs in tc.items():
-            o, d = k
-            purp = leg_attrs['Purpose']
-            tp = leg_attrs['TimePeriod']
-            entry = [tc_num, o, d, purp, tp]
-            data.append(entry)
+    for tc_id, tc_attrs in tripchains.items():
+        purposes = ';'.join(tc_attrs['Purposes'])
+        timeperiods = ';'.join(tc_attrs['TimePeriods'])
+        entry = [tc_id, purposes, timeperiods]
+        data.append(entry)
 
-        tc_num += 1
-
-    cols = ['TripChainId', 'OrigZoneId', 'DestZoneId', 'Purpose', 'TimePeriod']
+    cols = ['TripChainId', 'Purposes', 'TimePeriods']
     df = pd.DataFrame(data, columns=cols)
 
     df.to_csv(outfilepath, index=False)
@@ -185,7 +170,7 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
     """
 
     # Filter the network so it doesn't contain
-    # a) FromHome and ToHome trips except the ones originating/endin in startnode
+    # a) FromHome and ToHome trips except the ones originating/ending in startnode
     # b) NHB trips with origin or destination the startnode
 
     def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):

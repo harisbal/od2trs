@@ -23,7 +23,7 @@ def main():
     trips_direction = 'exclExtToExt'
 
     infilepath = r'./inputs/od_{}_{}_{}_OPsplit.csv'.format(data_source, model_name, trips_direction)
-    outfolderpath = r'./outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    outfolderpath = r'./outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
     max_legs = [4]
     min_trips = [1]
