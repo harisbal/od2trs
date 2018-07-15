@@ -16,6 +16,7 @@ def init():
 
     global d_grp_purposes
     global distribution_dims
+    global distribution_percentage_thresh
     global distance_bins
     global ordered_time_periods
 
@@ -29,11 +30,14 @@ def init():
     trips_direction = 'exclExtToExt'
 
     max_legs = [4]
-    trips_thresh = [50]
+    trips_thresh = [20]
 
-    distribution_dims = ['DistanceGroup', 'TimePeriods'] # Could include Activities but tcs not ready yet
+    distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['OP1', 'AM', 'IP', 'PM', 'OP2']
     distance_bins = [0, 2, 5, 10, float('inf')]
+
+    # Ignore distribution groups which have (in the source data) a lower share than the below threshold
+    distribution_percentage_thresh = None
 
     # Dictionary to group purposes in OD
     d_grp_purposes = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
@@ -48,23 +52,21 @@ def init():
     filepaths = dict()
 
     filepaths['infolder'] = r'./inputs'
-    filepaths['outfolder'] = r'./outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    filepaths['outfolder'] = r'./outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
     filepaths['processfolder'] = r'./tmp'
+
+    filepaths['summary'] = os.path.join(filepaths['processfolder'], 'summary.txt')
 
     filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}_OPsplit.csv'.format(data_source, model_name,
                                                                                            trips_direction))
-
-    #filepaths['nts'] = os.path.join(filepaths['infolder'], 'nts_carDriver_trips_nstages_timeStart_timeEnd_distance.csv')
 
     filepaths['od_filtered'] = os.path.join(filepaths['processfolder'], 'od_filtered.csv')
 
     filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
     filepaths['tripchains'] = os.path.join(filepaths['processfolder'], 'tripchains.csv')
-    #filepaths['tripchains_grouped'] = os.path.join(filepaths['processfolder'], 'tripchains_grouped.csv')
 
     filepaths['ampl_data'] = os.path.join(filepaths['processfolder'], 'data.dat')
 
     filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'tours_info.csv')
 
-    filepaths['distr'] = os.path.join(filepaths['processfolder'], 'distribution.csv')
-    filepaths['distr_grp_ids'] = os.path.join(filepaths['processfolder'], 'distribution_group_ids.csv')
+    filepaths['distr_info'] = os.path.join(filepaths['processfolder'], 'distribution_info.csv')
