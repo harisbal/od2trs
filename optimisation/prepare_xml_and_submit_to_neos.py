@@ -4,12 +4,11 @@ import re
 import shutil
 
 from lxml import etree
-from multiprocessing import Pool, cpu_count
 
 import tqdm
 import NeosClient
 
-def prepare_neos_xml(infilepath_model, infilepath_data, infilepath_commands, infilepath_xml, processing_folder):
+def prepare_neos_xml(infilepath_model, infilepath_data, infilepath_commands, infilepath_xml):
 
     if not os.path.exists(processing_folder):
         os.makedirs(processing_folder)
@@ -63,27 +62,32 @@ def submit_to_neos(inputs):
     os.remove(infilepath_xml)
 
 
+def include_results_summary(infilepath, run_summary):
+    with open(infilepath, 'w') as f:
+        f.write(str(run_summary))
+
+
 def prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infolder_data, outfolder_neos_results):
 
     inputs = []
     for file in os.listdir(infolder_data):
         filename = os.fsdecode(file)
         if filename.endswith('.dat.zip'):
-            legs, trips = re.search(r'data_(\d+)legs_over(\d+)trips.dat.zip', filename).groups()
+            legs, trips_thresh = re.search(r'data_(\d+)legs_over(\d+)trips.dat.zip', filename).groups()
             legs = int(legs)
-            trips = int(trips)
+            trips_thresh = int(trips_thresh)
 
             infilepath_data = os.path.join(infolder_data, filename)
 
-            prepare_neos_xml(infilepath_model, infilepath_data, infilepath_commands, infilepath_xml, processing_folder)
+            prepare_neos_xml(infilepath_model, infilepath_data, infilepath_commands, infilepath_xml)
 
             # Pass the xml data model to NEOS server for optimisation
-            infilename_neos_xml = 'neosXml_{}legs_over{}trips.xml'.format(legs, trips)
+            infilename_neos_xml = 'neosXml_{}legs_over{}trips_thresh.xml'.format(legs, trips_thresh)
 
             outfilename_results = 'results_{}_{}legs_over{}trips_{}_{}DistrConstr.txt'.format(data_source, legs,
-                                                                                                   trips,
-                                                                                                   trips_direction,
-                                                                                                   distr_constr_state)
+                                                                                              trips_thresh,
+                                                                                              trips_direction,
+                                                                                              distr_constr_state)
             infilepath_neos_xml = os.path.join(processing_folder, infilename_neos_xml)
             outfilepath_neos_results = os.path.join(outfolder_neos_results, outfilename_results)
 
@@ -97,6 +101,8 @@ def main():
     global data_source
     global trips_direction
     global distr_constr_state
+    global legs
+    global trips_thresh
     global processing_folder
 
     data_source = 'mnd'
@@ -126,18 +132,27 @@ def main():
         if not os.path.exists(processing_folder):
             os.makedirs(processing_folder)
 
-        inputs = prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infolder_data, outfolder_neos_results)
+        inputs = prepare_inputs(infilepath_model, infilepath_xml, infilepath_commands, infolder_data,
+                                outfolder_neos_results)
 
-        for inpt in inputs:
-            print('Solving: {}'.format(inpt))
-            submit_to_neos(inpt)
-            """
+        run_summary = {'DataSource': data_source,
+                       'Direction': trips_direction,
+                       'DistributionConstraintState': distr_constr_state,
+                       'MaxLegs': legs,
+                       'TripsThresh': trips_thresh}
+
+        for input in inputs:
+
+            _, outfilepath_results = input
+            print('Solving: {}'.format(input))
             try:
-                submit_to_neos(inpt)
+                submit_to_neos(input)
+                include_results_summary(outfilepath_results, run_summary)
             except:
-                print('Failed: {}'.format(inpt))
-            """
+                print('Failed: {}'.format(input))
+
     shutil.rmtree(processing_folder)
+
 
 if __name__ == '__main__':
     main()
