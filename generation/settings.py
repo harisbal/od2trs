@@ -29,12 +29,12 @@ def init():
     model_name = 'greenwich'
     trips_direction = 'exclExtToExt'
 
-    max_legs = [4]
-    trips_thresh = [20]
+    max_legs = [3, 4, 5]
+    trips_thresh = [50, 30, 20]
 
     distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['OP1', 'AM', 'IP', 'PM', 'OP2']
-    distance_bins = [0, 2, 5, 10, float('inf')]
+    distance_bins = [0, 5, 10, float('inf')]
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     distribution_percentage_thresh = None
@@ -57,16 +57,17 @@ def init():
 
     filepaths['summary'] = os.path.join(filepaths['processfolder'], 'summary.txt')
 
-    filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}_OPsplit.csv'.format(data_source, model_name,
+    filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}_opSplit.csv'.format(data_source, model_name,
                                                                                            trips_direction))
 
     filepaths['od_filtered'] = os.path.join(filepaths['processfolder'], 'od_filtered.csv')
 
     filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
-    filepaths['tripchains'] = os.path.join(filepaths['processfolder'], 'tripchains.csv')
+    filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')
+
+    filepaths['tripchains_description'] = os.path.join(filepaths['processfolder'], 'tripchains_description.csv')
+    filepaths['tripchains_info'] = os.path.join(filepaths['processfolder'], 'tripchains_info.csv')
+    filepaths['target_distribution'] = os.path.join(filepaths['processfolder'], 'target_distribution.csv')
+
 
     filepaths['ampl_data'] = os.path.join(filepaths['processfolder'], 'data.dat')
-
-    filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'tours_info.csv')
-
-    filepaths['distr_info'] = os.path.join(filepaths['processfolder'], 'distribution_info.csv')
