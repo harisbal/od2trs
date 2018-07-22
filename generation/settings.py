@@ -30,7 +30,7 @@ def init():
     trips_direction = 'exclExtToExt'
 
     max_legs = [4]
-    trips_thresh = [50, 20, 10]
+    trips_thresh = [400, 500]
 
     distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['OP1', 'AM', 'IP', 'PM', 'OP2']
