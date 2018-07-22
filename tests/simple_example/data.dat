@@ -24,4 +24,6 @@ param: chains_descr:=
 	
 param: chains_distr:=
 	[g1,*] tc1 1 tc2 1
-	[g2,*] tc3 1 tc4 1 tc5 1;
+	[g2,*] tc3 1 tc4 1 tc5 1
+
+;

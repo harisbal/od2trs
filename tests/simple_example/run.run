@@ -1,4 +1,4 @@
-model 'D:\Users\Work\OneDrive - Transport Systems Catapult\Research\PhD\Models\tripchains_from_ODs\tests\simple_example\model_chain_used.mod';
+model 'D:\Users\Work\OneDrive - Transport Systems Catapult\Research\PhD\Models\tripchains_from_ODs\tests\simple_example\model_chains_used.mod';
 data 'D:\Users\Work\OneDrive - Transport Systems Catapult\Research\PhD\Models\tripchains_from_ODs\tests\simple_example\data.dat';
 
 option solver ilogcp;

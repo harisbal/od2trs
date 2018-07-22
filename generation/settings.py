@@ -29,8 +29,8 @@ def init():
     model_name = 'greenwich'
     trips_direction = 'exclExtToExt'
 
-    max_legs = [3, 4, 5]
-    trips_thresh = [50, 30, 20]
+    max_legs = [4]
+    trips_thresh = [50, 20, 10]
 
     distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['OP1', 'AM', 'IP', 'PM', 'OP2']
@@ -51,9 +51,9 @@ def init():
 
     filepaths = dict()
 
-    filepaths['infolder'] = r'./inputs'
-    filepaths['outfolder'] = r'./outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
-    filepaths['processfolder'] = r'./tmp'
+    filepaths['infolder'] = r'./generation/inputs'
+    filepaths['outfolder'] = r'./generation/outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    filepaths['processfolder'] = r'./generation/tmp'
 
     filepaths['summary'] = os.path.join(filepaths['processfolder'], 'summary.txt')
 
@@ -69,5 +69,6 @@ def init():
     filepaths['tripchains_info'] = os.path.join(filepaths['processfolder'], 'tripchains_info.csv')
     filepaths['target_distribution'] = os.path.join(filepaths['processfolder'], 'target_distribution.csv')
 
+    filepaths['optimisation_results'] = os.path.join(filepaths['processfolder'], 'results.json')
 
     filepaths['ampl_data'] = os.path.join(filepaths['processfolder'], 'data.dat')
