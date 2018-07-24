@@ -1,29 +1,29 @@
 data;
 
 param: LEGS: trips:=
-	HA 10
+    HA 10
     AH 2
     AW 8
     WB 4
-	BH 4
+    BH 4
     HW 5
-	WH 9;
+    WH 9;
 
 param: GROUP_IDS: group_size_percs:=
-	g1 0.46
-	g2 0.54;
+    g1 0.46
+    g2 0.54;
 
 set CHAIN_IDS:= tc1 tc2 tc3 tc4 tc5;
 
 param: chains_descr:=
-	[tc1,*] HA 1 AW 1 WH 1
-	[tc2,*] HA 1 AH 1
-	[tc3,*] HA 1 AW 1 WB 1 BH 1
-	[tc4,*] HW 1 WH 1
-	[tc5,*] HW 1 WB 1 BH 1;
-	
+    [tc1,*] HA 1 AW 1 WH 1
+    [tc2,*] HA 1 AH 1
+    [tc3,*] HA 1 AW 1 WB 1 BH 1
+    [tc4,*] HW 1 WH 1
+    [tc5,*] HW 1 WB 1 BH 1;
+    
 param: chains_distr:=
-	[g1,*] tc1 1 tc2 1
-	[g2,*] tc3 1 tc4 1 tc5 1
+    [g1,*] tc1 1 tc2 1
+    [g2,*] tc3 1 tc4 1 tc5 1
 
 ;
