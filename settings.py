@@ -62,7 +62,6 @@ def init(processfolder=None):
         filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')
 
         filepaths['od_filtered'] = os.path.join(processfolder, 'od_filtered.csv')
-        filepaths['tripchains_description'] = os.path.join(processfolder, 'tripchains_description.csv')
         filepaths['tripchains_info'] = os.path.join(processfolder, 'tripchains_info.csv')
         filepaths['target_distribution'] = os.path.join(processfolder, 'target_distribution.csv')
         filepaths['optimisation_results'] = os.path.join(processfolder, 'results.json')

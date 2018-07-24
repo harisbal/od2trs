@@ -61,17 +61,6 @@ def return_tripchain_distances(tcs, od, distances):
         tcs_dist = tcs_dist_join.groupby(level='TripChainId').sum()
         return tcs_dist
 
-    def calculate_distance2(nodes_seq, dists):
-        nodes = nodes_seq.split(settings.global_separator)
-
-        # problem when trying to use .at on multi-indexed series
-        dists = dists.to_frame()
-        total_dist = 0
-        for u, v in pairwise(nodes):
-            total_dist += dists.at[(u, v), 'Distance']
-
-        return total_dist
-
     # Change the index to OdPairId
     od.reset_index(inplace=True)
     od.set_index('OdPairId', inplace=True)

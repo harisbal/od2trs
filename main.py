@@ -39,9 +39,9 @@ def export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_const
 
     od.to_csv(settings.filepaths['od_filtered'], index=True)
 
-    export_cols = ['OdPairsId']
+    export_cols = ['OdPairsId', 'DistrGroupId']
     tcs_export = tcs[export_cols]
-    tcs_export.to_csv(settings.filepaths['tripchains_description'], index=True)
+    tcs_export.to_csv(settings.filepaths['tripchains_info'], index=True)
 
     distr_grps.to_csv(settings.filepaths['target_distribution'], index=True, header=True)
 
@@ -87,7 +87,7 @@ def main():
 
             for distr_constr_enabled in True, False:
                 print('Phase 4/4: Optimise (locally) - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=True)
+                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=False)
 
                 export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled)
 
