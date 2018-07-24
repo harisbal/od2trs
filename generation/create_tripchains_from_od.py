@@ -53,8 +53,24 @@ def fetch_prepare_od(infilepath, trips_thresh, export=True):
             od_filtered.index.get_level_values('DestZoneId').str.startswith('E02'))
     od_filtered = od_filtered[mask]
 
+    # Filter out HB_FromHome when origin is external (home location is external)
+    # and HB_ToHome when destination is to external
+    mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith('E02') &
+               (od_filtered.index.get_level_values('Purpose') == 'HB_FromHome'))
+
+    mask_th = (~od_filtered.index.get_level_values('DestZoneId').str.startswith('E02') &
+               (od_filtered.index.get_level_values('Purpose') == 'HB_ToHome'))
+
+    od_filtered.loc[mask_fh] = np.nan
+    od_filtered.loc[mask_th] = np.nan
+    od_filtered.dropna(inplace=True)
+
     # Round
     od_filtered.DailyTrips = od_filtered.DailyTrips.round()
+    od_filtered.DailyTrips = od_filtered.DailyTrips.astype(int)
+
+    # Make sure OdPairId is int
+    od_filtered.OdPairId = od_filtered.OdPairId.astype(int)
 
     return od_filtered
 
@@ -171,7 +187,7 @@ def tripchains_to_df(tripchains):
     data = []
     tc_id = 0
     for _, tc_attrs in tripchains.items():
-        od_pairs_id = settings.global_separator.join(tc_attrs['OdPairsId'])
+        od_pairs_id = settings.global_separator.join(map(str, tc_attrs['OdPairsId']))
         nodes = settings.global_separator.join(tc_attrs['Nodes'])
         purposes = settings.global_separator.join(tc_attrs['Purposes'])
         timeperiods = settings.global_separator.join(tc_attrs['TimePeriods'])
@@ -251,7 +267,6 @@ def topo_sensible_nodes_sequences(nodes_seq, max_external_nodes=None):
         filt_nodes_seq = list()
         for ns in nodes_seq:
             cnt = 0
-
             for n in ns:
                 if not n.startswith('E02'):
                     cnt += 1
@@ -290,7 +305,7 @@ def add_od_pairs_sequence(tripchains, od):
 
         od_pair_ids = list()
         for attrs in od_pairs_attrs:
-            od_pair_ids.append(str(od.at[attrs, 'OdPairId']))
+            od_pair_ids.append(int(od.at[attrs, 'OdPairId']))
 
         tc['OdPairsId'] = od_pair_ids
 

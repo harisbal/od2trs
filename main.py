@@ -28,14 +28,17 @@ def create_folders(folder_list):
 
 def export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled):
 
+    # Get the gloabal settings
+    settings.init()
+
     run_name = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
-    processfolder = os.path.join(r'./tmp', run_name)
-
-    settings.init(processfolder)
-
     outfolder = os.path.join(settings.filepaths['outfolder'], run_name)
 
-    create_folders([processfolder, outfolder])
+    # TODO clean this
+    # Initialise with the processfolder
+    settings.init(outfolder)
+
+    create_folders([outfolder])
 
     od.to_csv(settings.filepaths['od_filtered'], index=True)
 
@@ -57,9 +60,6 @@ def export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_const
 
         print(run_summary, file=f)
 
-
-    move_results(processfolder, outfolder)
-    shutil.rmtree(processfolder)
 
 def main():
     settings.init()
@@ -87,7 +87,7 @@ def main():
 
             for distr_constr_enabled in [True, False]:
                 print('Phase 4/4: Optimise (locally) - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=True)
+                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=False)
 
                 export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled)
 

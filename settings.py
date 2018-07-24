@@ -30,8 +30,8 @@ def init(processfolder=None):
     model_name = 'greenwich'
     trips_direction = 'allDirections'
 
-    max_legs = [3]
-    trips_thresh = [100]
+    max_legs = [4]
+    trips_thresh = [200]
 
     max_external_nodes_in_tc = 1
 
@@ -52,23 +52,21 @@ def init(processfolder=None):
                       'NHB_NonHomeBased': 'NHB_NonHomeBased'
                       }
 
-    try:
-        filepaths = dict()
+    filepaths = dict()
 
-        filepaths['infolder'] = r'./generation/inputs'
-        filepaths['outfolder'] = r'./generation/outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    filepaths['infolder'] = r'./generation/inputs'
+    filepaths['outfolder'] = r'./generation/outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
-        filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}.csv'.format(data_source,
-                                                                                       model_name, trips_direction))
+    filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}.csv'.format(data_source,
+                                                                                   model_name, trips_direction))
 
-        filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
-        filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')
+    filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
+    filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')
 
+    if processfolder:
         filepaths['od_filtered'] = os.path.join(processfolder, 'od_filtered.csv')
         filepaths['tripchains_info'] = os.path.join(processfolder, 'tripchains_info.csv')
         filepaths['target_distribution'] = os.path.join(processfolder, 'target_distribution.csv')
         filepaths['optimisation_results'] = os.path.join(processfolder, 'results.json')
         filepaths['ampl_data'] = os.path.join(processfolder, 'data.dat')
         filepaths['summary'] = os.path.join(processfolder, 'summary.txt')
-    except:
-        pass
