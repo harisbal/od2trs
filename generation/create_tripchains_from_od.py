@@ -47,6 +47,12 @@ def fetch_prepare_od(infilepath, trips_thresh, export=True):
     # Remove intrazonals
     mask = od_filtered.index.get_level_values('OrigZoneId') != od_filtered.index.get_level_values('DestZoneId')
     od_filtered = od_filtered[mask]
+
+    # Remove External to External
+    mask = (od_filtered.index.get_level_values('OrigZoneId').str.startswith('E02') |
+            od_filtered.index.get_level_values('DestZoneId').str.startswith('E02'))
+    od_filtered = od_filtered[mask]
+
     # Round
     od_filtered.DailyTrips = od_filtered.DailyTrips.round()
 
@@ -180,19 +186,6 @@ def tripchains_to_df(tripchains):
     return df
 
 
-def encode_df(df):
-    non_numeric_cols = df.select_dtypes(exclude=[np.number]).columns.values
-    d_encoding = {}
-    # Replace names with codes to save space
-    for c in non_numeric_cols:
-        df[c] = df[c].astype('category')
-        keys = df[c].values
-        df[c] = df[c].cat.codes
-        vals = df[c].values
-        d_encoding[c] = dict(zip(keys, vals))
-    return df, d_encoding
-
-
 def create_potential_tripchains(startnode, G, max_legs_chain):
     """
     Create the potential trip chains. Reduce the feasible space by
@@ -246,6 +239,32 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
 
     return node_seqs
 
+
+def topo_sensible_nodes_sequences(nodes_seq, max_external_nodes=None):
+    """
+    Filter out tripchains which visit an external node more times than the limit
+    :param nodes_seq:
+    :param max_external_nodes:
+    :return:
+    """
+    if max_external_nodes:
+        filt_nodes_seq = list()
+        for ns in nodes_seq:
+            cnt = 0
+
+            for n in ns:
+                if not n.startswith('E02'):
+                    cnt += 1
+            if cnt > max_external_nodes:
+                continue
+            else:
+                filt_nodes_seq.append(ns)
+
+        return filt_nodes_seq
+    else:
+        return nodes_seq
+
+
 def add_od_pairs_sequence(tripchains, od):
     """
     Include the sequence of od pairs that form the tripchain
@@ -283,27 +302,33 @@ def main(max_legs_chain, trips_thresh, export_tripchains=False):
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh, export=True)
 
-    #
     G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
 
     print('Identifying Node Sequences...')
     # TODO Create a file with the zones definition
     internal_nodes = [n for n in G if n.startswith('E02')]
 
-    potential_node_sequences = []
+    potential_nodes_sequences = []
     with Pool(processes=cpu_count()-2) as pool:
         for nodesequence in tqdm(pool.imap_unordered(
                                partial(create_potential_tripchains,
                                        G=G,
                                        max_legs_chain=max_legs_chain),
                                        internal_nodes), total=len(internal_nodes)):
-            potential_node_sequences.extend(nodesequence)
+            potential_nodes_sequences.extend(nodesequence)
 
     # Keep only the unique
-    potential_node_sequences.sort()
-    potential_node_sequences = list(k for k, _ in itertools.groupby(potential_node_sequences))
+    potential_nodes_sequences.sort()
+    potential_nodes_sequences = list(k for k, _ in itertools.groupby(potential_nodes_sequences))
 
-    print('final:{}'.format(len(potential_node_sequences)))
+    # Remove chains that appear twice in the external area (2 visits in the external area)
+    # Very dirty quick solution
+    # TODO the check for internal zones is very crude (check if zone begins with E02...
+    print('Filtering out tcs which visit external zones more than {} times'.format(settings.max_external_nodes_in_tc))
+    potential_nodes_sequences = topo_sensible_nodes_sequences(potential_nodes_sequences,
+                                                              max_external_nodes=settings.max_external_nodes_in_tc)
+
+    print('final:{}'.format(len(potential_nodes_sequences)))
 
     origin_purposes = ['HB_FromHome']
     destination_purposes = ['HB_ToHome']
@@ -311,20 +336,20 @@ def main(max_legs_chain, trips_thresh, export_tripchains=False):
     filter_edge_purpose_names = [origin_purposes, destination_purposes, intermediate_purposes]
 
     print('Creating Chains...')
-    purp_possible_tripchains = purpose_possible_tripchains(G, potential_node_sequences, filter_edge_purpose_names)
+    purp_possible_tripchains = purpose_possible_tripchains(G, potential_nodes_sequences, filter_edge_purpose_names)
     
     # Check for chronological order
     chron_possible_tripchains = chronologically_possible_tripchains(purp_possible_tripchains,
                                                                     settings.ordered_time_periods)
 
-    final_tripchains = add_od_pairs_sequence(chron_possible_tripchains, od)
+    tcs = add_od_pairs_sequence(chron_possible_tripchains, od)
 
-    print('Exporting {} trips chains'.format(len(chron_possible_tripchains)))
-    df_tripchains = tripchains_to_df(final_tripchains)
+    print('Exporting {} trips chains'.format(len(tcs)))
+    df_tcs = tripchains_to_df(tcs)
 
     print('End Phase 1 (Creating trip chains from OD)')
 
-    return df_tripchains, od
+    return df_tcs, od
 
 
 if __name__ == '__main__':

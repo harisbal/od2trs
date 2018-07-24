@@ -13,6 +13,7 @@ def init(processfolder=None):
 
     global max_legs
     global trips_thresh
+    global max_external_nodes_in_tc
 
     global d_grp_purposes
     global distribution_dims
@@ -27,13 +28,15 @@ def init(processfolder=None):
 
     data_source = 'mnd'
     model_name = 'greenwich'
-    trips_direction = 'exclExtToExt'
+    trips_direction = 'allDirections'
 
-    max_legs = [3, 4]
-    trips_thresh = [500]
+    max_legs = [3]
+    trips_thresh = [100]
+
+    max_external_nodes_in_tc = 1
 
     distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
-    ordered_time_periods = ['OP1', 'AM', 'IP', 'PM', 'OP2']
+    ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
     distance_bins = [0, 5, 10, float('inf')]
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
@@ -53,10 +56,10 @@ def init(processfolder=None):
         filepaths = dict()
 
         filepaths['infolder'] = r'./generation/inputs'
-        filepaths['outfolder'] = r'./generation/outputs_new/{}/{}/{}'.format(data_source, model_name, trips_direction)
+        filepaths['outfolder'] = r'./generation/outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
-        filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}_opSplit.csv'.format(data_source, model_name,
-                                                                                               trips_direction))
+        filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}.csv'.format(data_source,
+                                                                                       model_name, trips_direction))
 
         filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
         filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')

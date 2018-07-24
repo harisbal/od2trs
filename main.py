@@ -85,9 +85,9 @@ def main():
             print('Phase 3/4: Prepare Distributions from observed data...')
             tcs, distr_grps = prepdist.main(tcs, legs)
 
-            for distr_constr_enabled in True, False:
+            for distr_constr_enabled in [True, False]:
                 print('Phase 4/4: Optimise (locally) - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=False)
+                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=True)
 
                 export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled)
 
