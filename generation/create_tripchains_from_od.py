@@ -49,16 +49,16 @@ def fetch_prepare_od(infilepath, trips_thresh, export=True):
     od_filtered = od_filtered[mask]
 
     # Remove External to External
-    mask = (od_filtered.index.get_level_values('OrigZoneId').str.startswith('E02') |
-            od_filtered.index.get_level_values('DestZoneId').str.startswith('E02'))
+    mask = (od_filtered.index.get_level_values('OrigZoneId').str.startswith(settings.int_zone_str) |
+            od_filtered.index.get_level_values('DestZoneId').str.startswith(settings.int_zone_str))
     od_filtered = od_filtered[mask]
 
     # Filter out HB_FromHome when origin is external (home location is external)
     # and HB_ToHome when destination is to external
-    mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith('E02') &
+    mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith(settings.int_zone_str) &
                (od_filtered.index.get_level_values('Purpose') == 'HB_FromHome'))
 
-    mask_th = (~od_filtered.index.get_level_values('DestZoneId').str.startswith('E02') &
+    mask_th = (~od_filtered.index.get_level_values('DestZoneId').str.startswith(settings.int_zone_str) &
                (od_filtered.index.get_level_values('Purpose') == 'HB_ToHome'))
 
     od_filtered.loc[mask_fh] = np.nan
@@ -268,7 +268,7 @@ def topo_sensible_nodes_sequences(nodes_seq, max_external_nodes=None):
         for ns in nodes_seq:
             cnt = 0
             for n in ns:
-                if not n.startswith('E02'):
+                if not n.startswith(settings.int_zone_str):
                     cnt += 1
             if cnt > max_external_nodes:
                 continue
@@ -312,16 +312,17 @@ def add_od_pairs_sequence(tripchains, od):
     return tripchains
 
 
-def main(max_legs_chain, trips_thresh, export_tripchains=False):
+def main(max_legs_chain, trips_thresh):
 
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh, export=True)
 
-    G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'], nx.MultiDiGraph())
+    G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'],
+                                nx.MultiDiGraph())
 
     print('Identifying Node Sequences...')
     # TODO Create a file with the zones definition
-    internal_nodes = [n for n in G if n.startswith('E02')]
+    internal_nodes = [n for n in G if n.startswith(settings.int_zone_str)]
 
     potential_nodes_sequences = []
     with Pool(processes=cpu_count()-2) as pool:

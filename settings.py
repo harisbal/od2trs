@@ -22,22 +22,28 @@ def init(processfolder=None):
     global ordered_time_periods
 
     global global_separator
+    global int_zone_str
+    global submit_to_neos
 
     # Separator to be used in chains
     global_separator = '-'
 
-    data_source = 'mnd'
-    model_name = 'greenwich'
+    data_source = 'mndTSC'
+    model_name = 'bristol'
     trips_direction = 'allDirections'
 
-    max_legs = [4]
-    trips_thresh = [200]
+    int_zone_str = 'E02'
 
-    max_external_nodes_in_tc = 1
+    max_legs = [3, 4, 5, 6]
+    trips_thresh = [50]
 
-    distribution_dims = ['DistanceGroup', 'NumLegs'] # Could include Activities but tcs not ready yet
+    max_external_nodes_in_tc = 2
+
+    submit_to_neos = False
+
+    distribution_dims = ['DistanceGroup', 'Segments'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
-    distance_bins = [0, 5, 10, float('inf')]
+    distance_bins = [0, 1800, 3600, float('inf')]
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     distribution_percentage_thresh = None
@@ -55,13 +61,13 @@ def init(processfolder=None):
     filepaths = dict()
 
     filepaths['infolder'] = r'./generation/inputs'
-    filepaths['outfolder'] = r'./generation/outputs_tmp/{}/{}/{}'.format(data_source, model_name, trips_direction)
+    filepaths['outfolder'] = r'./generation/outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
     filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}.csv'.format(data_source,
                                                                                    model_name, trips_direction))
 
-    filepaths['distances'] = os.path.join(filepaths['infolder'], 'distances_ModelZonesSystem.csv')
-    filepaths['tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours.csv')
+    filepaths['distances'] = os.path.join(filepaths['infolder'], 'distance_matrix.csv')
+    filepaths['observed_tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours_info.csv')
 
     if processfolder:
         filepaths['od_filtered'] = os.path.join(processfolder, 'od_filtered.csv')

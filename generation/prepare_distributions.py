@@ -9,19 +9,19 @@ def add_distance_group(df, distance_col, distance_bins):
 
 def fetch_prepare_tours_data(max_legs):
 
-    # NTS tours info
-    nts_tours = pd.read_csv(settings.filepaths['tours_info'])
+    # observed tours info
+    observed_tours = pd.read_csv(settings.filepaths['observed_tours_info'])
 
     # Keep only the tours with less than max_legs legs
-    mask = nts_tours.NumLegs <= max_legs
-    nts_tours = nts_tours.loc[mask]
+    mask = observed_tours.Segments <= max_legs
+    observed_tours = observed_tours.loc[mask]
 
     # To kms (dist_bins in kms)
-    nts_tours.Distance /= 1000
+    # observed_tours.Distance /= 1000
 
-    nts_tours = add_distance_group(nts_tours, distance_col='Distance', distance_bins=settings.distance_bins)
+    observed_tours = add_distance_group(observed_tours, distance_col='Distance', distance_bins=settings.distance_bins)
 
-    return nts_tours
+    return observed_tours
 
 def prepare_distribution(tcs, src_tour_data):
     """

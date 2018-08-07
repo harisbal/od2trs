@@ -39,7 +39,7 @@ def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
     model.trips = Param(model.LEGS, initialize=od.DailyTrips.to_dict(), within=NonNegativeIntegers)
     model.chains_descr = Param(model.CHAIN_IDS, model.LEGS, initialize=init_chains_descr, within=Binary, default=False)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
+    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=10)
 
     if distr_constr_enabled:
         d_distr_grp_percs = dict(zip(distr_grps.DistrGroupId, distr_grps.Percentage))
@@ -95,7 +95,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=False):
+def main(tcs, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
     mymodel = prepare_model(tcs, od, distr_grps, distr_constr_enabled)
-    results = run_model(mymodel, distr_constr_enabled, send_to_neos)
+    results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results

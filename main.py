@@ -9,6 +9,7 @@ import generation.optimise as opt
 
 import settings
 
+
 def move_results(source_fldr, dst_fldr):
 
     files = os.listdir(source_fldr)
@@ -68,9 +69,9 @@ def main():
 
     for legs, trips_thresh in params:
 
-            print('Legs:{}, trips_thresh:{}'.format(legs, trips_thresh))
+            print(r'\nLegs:{}, trips_thresh:{}'.format(legs, trips_thresh))
             print('Phase 1/4: Creating TripChains...')
-            tcs, od = ctc.main(legs, trips_thresh, export_tripchains=True)
+            tcs, od = ctc.main(legs, trips_thresh)
 
             if tcs.empty:
                 print('No tripchains discovered')
@@ -86,8 +87,8 @@ def main():
             tcs, distr_grps = prepdist.main(tcs, legs)
 
             for distr_constr_enabled in [True, False]:
-                print('Phase 4/4: Optimise (locally) - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, send_to_neos=False)
+                print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
+                results = opt.main(tcs, od, distr_grps, distr_constr_enabled, submit_to_neos=settings.submit_to_neos)
 
                 export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled)
 

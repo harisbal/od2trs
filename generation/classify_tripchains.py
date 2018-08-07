@@ -50,7 +50,8 @@ def return_tripchain_distances(tcs, od, distances):
         return df
 
     def calculate_distance(tcs_descr, dists):
-        tcs_dist_join = pd.merge(tcs_descr, dists.to_frame(), left_on=tcs_descr.columns.tolist(), right_index=True, how='left')
+        tcs_dist_join = pd.merge(tcs_descr, dists.to_frame(),
+                                 left_on=tcs_descr.columns.tolist(), right_index=True, how='left')
 
         # Check for missing distances
         if tcs_dist_join['Distance'].isnull().values.any():
@@ -83,11 +84,9 @@ def main(tcs, od):
     # TODO quite slow, maybe I need to keep a version of the tcs definitions in list format
     tcs = return_tripchain_distances(tcs, od, dists)
 
-    # Convert to km
-    tcs.Distance = tcs.Distance.div(1000).round(2)
-
     # Add the grouping information
-    tcs['DistanceGroup'] = pd.cut(tcs.Distance, bins=settings.distance_bins)
-    tcs['NumLegs'] = tcs.Nodes.str.count(settings.global_separator)
+    if settings.distance_bins:
+        tcs['DistanceGroup'] = pd.cut(tcs.Distance, bins=settings.distance_bins)
+    tcs['Segments'] = tcs.Nodes.str.count(settings.global_separator)
 
     return tcs
