@@ -2,10 +2,12 @@ import os
 import itertools
 import shutil
 
-import generation.create_tripchains_from_od as ctc
-import generation.classify_tripchains as ctcs
-import generation.prepare_distributions as prepdist
+import generation.create_tripchains_from_od as create_tcs
+import generation.classify_tripchains as classify_tcs
+import generation.prepare_distributions as prepare_dist
+import generation.filter_tcs as filter_tcs
 import generation.optimise as opt
+
 
 import settings
 
@@ -43,7 +45,7 @@ def export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_const
 
     od.to_csv(settings.filepaths['od_filtered'], index=True)
 
-    export_cols = ['OdPairsId', 'DistrGroupId']
+    export_cols = ['Zones', 'OdPairsId', 'DistrGroupId']
     tcs_export = tcs[export_cols]
     tcs_export.to_csv(settings.filepaths['tripchains_info'], index=True)
 
@@ -69,22 +71,25 @@ def main():
 
     for legs, trips_thresh in params:
 
-            print(r'\nLegs:{}, trips_thresh:{}'.format(legs, trips_thresh))
+            print('\n')
+            print(r'Legs:{}, trips_thresh:{}'.format(legs, trips_thresh))
             print('Phase 1/4: Creating TripChains...')
-            tcs, od = ctc.main(legs, trips_thresh)
+            tcs, od = create_tcs.main(legs, trips_thresh)
 
             if tcs.empty:
                 print('No tripchains discovered')
                 return None
 
             print('Phase 2/4: Including extra info to TripChains...')
-            tcs = ctcs.main(tcs, od)
+            tcs = classify_tcs.main(tcs, od)
 
-            #print('Phase 3/3: Exporting AMPL files...')
-            #pai.main(tcs, od, legs)
+            print('Before{}'.format(len(tcs)))
+            filters = {'Distance': 40000}
+            tcs = filter_tcs.main(tcs, filters)
+            print('After{}'.format(len(tcs)))
 
             print('Phase 3/4: Prepare Distributions from observed data...')
-            tcs, distr_grps = prepdist.main(tcs, legs)
+            tcs, distr_grps = prepare_dist.main(tcs, legs)
 
             for distr_constr_enabled in [True, False]:
                 print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))

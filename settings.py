@@ -13,7 +13,7 @@ def init(processfolder=None):
 
     global max_legs
     global trips_thresh
-    global max_external_nodes_in_tc
+    global max_external_zones_in_tc
 
     global d_grp_purposes
     global distribution_dims
@@ -28,16 +28,16 @@ def init(processfolder=None):
     # Separator to be used in chains
     global_separator = '-'
 
-    data_source = 'mndTSC'
+    data_source = 'mndTscSample100'
     model_name = 'bristol'
     trips_direction = 'allDirections'
 
     int_zone_str = 'E02'
 
-    max_legs = [3, 4, 5, 6]
-    trips_thresh = [50]
+    max_legs = [3]
+    trips_thresh = [1]
 
-    max_external_nodes_in_tc = 2
+    max_external_zones_in_tc = 2
 
     submit_to_neos = False
 

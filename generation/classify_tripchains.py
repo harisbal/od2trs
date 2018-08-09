@@ -87,6 +87,6 @@ def main(tcs, od):
     # Add the grouping information
     if settings.distance_bins:
         tcs['DistanceGroup'] = pd.cut(tcs.Distance, bins=settings.distance_bins)
-    tcs['Segments'] = tcs.Nodes.str.count(settings.global_separator)
+    tcs['Segments'] = tcs.Zones.str.count(settings.global_separator)
 
     return tcs

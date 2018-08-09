@@ -23,7 +23,7 @@ def is_ascending(lst):
     return True
 
 
-def fetch_prepare_od(infilepath, trips_thresh, export=True):
+def fetch_prepare_od(infilepath, trips_thresh):
 
     idx_names = ['OrigZoneId', 'DestZoneId', 'Purpose', 'Mode', 'TimePeriod']
     od = pd.read_csv(infilepath)
@@ -75,11 +75,11 @@ def fetch_prepare_od(infilepath, trips_thresh, export=True):
     return od_filtered
 
 
-def purpose_possible_tripchains(G, node_sequences, filter_edge_purpose_names):
+def purpose_possible_tripchains(G, zone_sequences, filter_edge_purpose_names):
 
     # Return a list of with the allowed purposes for this leg e.g. [HBW_FH, HBO_FH]
-    def filter_legs_by_allowed_purposes(start_node, end_node, allowed_purposes):
-        leg_data = G.get_edge_data(start_node, end_node)
+    def filter_legs_by_allowed_purposes(start_zone, end_zone, allowed_purposes):
+        leg_data = G.get_edge_data(start_zone, end_zone)
         purposes = None
         timeperiods = None
         if leg_data:
@@ -98,7 +98,7 @@ def purpose_possible_tripchains(G, node_sequences, filter_edge_purpose_names):
 
     purpose_possible_tcs = dict()
     tc_id = 0
-    for ns in node_sequences:
+    for ns in zone_sequences:
         tc_leg_attrs = None
         if len(ns) > 1:
             first_leg_purposes, first_leg_timeperiods = filter_legs_by_allowed_purposes(ns[0], ns[1],
@@ -115,7 +115,7 @@ def purpose_possible_tripchains(G, node_sequences, filter_edge_purpose_names):
             else:
                 continue
 
-            if len(ns) - 1 > 2:  # -1 because we manually added the last node of the chain
+            if len(ns) - 1 > 2:  # -1 because we manually added the last zone of the chain
                 # The rest can only be NHB trips
                 interm_edges = ns[1:-1]
 
@@ -141,7 +141,7 @@ def purpose_possible_tripchains(G, node_sequences, filter_edge_purpose_names):
                 purposes = [attrs[0] for attrs in tc]
                 timeperiods = [attrs[1] for attrs in tc]
 
-                purpose_possible_tcs[tc_id] = {'Nodes': ns, 'Purposes': purposes,
+                purpose_possible_tcs[tc_id] = {'Zones': ns, 'Purposes': purposes,
                                                'TimePeriods': timeperiods}
                 tc_id += 1
 
@@ -188,36 +188,36 @@ def tripchains_to_df(tripchains):
     tc_id = 0
     for _, tc_attrs in tripchains.items():
         od_pairs_id = settings.global_separator.join(map(str, tc_attrs['OdPairsId']))
-        nodes = settings.global_separator.join(tc_attrs['Nodes'])
+        zones = settings.global_separator.join(tc_attrs['Zones'])
         purposes = settings.global_separator.join(tc_attrs['Purposes'])
         timeperiods = settings.global_separator.join(tc_attrs['TimePeriods'])
-        entry = [tc_id, nodes, purposes, timeperiods, od_pairs_id]
+        entry = [tc_id, zones, purposes, timeperiods, od_pairs_id]
         data.append(entry)
         tc_id += 1
 
-    cols = ['TripChainId', 'Nodes', 'Purposes', 'TimePeriods', 'OdPairsId']
+    cols = ['TripChainId', 'Zones', 'Purposes', 'TimePeriods', 'OdPairsId']
     df = pd.DataFrame(data, columns=cols)
     df.set_index('TripChainId', inplace=True)
 
     return df
 
 
-def create_potential_tripchains(startnode, G, max_legs_chain):
+def create_potential_tripchains(startzone, G, max_legs_chain):
     """
     Create the potential trip chains. Reduce the feasible space by
-    a) finding the basic cycles for each or the origin nodes
-    b) limiting the maximum number of legs for the returned node_sequences
+    a) finding the basic cycles for each or the origin zones
+    b) limiting the maximum number of legs for the returned zone_sequences
 
-    :param startnode:
+    :param startzone:
     :param max_legs_chain:
     :return: potential_tripchains
     """
 
     # Filter the network so it doesn't contain
-    # a) FromHome and ToHome trips except the ones originating/ending in startnode
-    # b) NHB trips with origin or destination the startnode
+    # a) FromHome and ToHome trips except the ones originating/ending in startzone
+    # b) NHB trips with origin or destination the startzone
 
-    def filter_graph_edges_trip_purpose(G, home_node, filter_edge_purpose_names):
+    def filter_graph_edges_trip_purpose(G, home_zone, filter_edge_purpose_names):
         """
         Reduces iteratively the network so that first and last edges of cycle are HB
         and NHB for the rest of the edges
@@ -231,53 +231,53 @@ def create_potential_tripchains(startnode, G, max_legs_chain):
         for source, target, attr in G.edges(data=True):
             if attr['Purpose'] in nhb_names:
                 # NHB trips are added only when the source is not home
-                if not (source == home_node or target == home_node):
+                if not (source == home_zone or target == home_zone):
                     filt_G.add_edge(source, target, Purpose=attr['Purpose'])
             elif attr['Purpose'] in hb_from_home_names:
-                if (source == home_node):
+                if (source == home_zone):
                     filt_G.add_edge(source, target, Purpose=attr['Purpose'])
             elif attr['Purpose'] in hb_to_home_names:
-                if (target == home_node):
+                if (target == home_zone):
                     filt_G.add_edge(source, target, Purpose=attr['Purpose'])
 
         return filt_G
 
     filter_edge_purpose_names = [['HB_FromHome'], ['HB_ToHome'], ['NHB_NonHomeBased']]
 
-    G_filt = filter_graph_edges_trip_purpose(G, startnode, filter_edge_purpose_names)
+    G_filt = filter_graph_edges_trip_purpose(G, startzone, filter_edge_purpose_names)
 
-    node_seqs = []
-    simple_cycles = nx.simple_cycles_root(G_filt, root=startnode, max_cycle_len=max_legs_chain)
-    # Make the home node the initial node of the chain
+    zone_seqs = []
+    simple_cycles = nx.simple_cycles_root(G_filt, root=startzone, max_cycle_len=max_legs_chain)
+    # Make the home zone the initial zone of the chain
     for sc in simple_cycles:
         sc.append(sc[0])
-        node_seqs.append(sc)
+        zone_seqs.append(sc)
 
-    return node_seqs
+    return zone_seqs
 
 
-def topo_sensible_nodes_sequences(nodes_seq, max_external_nodes=None):
+def topo_sensible_zones_sequences(zones_seq, max_external_zones=None):
     """
-    Filter out tripchains which visit an external node more times than the limit
-    :param nodes_seq:
-    :param max_external_nodes:
+    Filter out tripchains which visit an external zone more times than the limit
+    :param zones_seq:
+    :param max_external_zones:
     :return:
     """
-    if max_external_nodes:
-        filt_nodes_seq = list()
-        for ns in nodes_seq:
+    if max_external_zones:
+        filt_zones_seq = list()
+        for ns in zones_seq:
             cnt = 0
             for n in ns:
                 if not n.startswith(settings.int_zone_str):
                     cnt += 1
-            if cnt > max_external_nodes:
+            if cnt > max_external_zones:
                 continue
             else:
-                filt_nodes_seq.append(ns)
+                filt_zones_seq.append(ns)
 
-        return filt_nodes_seq
+        return filt_zones_seq
     else:
-        return nodes_seq
+        return zones_seq
 
 
 def add_od_pairs_sequence(tripchains, od):
@@ -294,9 +294,9 @@ def add_od_pairs_sequence(tripchains, od):
         # Create a list of tuples with the origin and destination for each leg in tripchain
         origs = list()
         dests = list()
-        for orig_node, dest_node in pairwise(tc['Nodes']):
-            origs.append(orig_node)
-            dests.append(dest_node)
+        for orig_zone, dest_zone in pairwise(tc['Zones']):
+            origs.append(orig_zone)
+            dests.append(dest_zone)
 
         purposes = tc['Purposes']
         timeperiods = tc['TimePeriods']
@@ -315,36 +315,36 @@ def add_od_pairs_sequence(tripchains, od):
 def main(max_legs_chain, trips_thresh):
 
     print('Reading...')
-    od = fetch_prepare_od(settings.filepaths['od'], trips_thresh, export=True)
+    od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
     G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'],
                                 nx.MultiDiGraph())
 
-    print('Identifying Node Sequences...')
+    print('Identifying Zone Sequences...')
     # TODO Create a file with the zones definition
-    internal_nodes = [n for n in G if n.startswith(settings.int_zone_str)]
+    internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
 
-    potential_nodes_sequences = []
+    potential_zones_sequences = []
     with Pool(processes=cpu_count()-2) as pool:
-        for nodesequence in tqdm(pool.imap_unordered(
+        for zonesequence in tqdm(pool.imap_unordered(
                                partial(create_potential_tripchains,
                                        G=G,
                                        max_legs_chain=max_legs_chain),
-                                       internal_nodes), total=len(internal_nodes)):
-            potential_nodes_sequences.extend(nodesequence)
+                                       internal_zones), total=len(internal_zones)):
+            potential_zones_sequences.extend(zonesequence)
 
     # Keep only the unique
-    potential_nodes_sequences.sort()
-    potential_nodes_sequences = list(k for k, _ in itertools.groupby(potential_nodes_sequences))
+    potential_zones_sequences.sort()
+    potential_zones_sequences = list(k for k, _ in itertools.groupby(potential_zones_sequences))
 
     # Remove chains that appear twice in the external area (2 visits in the external area)
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E02...
-    print('Filtering out tcs which visit external zones more than {} times'.format(settings.max_external_nodes_in_tc))
-    potential_nodes_sequences = topo_sensible_nodes_sequences(potential_nodes_sequences,
-                                                              max_external_nodes=settings.max_external_nodes_in_tc)
+    print('Filtering out tcs which visit external zones more than {} times'.format(settings.max_external_zones_in_tc))
+    potential_zones_sequences = topo_sensible_zones_sequences(potential_zones_sequences,
+                                                              max_external_zones=settings.max_external_zones_in_tc)
 
-    print('final:{}'.format(len(potential_nodes_sequences)))
+    print('final:{}'.format(len(potential_zones_sequences)))
 
     origin_purposes = ['HB_FromHome']
     destination_purposes = ['HB_ToHome']
@@ -352,7 +352,7 @@ def main(max_legs_chain, trips_thresh):
     filter_edge_purpose_names = [origin_purposes, destination_purposes, intermediate_purposes]
 
     print('Creating Chains...')
-    purp_possible_tripchains = purpose_possible_tripchains(G, potential_nodes_sequences, filter_edge_purpose_names)
+    purp_possible_tripchains = purpose_possible_tripchains(G, potential_zones_sequences, filter_edge_purpose_names)
     
     # Check for chronological order
     chron_possible_tripchains = chronologically_possible_tripchains(purp_possible_tripchains,

@@ -5,7 +5,6 @@ import settings
 
 
 def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
-
     def init_chains_descr(_model):
         _tcs = _model.tcs
         chains_descr = _tcs.OdPairsId.str.split(settings.global_separator)
@@ -39,7 +38,7 @@ def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
     model.trips = Param(model.LEGS, initialize=od.DailyTrips.to_dict(), within=NonNegativeIntegers)
     model.chains_descr = Param(model.CHAIN_IDS, model.LEGS, initialize=init_chains_descr, within=Binary, default=False)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=10)
+    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=5)
 
     if distr_constr_enabled:
         d_distr_grp_percs = dict(zip(distr_grps.DistrGroupId, distr_grps.Percentage))
@@ -48,33 +47,33 @@ def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
         model.chains_distr_groups = Param(model.GROUP_IDS, model.CHAIN_IDS,
                                           initialize=init_chain_distr_grps, within=Binary, default=0)
 
-
     return model
 
 
 def run_model(model, distr_constr_enabled, send_to_neos):
-
-    #data = DataPortal()
-    #data.load(filename='data_simple.dat')
-
     def maximise_used_trips(_model):
-        return sum(sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS) - _model.trips[leg] for leg in _model.LEGS)
+        return sum(
+            sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS) - _model.trips[leg] for
+            leg in _model.LEGS)
+
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(_model, leg):
-        return (0, sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS), _model.trips[leg])
+        return (
+        0, sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS), _model.trips[leg])
+
     model.od_trips_rule = Constraint(model.LEGS, rule=trips_rule)
 
-    def distr_rule_low(model, gid):
-        lower_lim = ((model.distr_group_percs[gid] - model.tolerance)
-                     * sum(model.nchains[cid] for cid in model.CHAIN_IDS))
-        expr = sum(model.nchains[cid] * model.chains_distr_groups[gid, cid] for cid in model.CHAIN_IDS)
+    def distr_rule_low(_model, gid):
+        lower_lim = ((_model.distr_group_percs[gid] - _model.tolerance)
+                     * sum(_model.nchains[cid] for cid in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[cid] * _model.chains_distr_groups[gid, cid] for cid in _model.CHAIN_IDS)
         return lower_lim <= expr
 
-    def distr_rule_high(model, gid):
-        upper_lim = ((model.distr_group_percs[gid] + model.tolerance)
-                     * sum(model.nchains[cid] for cid in model.CHAIN_IDS))
-        expr = sum(model.nchains[cid] * model.chains_distr_groups[gid, cid] for cid in model.CHAIN_IDS)
+    def distr_rule_high(_model, gid):
+        upper_lim = ((_model.distr_group_percs[gid] + _model.tolerance)
+                     * sum(_model.nchains[cid] for cid in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[cid] * _model.chains_distr_groups[gid, cid] for cid in _model.CHAIN_IDS)
         return expr <= upper_lim
 
     if distr_constr_enabled:
