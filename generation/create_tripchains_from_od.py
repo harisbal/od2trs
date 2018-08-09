@@ -48,11 +48,6 @@ def fetch_prepare_od(infilepath, trips_thresh):
     mask = od_filtered.index.get_level_values('OrigZoneId') != od_filtered.index.get_level_values('DestZoneId')
     od_filtered = od_filtered[mask]
 
-    # Remove External to External
-    mask = (od_filtered.index.get_level_values('OrigZoneId').str.startswith(settings.int_zone_str) |
-            od_filtered.index.get_level_values('DestZoneId').str.startswith(settings.int_zone_str))
-    od_filtered = od_filtered[mask]
-
     # Filter out HB_FromHome when origin is external (home location is external)
     # and HB_ToHome when destination is to external
     mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith(settings.int_zone_str) &

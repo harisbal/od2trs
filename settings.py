@@ -24,7 +24,8 @@ def init(processfolder=None):
     global global_separator
     global int_zone_str
     global submit_to_neos
-
+    global distribution_constraint_tolerance
+    
     # Separator to be used in chains
     global_separator = '-'
 
@@ -44,6 +45,8 @@ def init(processfolder=None):
     distribution_dims = ['DistanceGroup', 'Segments'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
     distance_bins = [0, 1800, 3600, float('inf')]
+
+    distribution_constraint_tolerance = 0.05
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     distribution_percentage_thresh = None
