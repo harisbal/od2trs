@@ -19,34 +19,40 @@ def init(processfolder=None):
     global distribution_dims
     global distribution_percentage_thresh
     global distance_bins
+    global filters
+
     global ordered_time_periods
 
     global global_separator
     global int_zone_str
     global submit_to_neos
     global distribution_constraint_tolerance
-    
+
     # Separator to be used in chains
     global_separator = '-'
 
-    data_source = 'mndTscSample100'
-    model_name = 'bristol'
-    trips_direction = 'allDirections'
+    data_source = 'mnd_TSC'
+    model_name = 'sample_10000'
+    trips_direction = 'internalToInternal'
 
-    int_zone_str = 'E02'
+    int_zone_str = 'E01'
 
-    max_legs = [3]
+    max_legs = [5]
     trips_thresh = [1]
 
-    max_external_zones_in_tc = 2
+    max_external_zones_in_tc = None
 
     submit_to_neos = False
 
     distribution_dims = ['DistanceGroup', 'Segments'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
-    distance_bins = [0, 1800, 3600, float('inf')]
+    distance_bins = [0, 1800, 3600, 5400, float('inf')]
 
-    distribution_constraint_tolerance = 0.05
+    # Maximum values for columns sin the tours
+    # In this case distance is travel time in seconds
+    filters = {'Distance': 6_000}
+
+    distribution_constraint_tolerance = 0.03
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     distribution_percentage_thresh = None
@@ -63,11 +69,10 @@ def init(processfolder=None):
 
     filepaths = dict()
 
-    filepaths['infolder'] = r'./generation/inputs'
+    filepaths['infolder'] = r'./generation/inputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
     filepaths['outfolder'] = r'./generation/outputs/{}/{}/{}'.format(data_source, model_name, trips_direction)
 
-    filepaths['od'] = os.path.join(filepaths['infolder'], 'od_{}_{}_{}.csv'.format(data_source,
-                                                                                   model_name, trips_direction))
+    filepaths['od'] = os.path.join(filepaths['infolder'], 'od.csv')
 
     filepaths['distances'] = os.path.join(filepaths['infolder'], 'distance_matrix.csv')
     filepaths['observed_tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours_info.csv')

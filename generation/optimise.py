@@ -1,6 +1,8 @@
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
+from pyomo.util.timing import report_timing
+
 import settings
 
 
@@ -10,70 +12,67 @@ def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
         chains_descr = _tcs.OdPairsId.str.split(settings.global_separator)
 
         d_chains_descr = dict()
-        for cid, legs in chains_descr.iteritems():
-            for leg in legs:
-                d_chains_descr[cid, int(leg)] = True
-
+        # d_chains_descr has as key the legId and as value a list of the tcs containing each legId
+        for tcId, legIds in chains_descr.iteritems():
+            for legId in legIds:
+                # legId is definitely an integer (is the simple index of a df)
+                d_chains_descr.setdefault(int(legId), []).append(tcId)
         return d_chains_descr
 
     def init_chain_distr_grps(_model):
         _tcs = _model.tcs
 
         d_distr_grps = dict()
-        for cid, gid in _tcs.DistrGroupId.iteritems():
-            d_distr_grps[gid, cid] = True
-
+        for tcId, gId in _tcs.DistrGroupId.iteritems():
+            d_distr_grps.setdefault(gId, []).append(tcId)
         return d_distr_grps
 
     model = ConcreteModel()
 
-    model.tolerance = 0.01
+    model.tolerance = settings.distribution_constraint_tolerance
     model.tcs = tcs
     model.distr_grps = distr_grps
 
-    model.LEGS = Set(initialize=od.index.unique().values.tolist(), within=NonNegativeIntegers)
-    model.CHAIN_IDS = Set(initialize=tcs.index.unique().tolist(), within=NonNegativeIntegers)
-    model.GROUP_IDS = Set(initialize=tcs.DistrGroupId.unique().tolist(), within=NonNegativeIntegers)
+    model.LEGIDS = Set(initialize=od.index.unique().values.tolist())
+    model.CHAIN_IDS = Set(initialize=tcs.index.unique().tolist())
+    model.GROUP_IDS = Set(initialize=tcs.DistrGroupId.unique().tolist())
 
-    model.trips = Param(model.LEGS, initialize=od.DailyTrips.to_dict(), within=NonNegativeIntegers)
-    model.chains_descr = Param(model.CHAIN_IDS, model.LEGS, initialize=init_chains_descr, within=Binary, default=False)
+    model.trips = Param(model.LEGIDS, initialize=od.DailyTrips.to_dict(), within=NonNegativeIntegers)
+    model.chains_descr = Param(model.LEGIDS, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=5)
+    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=1)
 
     if distr_constr_enabled:
         d_distr_grp_percs = dict(zip(distr_grps.DistrGroupId, distr_grps.Percentage))
         model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs)
-
-        model.chains_distr_groups = Param(model.GROUP_IDS, model.CHAIN_IDS,
-                                          initialize=init_chain_distr_grps, within=Binary, default=0)
-
+        model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps)
     return model
 
 
 def run_model(model, distr_constr_enabled, send_to_neos):
     def maximise_used_trips(_model):
         return sum(
-            sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS) - _model.trips[leg] for
-            leg in _model.LEGS)
-
+               sum(_model.nchains[tcId] for tcId in _model.chains_descr[legId])
+               if _model.chains_descr[legId] else 0 - _model.trips[legId] for legId in _model.LEGIDS)
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def trips_rule(_model, leg):
-        return (
-        0, sum(_model.nchains[cid] * _model.chains_descr[cid, leg] for cid in _model.CHAIN_IDS), _model.trips[leg])
+    def trips_rule(_model, legId):
+        return (0,
+                sum(_model.nchains[tcId] for tcId in _model.chains_descr[legId]) if _model.chains_descr[legId] else 0,
+                model.trips[legId])
 
-    model.od_trips_rule = Constraint(model.LEGS, rule=trips_rule)
+    model.od_trips_rule = Constraint(model.LEGIDS, rule=trips_rule)
 
-    def distr_rule_low(_model, gid):
-        lower_lim = ((_model.distr_group_percs[gid] - _model.tolerance)
-                     * sum(_model.nchains[cid] for cid in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[cid] * _model.chains_distr_groups[gid, cid] for cid in _model.CHAIN_IDS)
+    def distr_rule_low(_model, gId):
+        lower_lim = ((_model.distr_group_percs[gId] - _model.tolerance)
+                     * sum(_model.nchains[tcId] for tcId in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[tcId] for tcId in _model.chains_distr_groups[gId])
         return lower_lim <= expr
 
-    def distr_rule_high(_model, gid):
-        upper_lim = ((_model.distr_group_percs[gid] + _model.tolerance)
-                     * sum(_model.nchains[cid] for cid in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[cid] * _model.chains_distr_groups[gid, cid] for cid in _model.CHAIN_IDS)
+    def distr_rule_high(_model, gId):
+        upper_lim = ((_model.distr_group_percs[gId] + _model.tolerance)
+                     * sum(_model.nchains[tcId] for tcId in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[tcId] for tcId in _model.chains_distr_groups[gId])
         return expr <= upper_lim
 
     if distr_constr_enabled:
@@ -83,18 +82,18 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt = SolverFactory('cplex')
 
     if send_to_neos:
-        model = model.create_instance('optimisation_neos.dat')
         solver_manager = SolverManagerFactory('neos')
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        results = opt.solve(model)
+        results = opt.solve(model, tee=True)
 
     model.solutions.store_to(results)
     return results
 
 
 def main(tcs, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
+    report_timing()
     mymodel = prepare_model(tcs, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results

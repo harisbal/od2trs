@@ -83,19 +83,20 @@ def main():
             print('Phase 2/4: Including extra info to TripChains...')
             tcs = classify_tcs.main(tcs, od)
 
-            print('Before{}'.format(len(tcs)))
-            filters = {'Distance': 40000}
-            tcs = filter_tcs.main(tcs, filters)
-            print('After{}'.format(len(tcs)))
+            print('Before filtering: {}'.format(len(tcs)))
+            tcs = filter_tcs.main(tcs, settings.filters)
+            print('After filtering: {}'.format(len(tcs)))
 
             print('Phase 3/4: Prepare Distributions from observed data...')
             tcs, distr_grps = prepare_dist.main(tcs, legs)
 
-            for distr_constr_enabled in [True, False]:
+            for distr_constr_enabled in [True]:
                 print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
                 results = opt.main(tcs, od, distr_grps, distr_constr_enabled, submit_to_neos=settings.submit_to_neos)
 
                 export_results(od, tcs, distr_grps, results, legs, trips_thresh, distr_constr_enabled)
+
+                print('Complete!')
 
 
 if __name__ == '__main__':
