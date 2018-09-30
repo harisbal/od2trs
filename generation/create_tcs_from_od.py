@@ -174,7 +174,7 @@ def purpose_sensible_tcs(zones_seq, G, filter_edge_purpose_names):
     return purpose_possible_tcs
 
 
-def create_potential_zones_seqs(startzone, max_legs):
+def create_potential_zones_seqs(startzone, ns, max_legs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -188,7 +188,7 @@ def create_potential_zones_seqs(startzone, max_legs):
     """
 
     settings.init()
-
+    G = ns.G
     G_filt = filter_graph_edges_trip_purpose(G, startzone, settings.filter_purposes)
 
     zones_seqs = []
@@ -302,10 +302,11 @@ def chronologically_sensible_tcs(tcs, timeperiod_sequence):
     return tcs
 
 
-def create_possible_tcs(zones_seq):
+def create_possible_tcs(zones_seq, ns):
     # Wrapper for all the tests to identify sensible tcs
 
     settings.init()
+    G = ns.G
     zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
     tcs = convert_zones_seq_to_tcs(zones_seq, G)
     tcs = chronologically_sensible_tcs(tcs, settings.ordered_time_periods)
@@ -375,15 +376,15 @@ def tcs_to_df(tcs):
 def main(max_legs, trips_thresh):
 
     settings.init()
-
-    global G
+    manager = Manager()
+    ns = manager.Namespace()
 
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
     G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'],
                                 nx.MultiDiGraph())
-
+    ns.G = G
     print('Identifying Zone Sequences...')
     # TODO Create a file with the zones definition
     # Very dirty quick solution
@@ -393,7 +394,7 @@ def main(max_legs, trips_thresh):
     potential_zones_seq = []
     with Pool(processes=cpu_count() - 1) as pool:
         for zones_seqs in tqdm(pool.imap_unordered(
-                               partial(create_potential_zones_seqs, max_legs=max_legs),
+                               partial(create_potential_zones_seqs, ns=ns, max_legs=max_legs),
                                internal_zones), total=len(internal_zones)):
 
             potential_zones_seq.extend(zones_seqs)
@@ -405,7 +406,9 @@ def main(max_legs, trips_thresh):
     print('Creating Chains...')
     possible_tcs = []
     with Pool(processes=cpu_count() - 1) as pool:
-        for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq), total=len(potential_zones_seq)):
+        for tcs in tqdm(pool.imap_unordered(
+                        partial(create_possible_tcs, ns=ns), potential_zones_seq),
+                        total=len(potential_zones_seq)):
 
             possible_tcs.extend(tcs)
 

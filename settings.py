@@ -34,7 +34,7 @@ def init(processfolder=None):
 
     data_source = 'mnd_TSC'
     model_name = 'sample_10000'
-    trips_direction = 'test'
+    trips_direction = 'internalToInternal'
 
     int_zone_str = 'E01'
 
