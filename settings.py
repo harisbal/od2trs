@@ -34,11 +34,11 @@ def init(processfolder=None):
 
     data_source = 'mnd_TSC'
     model_name = 'sample_10000'
-    trips_direction = 'internalToInternal'
+    trips_direction = 'test'
 
     int_zone_str = 'E01'
 
-    max_legs = [4]
+    max_legs = [5]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None

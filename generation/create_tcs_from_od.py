@@ -3,7 +3,7 @@ import pandas as pd
 import itertools
 import networkx as nx
 from tqdm import tqdm
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Manager, Pool, cpu_count
 from functools import partial
 
 import settings
@@ -174,7 +174,7 @@ def purpose_sensible_tcs(zones_seq, G, filter_edge_purpose_names):
     return purpose_possible_tcs
 
 
-def create_potential_zones_seqs(startzone, max_legs, G):
+def create_potential_zones_seqs(startzone, max_legs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -302,13 +302,14 @@ def chronologically_sensible_tcs(tcs, timeperiod_sequence):
     return tcs
 
 
-def create_possible_tcs(zones_seq, G):
+def create_possible_tcs(zones_seq):
     # Wrapper for all the tests to identify sensible tcs
 
     settings.init()
     zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
     tcs = convert_zones_seq_to_tcs(zones_seq, G)
     tcs = chronologically_sensible_tcs(tcs, settings.ordered_time_periods)
+
     return tcs
 
 
@@ -373,6 +374,10 @@ def tcs_to_df(tcs):
 
 def main(max_legs, trips_thresh):
 
+    settings.init()
+
+    global G
+
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
@@ -388,9 +393,7 @@ def main(max_legs, trips_thresh):
     potential_zones_seq = []
     with Pool(processes=cpu_count() - 1) as pool:
         for zones_seqs in tqdm(pool.imap_unordered(
-                               partial(create_potential_zones_seqs,
-                                       G=G,
-                                       max_legs=max_legs),
+                               partial(create_potential_zones_seqs, max_legs=max_legs),
                                internal_zones), total=len(internal_zones)):
 
             potential_zones_seq.extend(zones_seqs)
@@ -402,9 +405,7 @@ def main(max_legs, trips_thresh):
     print('Creating Chains...')
     possible_tcs = []
     with Pool(processes=cpu_count() - 1) as pool:
-        for tcs in tqdm(pool.imap_unordered(
-                        partial(create_possible_tcs, G=G),
-                        potential_zones_seq), total=len(potential_zones_seq)):
+        for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq), total=len(potential_zones_seq)):
 
             possible_tcs.extend(tcs)
 
@@ -420,5 +421,4 @@ def main(max_legs, trips_thresh):
 
 
 if __name__ == '__main__':
-    settings.init()
     main()
