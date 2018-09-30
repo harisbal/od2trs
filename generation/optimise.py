@@ -1,3 +1,5 @@
+import  pandas as pd
+
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
@@ -6,73 +8,75 @@ from pyomo.util.timing import report_timing
 import settings
 
 
-def prepare_model(tcs, od, distr_grps, distr_constr_enabled):
-    def init_chains_descr(_model):
-        _tcs = _model.tcs
-        chains_descr = _tcs.OdPairsId.str.split(settings.global_separator)
+def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
 
-        d_chains_descr = dict()
-        # d_chains_descr has as key the legId and as value a list of the tcs containing each legId
-        for tcId, legIds in chains_descr.iteritems():
-            for legId in legIds:
-                # legId is definitely an integer (is the simple index of a df)
-                d_chains_descr.setdefault(int(legId), []).append(tcId)
+    def init_chains_descr(_model):
+        _od = _model.od
+        _tcs = _model.tcs.reset_index()
+        _tcs = pd.merge(_tcs, _od['LegId'].to_frame(),
+                        left_on=_od.index.names, right_index=True,
+                        how='left')
+
+        # Can be slow
+        d_chains_descr = _tcs.groupby('LegId')['TripChainId'].apply(list).to_dict()
+
         return d_chains_descr
 
     def init_chain_distr_grps(_model):
-        _tcs = _model.tcs
+        _tcs_info = _model.tcs_info.reset_index()
+        _tcs_infog = _tcs_info.groupby(['DistrGroupId'])['TripChainId'].apply(list)
+        d_distr_grps = _tcs_infog.to_dict()
 
-        d_distr_grps = dict()
-        for tcId, gId in _tcs.DistrGroupId.iteritems():
-            d_distr_grps.setdefault(gId, []).append(tcId)
         return d_distr_grps
 
     model = ConcreteModel()
-
     model.tolerance = settings.distribution_constraint_tolerance
+    model.od = od
     model.tcs = tcs
+    model.tcs_info = tcs_info
     model.distr_grps = distr_grps
 
-    model.LEGIDS = Set(initialize=od.index.unique().values.tolist())
-    model.CHAIN_IDS = Set(initialize=tcs.index.unique().tolist())
-    model.GROUP_IDS = Set(initialize=tcs.DistrGroupId.unique().tolist())
+    model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
+    model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
+    model.GROUP_IDS = Set(initialize=model.distr_grps.index.unique().values.tolist())
 
-    model.trips = Param(model.LEGIDS, initialize=od.DailyTrips.to_dict(), within=NonNegativeIntegers)
-    model.chains_descr = Param(model.LEGIDS, initialize=init_chains_descr, default=None)
+    d_leg_trips = model.od.reset_index().set_index('LegId')['DailyTrips'].to_dict()
+    model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
+    model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
 
     model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=1)
 
     if distr_constr_enabled:
-        d_distr_grp_percs = dict(zip(distr_grps.DistrGroupId, distr_grps.Percentage))
+        d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
         model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs)
         model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps)
+
     return model
 
 
 def run_model(model, distr_constr_enabled, send_to_neos):
     def maximise_used_trips(_model):
         return sum(
-               sum(_model.nchains[tcId] for tcId in _model.chains_descr[legId])
-               if _model.chains_descr[legId] else 0 - _model.trips[legId] for legId in _model.LEGIDS)
+               sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
+               if _model.chains_descr[leg_id] else 0 - _model.trips[leg_id] for leg_id in _model.LEG_IDS)
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def trips_rule(_model, legId):
+    def trips_rule(_model, leg_id):
         return (0,
-                sum(_model.nchains[tcId] for tcId in _model.chains_descr[legId]) if _model.chains_descr[legId] else 0,
-                model.trips[legId])
+                sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id]) if _model.chains_descr[leg_id] else 0,
+                model.trips[leg_id])
+    model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
 
-    model.od_trips_rule = Constraint(model.LEGIDS, rule=trips_rule)
-
-    def distr_rule_low(_model, gId):
-        lower_lim = ((_model.distr_group_percs[gId] - _model.tolerance)
-                     * sum(_model.nchains[tcId] for tcId in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[tcId] for tcId in _model.chains_distr_groups[gId])
+    def distr_rule_low(_model, g_id):
+        lower_lim = ((_model.distr_group_percs[g_id] - _model.tolerance)
+                     * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
         return lower_lim <= expr
 
-    def distr_rule_high(_model, gId):
-        upper_lim = ((_model.distr_group_percs[gId] + _model.tolerance)
-                     * sum(_model.nchains[tcId] for tcId in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[tcId] for tcId in _model.chains_distr_groups[gId])
+    def distr_rule_high(_model, g_id):
+        upper_lim = ((_model.distr_group_percs[g_id] + _model.tolerance)
+                     * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+        expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
         return expr <= upper_lim
 
     if distr_constr_enabled:
@@ -92,8 +96,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(tcs, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
+def main(tcs, tcs_info, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
     report_timing()
-    mymodel = prepare_model(tcs, od, distr_grps, distr_constr_enabled)
+    mymodel = prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results

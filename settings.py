@@ -16,6 +16,7 @@ def init(processfolder=None):
     global max_external_zones_in_tc
 
     global d_grp_purposes
+    global filter_purposes
     global distribution_dims
     global distribution_percentage_thresh
     global distance_bins
@@ -37,14 +38,14 @@ def init(processfolder=None):
 
     int_zone_str = 'E01'
 
-    max_legs = [5]
+    max_legs = [4]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
 
     submit_to_neos = False
 
-    distribution_dims = ['DistanceGroup', 'Segments'] # Could include Activities but tcs not ready yet
+    distribution_dims = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
     distance_bins = [0, 1800, 3600, 5400, float('inf')]
 
@@ -52,10 +53,11 @@ def init(processfolder=None):
     # In this case distance is travel time in seconds
     filters = {'Distance': 6_000}
 
-    distribution_constraint_tolerance = 0.03
-
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     distribution_percentage_thresh = None
+
+    # Convergence criteria for optimisation
+    distribution_constraint_tolerance = 0.03
 
     # Dictionary to group purposes in OD
     d_grp_purposes = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
@@ -66,6 +68,14 @@ def init(processfolder=None):
                       'HB_ToHome': 'HB_ToHome',
                       'NHB_NonHomeBased': 'NHB_NonHomeBased'
                       }
+
+    origin_purposes = ['HB_FromHome']
+    destination_purposes = ['HB_ToHome']
+    intermediate_purposes = ['NHB_NonHomeBased']
+
+    filter_purposes = [origin_purposes,
+                       destination_purposes,
+                       intermediate_purposes]
 
     filepaths = dict()
 
@@ -79,6 +89,7 @@ def init(processfolder=None):
 
     if processfolder:
         filepaths['od_filtered'] = os.path.join(processfolder, 'od_filtered.csv')
+        filepaths['tripchains_descr'] = os.path.join(processfolder, 'tripchains_descr.csv')
         filepaths['tripchains_info'] = os.path.join(processfolder, 'tripchains_info.csv')
         filepaths['target_distribution'] = os.path.join(processfolder, 'target_distribution.csv')
         filepaths['optimisation_results'] = os.path.join(processfolder, 'results.json')
