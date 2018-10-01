@@ -33,12 +33,12 @@ def init(processfolder=None):
     global_separator = '-'
 
     data_source = 'mnd_TSC'
-    model_name = 'sample_1000'
-    trips_direction = 'test'
+    model_name = 'sample_10000'
+    trips_direction = 'internalToInternal'
 
     int_zone_str = 'E01'
 
-    max_legs = [4]
+    max_legs = [3, 4, 5]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
@@ -57,7 +57,7 @@ def init(processfolder=None):
     distribution_percentage_thresh = None
 
     # Convergence criteria for optimisation
-    distribution_constraint_tolerance = 0.03
+    distribution_constraint_tolerance = 0.02
 
     # Dictionary to group purposes in OD
     d_grp_purposes = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',

@@ -40,7 +40,7 @@ def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, d
 
     od.to_csv(settings.filepaths['od_filtered'], index=True)
 
-    #tcs.to_csv(settings.filepaths['tripchains_info'], index=True)
+    tcs.to_csv(settings.filepaths['tripchains_descr'], index=True)
     tcs_info.to_csv(settings.filepaths['tripchains_info'], index=True)
 
     distr_grps.to_csv(settings.filepaths['target_distribution'], index=True, header=True)
@@ -89,11 +89,12 @@ def main():
             tcs = tcs[tcs.index.isin(tcs_info.index)]
             tcs = tcs.stack(stack_lvl)
 
-            for distr_constr_enabled in [True]:
+            for distr_constr_enabled in [True, False]:
                 print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
                 results = opt.main(tcs, tcs_info, od, observed_tcs_distr, distr_constr_enabled,
                                    submit_to_neos=settings.submit_to_neos)
 
+                print('Exporting')
                 export_results(od, tcs, tcs_info, observed_tcs_distr, results, legs, trips_thresh, distr_constr_enabled)
 
                 print('Complete!')

@@ -181,7 +181,6 @@ def create_potential_zones_seqs(startzone, max_legs):
     b) limiting the maximum number of legs for the returned zone_sequences
 
     :param startzone:
-    :param G:
     :param max_legs_chain:
     :param filter_edge_purpose_names: the name of the trip purposes to look for
     :return: potential_tripchains
@@ -372,11 +371,12 @@ def tcs_to_df(tcs):
     return df_tcs
 
 
-def main(max_legs, trips_thresh):
+def init_pool(G):
+    global globalG
+    globalG = G
 
-    def init_pool(G):
-        global globalG
-        globalG = G
+
+def main(max_legs, trips_thresh):
 
     settings.init()
 
@@ -393,23 +393,21 @@ def main(max_legs, trips_thresh):
     internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
 
     potential_zones_seq = []
-    with Pool(processes=cpu_count()-1, initializer=init_pool(G)) as pool:
+    with Pool(cpu_count()-1, initializer=init_pool, initargs=[G]) as pool:
         for zones_seqs in tqdm(pool.imap_unordered(
                                partial(create_potential_zones_seqs, max_legs=max_legs),
                                internal_zones), total=len(internal_zones)):
 
             potential_zones_seq.extend(zones_seqs)
 
-    # Keep only the unique
-    potential_zones_seq.sort()
-    potential_zones_seq = list(k for k, _ in itertools.groupby(potential_zones_seq))
+        # Keep only the unique
+        potential_zones_seq.sort()
+        potential_zones_seq = list(k for k, _ in itertools.groupby(potential_zones_seq))
 
-    print('Creating Chains...')
-    possible_tcs = []
-    with Pool(processes=cpu_count()-1, initializer=init_pool(G)) as pool:
+        print('Creating Chains...')
+        possible_tcs = []
         for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq),
                         total=len(potential_zones_seq)):
-
             possible_tcs.extend(tcs)
 
     print('Converting to df {} trips chains'.format('{:,}'.format(len(possible_tcs))))
