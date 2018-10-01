@@ -412,11 +412,8 @@ def main(max_legs, trips_thresh):
 
             possible_tcs.extend(tcs)
 
-    #possible_tcs = add_od_pairs_sequence(possible_tcs, od)
-
-    print('Converting to df {} trips chains'.format(len(possible_tcs)))
+    print('Converting to df {} trips chains'.format('{:,}'.format(len(possible_tcs))))
     tcs_df = tcs_to_df(possible_tcs)
-
 
     print('End Phase 1 (Creating trip chains from OD)')
 
