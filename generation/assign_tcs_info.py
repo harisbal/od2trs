@@ -53,7 +53,6 @@ def assign_distribution_group(tcs_info, observed_tcs_distr):
 def main(tcs, observed_tcs_distr):
     settings.init()
     dists = read_distances(settings.filepaths['distances'])
-    # TODO quite slow, maybe I need to keep a version of the tcs definitions in list format
     tcs_info = prepare_tcs_info(tcs, dists)
 
     tcs_info = assign_distribution_group(tcs_info, observed_tcs_distr)

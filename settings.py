@@ -33,12 +33,12 @@ def init(processfolder=None):
     global_separator = '-'
 
     data_source = 'mnd_TSC'
-    model_name = 'sample_10000'
-    trips_direction = 'internalToInternal'
+    model_name = 'sample_100'
+    trips_direction = 'test'
 
     int_zone_str = 'E01'
 
-    max_legs = [3, 4, 5]
+    max_legs = [5]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
@@ -54,7 +54,7 @@ def init(processfolder=None):
     filters = {'Distance': 6_000}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    distribution_percentage_thresh = None
+    distribution_percentage_thresh = 0.01
 
     # Convergence criteria for optimisation
     distribution_constraint_tolerance = 0.02

@@ -80,14 +80,8 @@ def main():
             print('Phase 3/4: Classifying TripChains...')
             tcs_info = info_tcs.main(tcs, observed_tcs_distr)
 
-            print('Filter tcs based on external criteria')
-            tcs_info = filter_tcs.main(tcs_info, settings.filters)
-
-            # Remove unused tcs
-            stack_lvl = 'LegSeqIdx'
-            tcs = tcs.unstack(stack_lvl)
-            tcs = tcs[tcs.index.isin(tcs_info.index)]
-            tcs = tcs.stack(stack_lvl)
+            print('Filter tcs')
+            tcs, tcs_info = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
 
             for distr_constr_enabled in [True, False]:
                 print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))

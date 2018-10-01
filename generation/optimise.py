@@ -48,8 +48,8 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
-        model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs)
-        model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps)
+        model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs, default=0)
+        model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps, default=None)
 
     return model
 
@@ -62,22 +62,31 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(_model, leg_id):
-        return (0,
-                sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id]) if _model.chains_descr[leg_id] else 0,
-                model.trips[leg_id])
+        if _model.chains_descr[leg_id]:
+            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
+            return (0, expr, model.trips[leg_id])
+        else:
+            return Constraint.Skip
+
     model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
 
     def distr_rule_low(_model, g_id):
-        lower_lim = ((_model.distr_group_percs[g_id] - _model.tolerance)
-                     * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
-        return lower_lim <= expr
+        if _model.chains_distr_groups[g_id]:
+            lower_lim = ((_model.distr_group_percs[g_id] - _model.tolerance)
+                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+            return lower_lim <= expr
+        else:
+            return Constraint.Skip
 
     def distr_rule_high(_model, g_id):
-        upper_lim = ((_model.distr_group_percs[g_id] + _model.tolerance)
-                     * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
-        expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
-        return expr <= upper_lim
+        if _model.chains_distr_groups[g_id]:
+            upper_lim = ((_model.distr_group_percs[g_id] + _model.tolerance)
+                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+            return expr <= upper_lim
+        else:
+            return Constraint.Skip
 
     if distr_constr_enabled:
         model.distr_rule_low = Constraint(model.GROUP_IDS, rule=distr_rule_low)
