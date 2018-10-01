@@ -189,7 +189,7 @@ def create_potential_zones_seqs(startzone, max_legs):
 
     settings.init()
 
-    G_filt = filter_graph_edges_trip_purpose(G, startzone, settings.filter_purposes)
+    G_filt = filter_graph_edges_trip_purpose(globalG, startzone, settings.filter_purposes)
 
     zones_seqs = []
     simple_cycles = nx.simple_cycles_root(G_filt, root=startzone, max_cycle_len=max_legs)
@@ -307,7 +307,7 @@ def create_possible_tcs(zones_seq):
 
     settings.init()
     zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
-    tcs = convert_zones_seq_to_tcs(zones_seq, G)
+    tcs = convert_zones_seq_to_tcs(zones_seq, globalG)
     tcs = chronologically_sensible_tcs(tcs, settings.ordered_time_periods)
 
     return tcs
@@ -374,9 +374,11 @@ def tcs_to_df(tcs):
 
 def main(max_legs, trips_thresh):
 
-    settings.init()
+    def init_pool(G):
+        global globalG
+        globalG = G
 
-    global G
+    settings.init()
 
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
@@ -391,7 +393,7 @@ def main(max_legs, trips_thresh):
     internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
 
     potential_zones_seq = []
-    with Pool(processes=cpu_count() - 1) as pool:
+    with Pool(processes=cpu_count()-1, initializer=init_pool(G)) as pool:
         for zones_seqs in tqdm(pool.imap_unordered(
                                partial(create_potential_zones_seqs, max_legs=max_legs),
                                internal_zones), total=len(internal_zones)):
@@ -404,14 +406,15 @@ def main(max_legs, trips_thresh):
 
     print('Creating Chains...')
     possible_tcs = []
-    with Pool(processes=cpu_count() - 1) as pool:
-        for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq), total=len(potential_zones_seq)):
+    with Pool(processes=cpu_count()-1, initializer=init_pool(G)) as pool:
+        for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq),
+                        total=len(potential_zones_seq)):
 
             possible_tcs.extend(tcs)
 
     #possible_tcs = add_od_pairs_sequence(possible_tcs, od)
 
-    print('Exporting {} trips chains'.format(len(possible_tcs)))
+    print('Converting to df {} trips chains'.format(len(possible_tcs)))
     tcs_df = tcs_to_df(possible_tcs)
 
 
