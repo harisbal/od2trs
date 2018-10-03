@@ -95,6 +95,11 @@ def run_model(model, distr_constr_enabled, send_to_neos):
         model.distr_rule_high = Constraint(model.GROUP_IDS, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
+
+    opt.options['workmem'] = settings.optimisation_work_memory
+    opt.options['mip strategy file'] = settings.optimisation_mip_strategy_file
+    opt.options['simplex display'] = 2
+
     if model.optimisation_rel_gap:
         opt.options['mip tolerances mipgap'] = model.optimisation_rel_gap
 

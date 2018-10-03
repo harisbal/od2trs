@@ -26,17 +26,8 @@ def filter_tcs_by_dict(tcs_info, d_filters):
 def main(tcs, tcs_info, observed_distr):
 
     settings.init()
-
-    no_tcs = tcs_info.index.unique().size
-    print('Initial tcs number {:,}'.format(no_tcs))
-
     tcs_info = filter_low_freq_distr_groups(tcs_info, observed_distr)
-    no_tcs = tcs_info.index.unique().size
-    print('Tcs after low observed distribution frequency filter: {:,}'.format(no_tcs))
-
     tcs_info = filter_tcs_by_dict(tcs_info, settings.filters)
-    no_tcs = tcs_info.index.unique().size
-    print('Tcs after dictionary filters: {:,}'.format(no_tcs))
 
     # Remove unused tcs
     stack_lvl = 'LegSeqIdx'
@@ -44,4 +35,4 @@ def main(tcs, tcs_info, observed_distr):
     tcs = tcs[tcs.index.isin(tcs_info.index)]
     tcs = tcs.stack(stack_lvl)
 
-    return tcs, tcs_info
+    return tcs

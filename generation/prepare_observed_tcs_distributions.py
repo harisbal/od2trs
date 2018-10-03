@@ -41,6 +41,8 @@ def prepare_distribution(observed_tcs_info):
         # Drop rows where the distribution perc is lower than the threshold
         mask = observed_tcs_distr.Percentage >= threshold
         observed_tcs_distr = observed_tcs_distr[mask]
+        # Recalculate the percentages
+        observed_tcs_distr['Percentage'] /= observed_tcs_distr['Percentage'].sum()
 
     return observed_tcs_distr
 

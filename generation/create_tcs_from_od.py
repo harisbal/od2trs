@@ -7,6 +7,8 @@ from multiprocessing import Manager, Pool, cpu_count
 from functools import partial
 
 import settings
+import generation.assign_tcs_info as info_tcs
+import generation.filter_tcs as filter_tcs
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -68,6 +70,13 @@ def fetch_prepare_od(infilepath, trips_thresh):
     od_filtered.LegId = od_filtered.LegId.astype(int)
 
     return od_filtered
+
+
+def read_distances(infilepath):
+    df = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
+    df = df.astype(float)
+    df.index.names = ['OrigZoneId', 'DestZoneId']
+    return df
 
 
 def filter_graph_edges_trip_purpose(G, home_zone, filter_edge_purpose_names):
@@ -303,11 +312,11 @@ def chronologically_sensible_tcs(tcs, timeperiod_sequence):
 
 def create_possible_tcs(zones_seq):
     # Wrapper for all the tests to identify sensible tcs
-    settings.init()
     zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
-    tcs = convert_zones_seq_to_tcs(zones_seq, globalG)
-    tcs = chronologically_sensible_tcs(tcs, settings.ordered_time_periods)
-    return tcs
+    possible_tcs = convert_zones_seq_to_tcs(zones_seq, globalG)
+    possible_tcs = chronologically_sensible_tcs(possible_tcs, settings.ordered_time_periods)
+
+    return possible_tcs
 
 
 def create_tcs(start_zone, max_legs=None):
@@ -324,7 +333,7 @@ def create_tcs(start_zone, max_legs=None):
     tcs = list()
     for zones_seq in zones_seqs:
         possible_tcs = create_possible_tcs(zones_seq)
-        tcs.append(*possible_tcs)
+        tcs.extend(possible_tcs)
 
     return tcs
 
@@ -355,19 +364,34 @@ def tcs_to_df(tcs):
     return df_tcs
 
 
+def assign_tcs_ids(tcs):
+    # Assign proper ids
+    tc_id = 1
+    for df in tcs:
+        no_tcs = df.index.levels[0].values.size
+        new_levels = list(range(tc_id, tc_id+no_tcs))
+        if not df.empty:
+            df.index.set_levels(new_levels, level='TripChainId', inplace=True)
+            tc_id += no_tcs
+    return tcs
+
+
 def init_pool(G):
     global globalG
     globalG = G
+    settings.init()
 
 
-def main(max_legs, trips_thresh):
+def main(max_legs, trips_thresh, observed_tcs_distr):
 
     settings.init()
 
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
-    G = nx.from_pandas_edgelist(od.reset_index(), 'OrigZoneId', 'DestZoneId', ['Purpose', 'TimePeriod'],
+    G = nx.from_pandas_edgelist(od.reset_index(),
+                                'OrigZoneId', 'DestZoneId',
+                                ['Purpose', 'TimePeriod'],
                                 nx.MultiDiGraph())
 
     print('Identifying Zone Sequences...')
@@ -376,20 +400,32 @@ def main(max_legs, trips_thresh):
     # TODO the check for internal zones is very crude (check if zone begins with E02...
     internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
 
-    print('Creating Chains...')
+    zone_distances = read_distances(settings.filepaths['distances'])
+
     possible_tcs = list()
     with Pool(cpu_count()-1, initializer=init_pool, initargs=[G]) as pool:
         for tcs in tqdm(pool.imap_unordered(
                         partial(create_tcs, max_legs=max_legs),
                         internal_zones), total=len(internal_zones)):
             if tcs:
-                possible_tcs.extend(tcs)
+                tcs = tcs_to_df(tcs)
+                tcs_info = info_tcs.main(tcs, observed_tcs_distr,
+                                         zone_distances=zone_distances,
+                                         drop_unobserved_distr_group_tcs=True)
+                tcs = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
 
-    print('Converting to df {} trips chains'.format('{:,}'.format(len(possible_tcs))))
-    tcs_df = tcs_to_df(possible_tcs)
-    print('End Phase 1 (Creating trip chains from OD)')
+                possible_tcs.append(tcs)
 
-    return tcs_df, od
+    possible_tcs = assign_tcs_ids(possible_tcs)
+    tcs = pd.concat(possible_tcs)
+
+    # TODO I shouldn't do this twice...
+    tcs_info = info_tcs.main(tcs, observed_tcs_distr,
+                             zone_distances=zone_distances,
+                             drop_unobserved_distr_group_tcs=True)
+    tcs = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
+    print('Total tcs after filtering: {:,}'.format(tcs.index.unique(level='TripChainId').size))
+    return tcs, tcs_info, od
 
 
 if __name__ == '__main__':

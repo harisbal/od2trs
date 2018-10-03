@@ -30,17 +30,19 @@ def init(processfolder=None):
     global submit_to_neos
     global distribution_constraint_tolerance
     global optimisation_rel_gap
+    global optimisation_work_memory
+    global optimisation_mip_strategy_file
 
     # Separator to be used in chains
     global_separator = '-'
 
     data_source = 'mnd_TSC'
-    model_name = 'sample_100'
-    trips_direction = 'test'
+    model_name = 'allPop'
+    trips_direction = 'internalToInternal'
 
     int_zone_str = 'E01'
 
-    max_legs = [3]
+    max_legs = [3, 4]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
@@ -56,13 +58,15 @@ def init(processfolder=None):
     filters = {'Distance': 6_000}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    distribution_percentage_thresh = None
+    distribution_percentage_thresh = 0.025
 
     # Maximum allowed deviation between observed and estimated distributions' percentage
-    distribution_percentage_tolerance = 0.01
+    distribution_percentage_tolerance = 0.025
 
     # MIP relative gap
-    optimisation_rel_gap = None
+    optimisation_rel_gap = 0.01
+    optimisation_work_memory = 28000
+    optimisation_mip_strategy_file = 2
 
     # Dictionary to group purposes in OD
     d_grp_purposes = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',

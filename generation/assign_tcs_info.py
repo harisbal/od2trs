@@ -3,13 +3,6 @@ import pandas as pd
 import settings
 
 
-def read_distances(infilepath):
-    df = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
-    df = df.astype(float)
-    df.index.names = ['OrigZoneId', 'DestZoneId']
-    return df
-
-
 def prepare_tcs_info(tcs, distances):
     """
     Function to return info for each chain
@@ -50,14 +43,13 @@ def assign_distribution_group(tcs_info, observed_tcs_distr):
     return tcs_info
 
 
-def main(tcs, observed_tcs_distr):
-    settings.init()
-    dists = read_distances(settings.filepaths['distances'])
-    tcs_info = prepare_tcs_info(tcs, dists)
+def main(tcs, observed_tcs_distr, zone_distances, drop_unobserved_distr_group_tcs=False):
 
+    tcs_info = prepare_tcs_info(tcs, zone_distances)
     tcs_info = assign_distribution_group(tcs_info, observed_tcs_distr)
 
-    # Drop the tcs that did not have a match (do not exist in the observed distrs)
-    tcs_info = tcs_info.dropna(subset=['DistrGroupId'])
+    if drop_unobserved_distr_group_tcs:
+        # Drop the tcs that did not have a match (do not exist in the observed distrs)
+        tcs_info = tcs_info.dropna(subset=['DistrGroupId'])
 
     return tcs_info

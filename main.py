@@ -3,8 +3,6 @@ import itertools
 import shutil
 
 import generation.create_tcs_from_od as create_tcs
-import generation.assign_tcs_info as info_tcs
-import generation.filter_tcs as filter_tcs
 import generation.prepare_observed_tcs_distributions as prepare_obs_tcs_distr
 import generation.optimise as opt
 import settings
@@ -54,7 +52,10 @@ def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, d
                        'DistributionDims': ','.join(settings.distribution_dims),
                        'MaxLegs': legs,
                        'TripsThresh': trips_thresh,
-                       'DistrConstrEnabled': distr_constr_enabled}
+                       'DistrConstrEnabled': distr_constr_enabled,
+                       'OptimRelGap':settings.optimisation_rel_gap,
+                       'ObsDistrPercThresh': settings.distribution_percentage_thresh,
+                       'CompDistrPercTolerance': settings.distribution_percentage_tolerance}
 
         print(run_summary, file=f)
 
@@ -70,24 +71,19 @@ def main():
     for legs, trips_thresh in params:
             print(r'\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, trips_direction,
                                                                                        legs, trips_thresh))
-            print('Phase 1/4: Creating TripChains...')
-            tcs, od = create_tcs.main(legs, trips_thresh)
+
+            print('Preparing Distributions from observed data...')
+            observed_tcs_distr = prepare_obs_tcs_distr.main(legs)
+
+            print('Creating TripChains...')
+            tcs, tcs_info, od = create_tcs.main(legs, trips_thresh, observed_tcs_distr)
 
             if tcs.empty:
                 print('No tripchains discovered')
                 return None
 
-            print('Phase 2/4: Prepare Distributions from observed data...')
-            observed_tcs_distr = prepare_obs_tcs_distr.main(legs)
-
-            print('Phase 3/4: Classifying TripChains...')
-            tcs_info = info_tcs.main(tcs, observed_tcs_distr)
-
-            print('Filter tcs')
-            tcs, tcs_info = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
-
-            for distr_constr_enabled in [True, False]:
-                print('Phase 4/4: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
+            for distr_constr_enabled in [True]:
+                print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
                 results = opt.main(tcs, tcs_info, od, observed_tcs_distr, distr_constr_enabled,
                                    submit_to_neos=settings.submit_to_neos)
 
