@@ -174,13 +174,13 @@ def purpose_sensible_tcs(zones_seq, G, filter_edge_purpose_names):
     return purpose_possible_tcs
 
 
-def create_potential_zones_seqs(startzone, max_legs):
+def create_potential_zones_seqs(start_zone, max_legs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
     b) limiting the maximum number of legs for the returned zone_sequences
 
-    :param startzone:
+    :param start_zone:
     :param max_legs_chain:
     :param filter_edge_purpose_names: the name of the trip purposes to look for
     :return: potential_tripchains
@@ -188,10 +188,10 @@ def create_potential_zones_seqs(startzone, max_legs):
 
     settings.init()
 
-    G_filt = filter_graph_edges_trip_purpose(globalG, startzone, settings.filter_purposes)
+    G_filt = filter_graph_edges_trip_purpose(globalG, start_zone, settings.filter_purposes)
 
     zones_seqs = []
-    simple_cycles = nx.simple_cycles_root(G_filt, root=startzone, max_cycle_len=max_legs)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, max_cycle_len=max_legs)
     # Make the home zone the initial zone of the chain
     for sc in simple_cycles:
         # Complete the tours (repeat first zone)
@@ -303,45 +303,30 @@ def chronologically_sensible_tcs(tcs, timeperiod_sequence):
 
 def create_possible_tcs(zones_seq):
     # Wrapper for all the tests to identify sensible tcs
-
     settings.init()
     zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
     tcs = convert_zones_seq_to_tcs(zones_seq, globalG)
     tcs = chronologically_sensible_tcs(tcs, settings.ordered_time_periods)
-
     return tcs
 
 
-def add_od_pairs_sequence(tripchains, od):
-    """
-    Include the sequence of od pairs that form the tripchain
-    Each od pair must have a unique id
+def create_tcs(start_zone, max_legs=None):
 
-    :param tripchains:
-    :param od:
-    :return: tripchains with OdPairsIds included
-    """
+    zones_seqs = create_potential_zones_seqs(start_zone, max_legs)
 
-    for tc_id, tc in tripchains.items():
-        # Create a list of tuples with the origin and destination for each leg in tripchain
-        origs = list()
-        dests = list()
-        for orig_zone, dest_zone in pairwise(tc['Zones']):
-            origs.append(orig_zone)
-            dests.append(dest_zone)
+    if not zones_seqs:
+        return None
 
-        purposes = tc['Purposes']
-        timeperiods = tc['TimePeriods']
+    # Keep only the unique
+    zones_seqs.sort()
+    zones_seqs = list(k for k, _ in itertools.groupby(zones_seqs))
 
-        od_pairs_attrs = list(zip(origs, dests, purposes, timeperiods))
+    tcs = list()
+    for zones_seq in zones_seqs:
+        possible_tcs = create_possible_tcs(zones_seq)
+        tcs.append(*possible_tcs)
 
-        od_pair_ids = list()
-        for attrs in od_pairs_attrs:
-            od_pair_ids.append(int(od.at[attrs, 'LegId']))
-
-        tc['OdPairsId'] = od_pair_ids
-
-    return tripchains
+    return tcs
 
 
 def tcs_to_df(tcs):
@@ -360,7 +345,6 @@ def tcs_to_df(tcs):
     """
 
     d_tcs = dict()
-
     for idx_tc, tc in enumerate(tcs):
         for idx_leg, leg in enumerate(tc):
             d_tcs[(idx_tc, idx_leg)] = leg
@@ -392,23 +376,14 @@ def main(max_legs, trips_thresh):
     # TODO the check for internal zones is very crude (check if zone begins with E02...
     internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
 
-    potential_zones_seq = []
+    print('Creating Chains...')
+    possible_tcs = list()
     with Pool(cpu_count()-1, initializer=init_pool, initargs=[G]) as pool:
-        for zones_seqs in tqdm(pool.imap_unordered(
-                               partial(create_potential_zones_seqs, max_legs=max_legs),
-                               internal_zones), total=len(internal_zones)):
-
-            potential_zones_seq.extend(zones_seqs)
-
-        # Keep only the unique
-        potential_zones_seq.sort()
-        potential_zones_seq = list(k for k, _ in itertools.groupby(potential_zones_seq))
-
-        print('Creating Chains...')
-        possible_tcs = []
-        for tcs in tqdm(pool.imap_unordered(create_possible_tcs, potential_zones_seq),
-                        total=len(potential_zones_seq)):
-            possible_tcs.extend(tcs)
+        for tcs in tqdm(pool.imap_unordered(
+                        partial(create_tcs, max_legs=max_legs),
+                        internal_zones), total=len(internal_zones)):
+            if tcs:
+                possible_tcs.extend(tcs)
 
     print('Converting to df {} trips chains'.format('{:,}'.format(len(possible_tcs))))
     tcs_df = tcs_to_df(possible_tcs)
