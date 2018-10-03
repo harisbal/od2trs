@@ -49,6 +49,7 @@ def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, d
 
     with open(settings.filepaths['summary'], 'w') as f:
         run_summary = {'DataSource': settings.data_source,
+                       'ModelName': settings.model_name,
                        'TripsDirection': settings.trips_direction,
                        'DistributionDims': ','.join(settings.distribution_dims),
                        'MaxLegs': legs,
@@ -63,10 +64,12 @@ def main():
 
     params = list(itertools.product(settings.max_legs, settings.trips_thresh))
 
-    for legs, trips_thresh in params:
+    model_name = settings.model_name
+    trips_direction = settings.trips_direction
 
-            print('\n')
-            print(r'Legs:{}, trips_thresh:{}'.format(legs, trips_thresh))
+    for legs, trips_thresh in params:
+            print(r'\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, trips_direction,
+                                                                                       legs, trips_thresh))
             print('Phase 1/4: Creating TripChains...')
             tcs, od = create_tcs.main(legs, trips_thresh)
 
@@ -75,7 +78,7 @@ def main():
                 return None
 
             print('Phase 2/4: Prepare Distributions from observed data...')
-            observed_tcs_distr = prepare_obs_tcs_distr.main(tcs, legs)
+            observed_tcs_distr = prepare_obs_tcs_distr.main(legs)
 
             print('Phase 3/4: Classifying TripChains...')
             tcs_info = info_tcs.main(tcs, observed_tcs_distr)

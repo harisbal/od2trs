@@ -19,7 +19,7 @@ def get_observed_tcs_info(max_legs):
     return observed_tcs_info
 
 
-def prepare_distribution(observed_tcs_info, tcs):
+def prepare_distribution(observed_tcs_info):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the
@@ -35,13 +35,20 @@ def prepare_distribution(observed_tcs_info, tcs):
     observed_tcs_distr = observed_tcs_distr.reset_index()
     observed_tcs_distr.index.name = 'DistrGroupId'
 
+    threshold = settings.distribution_percentage_thresh
+
+    if threshold:
+        # Drop rows where the distribution perc is lower than the threshold
+        mask = observed_tcs_distr.Percentage >= threshold
+        observed_tcs_distr = observed_tcs_distr[mask]
+
     return observed_tcs_distr
 
 
-def main(tcs, max_legs):
+def main(max_legs):
     settings.init()
 
     observed_tcs_info = get_observed_tcs_info(max_legs)
-    observed_distr_grps = prepare_distribution(observed_tcs_info, tcs)
+    observed_distr_grps = prepare_distribution(observed_tcs_info)
 
     return observed_distr_grps

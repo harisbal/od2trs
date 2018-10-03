@@ -30,11 +30,13 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
         return d_distr_grps
 
     model = ConcreteModel()
-    model.tolerance = settings.distribution_constraint_tolerance
     model.od = od
     model.tcs = tcs
     model.tcs_info = tcs_info
     model.distr_grps = distr_grps
+
+    model.distr_perc_tolerance = settings.distribution_percentage_tolerance
+    model.optimisation_rel_gap = settings.optimisation_rel_gap
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
@@ -72,7 +74,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     def distr_rule_low(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            lower_lim = ((_model.distr_group_percs[g_id] - _model.tolerance)
+            lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
                          * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return lower_lim <= expr
@@ -81,7 +83,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     def distr_rule_high(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            upper_lim = ((_model.distr_group_percs[g_id] + _model.tolerance)
+            upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
                          * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return expr <= upper_lim
@@ -93,6 +95,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
         model.distr_rule_high = Constraint(model.GROUP_IDS, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
+    if model.optimisation_rel_gap:
+        opt.options['mip tolerances mipgap'] = model.optimisation_rel_gap
 
     if send_to_neos:
         solver_manager = SolverManagerFactory('neos')

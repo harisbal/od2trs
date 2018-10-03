@@ -412,7 +412,6 @@ def main(max_legs, trips_thresh):
 
     print('Converting to df {} trips chains'.format('{:,}'.format(len(possible_tcs))))
     tcs_df = tcs_to_df(possible_tcs)
-
     print('End Phase 1 (Creating trip chains from OD)')
 
     return tcs_df, od

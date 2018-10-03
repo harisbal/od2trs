@@ -41,7 +41,7 @@ def assign_distribution_group(tcs_info, observed_tcs_distr):
     # Keep only the distribution group id and its definition
     distr_group_ids = observed_tcs_distr.reset_index()
     distr_group_ids.set_index(settings.distribution_dims, inplace=True)
-    distr_group_ids = distr_group_ids['DistrGroupId'].squeeze()
+    distr_group_ids = distr_group_ids['DistrGroupId']
 
     tcs_info = pd.merge(tcs_info, distr_group_ids.to_frame(),
                         left_on=settings.distribution_dims, right_index=True,

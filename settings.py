@@ -18,6 +18,7 @@ def init(processfolder=None):
     global d_grp_purposes
     global filter_purposes
     global distribution_dims
+    global distribution_percentage_tolerance
     global distribution_percentage_thresh
     global distance_bins
     global filters
@@ -28,17 +29,18 @@ def init(processfolder=None):
     global int_zone_str
     global submit_to_neos
     global distribution_constraint_tolerance
+    global optimisation_rel_gap
 
     # Separator to be used in chains
     global_separator = '-'
 
     data_source = 'mnd_TSC'
-    model_name = 'sample_100'
-    trips_direction = 'test'
+    model_name = 'sample_10000'
+    trips_direction = 'internalToInternal'
 
     int_zone_str = 'E01'
 
-    max_legs = [5]
+    max_legs = [3, 4, 5, 6]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
@@ -47,17 +49,20 @@ def init(processfolder=None):
 
     distribution_dims = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
     ordered_time_periods = ['AM', 'IP', 'PM', 'OP']
-    distance_bins = [0, 1800, 3600, 5400, float('inf')]
+    distance_bins = [0, 900, 1800, 3600, float('inf')]
 
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
     filters = {'Distance': 6_000}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    distribution_percentage_thresh = 0.01
+    distribution_percentage_thresh = None
 
-    # Convergence criteria for optimisation
-    distribution_constraint_tolerance = 0.02
+    # Maximum allowed deviation between observed and estimated distributions' percentage
+    distribution_percentage_tolerance = 0.01
+
+    # MIP relative gap
+    optimisation_rel_gap = None
 
     # Dictionary to group purposes in OD
     d_grp_purposes = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
