@@ -5,7 +5,7 @@ import settings
 def get_observed_tcs_info(max_legs):
 
     # observed tours info
-    observed_tcs_info = pd.read_csv(settings.filepaths['observed_tours_info'])
+    observed_tcs_info = pd.read_csv(settings.filepaths['obs_tours_info'])
 
     # Keep only the tours with less than max_legs legs
     mask = observed_tcs_info['Legs'] <= max_legs

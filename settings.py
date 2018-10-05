@@ -32,7 +32,7 @@ def init(processfolder=None):
     global optimisation_mip_strategy_file
 
     data_source = 'mnd_TSC'
-    model_name = 'allPop'
+    model_name = 'sample_1000'
     trips_direction = 'internalToInternal'
 
     int_zone_str = 'E01'
@@ -89,13 +89,12 @@ def init(processfolder=None):
     filepaths['od'] = os.path.join(filepaths['infolder'], 'od.csv')
 
     filepaths['distances'] = os.path.join(filepaths['infolder'], 'distance_matrix.csv')
-    filepaths['observed_tours_info'] = os.path.join(filepaths['infolder'], 'observed_tours_info.csv')
+    filepaths['obs_tours_info'] = os.path.join(filepaths['infolder'], 'obs_tours_info.csv')
 
     if processfolder:
         filepaths['od_filtered'] = os.path.join(processfolder, 'od_filtered.csv')
-        filepaths['tripchains_descr'] = os.path.join(processfolder, 'tripchains_descr.csv')
-        filepaths['tripchains_info'] = os.path.join(processfolder, 'tripchains_info.csv')
+        filepaths['tours_mdl_descr'] = os.path.join(processfolder, 'tours_mdl_descr.csv')
+        filepaths['tours_mdl_info'] = os.path.join(processfolder, 'tours_mdl_info.csv')
         filepaths['target_distribution'] = os.path.join(processfolder, 'target_distribution.csv')
         filepaths['optimisation_results'] = os.path.join(processfolder, 'results.json')
-        filepaths['ampl_data'] = os.path.join(processfolder, 'data.dat')
         filepaths['summary'] = os.path.join(processfolder, 'summary.txt')
