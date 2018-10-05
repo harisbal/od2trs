@@ -52,15 +52,14 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
         model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs, default=0)
         model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps, default=None)
-
     return model
 
 
 def run_model(model, distr_constr_enabled, send_to_neos):
     def maximise_used_trips(_model):
         return sum(
-               sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
-               if _model.chains_descr[leg_id] else 0 - _model.trips[leg_id] for leg_id in _model.LEG_IDS)
+               (sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
+               if _model.chains_descr[leg_id] else 0) - _model.trips[leg_id] for leg_id in _model.LEG_IDS)
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(_model, leg_id):

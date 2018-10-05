@@ -25,16 +25,11 @@ def init(processfolder=None):
 
     global ordered_time_periods
 
-    global global_separator
     global int_zone_str
     global submit_to_neos
-    global distribution_constraint_tolerance
     global optimisation_rel_gap
     global optimisation_work_memory
     global optimisation_mip_strategy_file
-
-    # Separator to be used in chains
-    global_separator = '-'
 
     data_source = 'mnd_TSC'
     model_name = 'allPop'
@@ -42,7 +37,7 @@ def init(processfolder=None):
 
     int_zone_str = 'E01'
 
-    max_legs = [3, 4]
+    max_legs = [3, 4, 5]
     trips_thresh = [1]
 
     max_external_zones_in_tc = None
@@ -58,14 +53,14 @@ def init(processfolder=None):
     filters = {'Distance': 6_000}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    distribution_percentage_thresh = 0.025
+    distribution_percentage_thresh = 0.005
 
     # Maximum allowed deviation between observed and estimated distributions' percentage
-    distribution_percentage_tolerance = 0.025
+    distribution_percentage_tolerance = 0.01
 
     # MIP relative gap
     optimisation_rel_gap = 0.01
-    optimisation_work_memory = 28000
+    optimisation_work_memory = 10000
     optimisation_mip_strategy_file = 2
 
     # Dictionary to group purposes in OD
