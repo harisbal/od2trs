@@ -29,14 +29,17 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
 
         return d_distr_grps
 
+    settings.init()
+    params = settings.parameters
+
     model = ConcreteModel()
     model.od = od
     model.tcs = tcs
     model.tcs_info = tcs_info
     model.distr_grps = distr_grps
 
-    model.distr_perc_tolerance = settings.distribution_percentage_tolerance
-    model.optimisation_rel_gap = settings.optimisation_rel_gap
+    model.distr_perc_tolerance = params['distribution_percentage_tolerance']
+    model.optimisation_rel_gap = params['optimisation_rel_gap']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
@@ -95,8 +98,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     opt = SolverFactory('cplex')
 
-    opt.options['workmem'] = settings.optimisation_work_memory
-    opt.options['mip strategy file'] = settings.optimisation_mip_strategy_file
+    opt.options['workmem'] = settings.parameters['optimisation_work_memory']
+    opt.options['mip strategy file'] = settings.parameters['optimisation_mip_strategy_file']
     opt.options['simplex display'] = 2
 
     if model.optimisation_rel_gap:
