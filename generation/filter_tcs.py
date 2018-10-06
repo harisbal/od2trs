@@ -3,7 +3,7 @@ import settings
 
 def filter_low_freq_distr_groups(tcs_info, observed_distr):
     # Keep distribution groups when their share is greater than thresh_perc
-    thresh_perc = settings.distribution_percentage_thresh
+    thresh_perc = settings.parameters['distribution_percentage_thresh']
     if thresh_perc:
         if not (0 < thresh_perc <= 1):
             raise ValueError('filter thresh_perc should be between 0 and 1')
@@ -27,7 +27,7 @@ def main(tcs, tcs_info, observed_distr):
 
     settings.init()
     tcs_info = filter_low_freq_distr_groups(tcs_info, observed_distr)
-    tcs_info = filter_tcs_by_dict(tcs_info, settings.filters)
+    tcs_info = filter_tcs_by_dict(tcs_info, settings.parameters['filters'])
 
     # Remove unused tcs
     stack_lvl = 'LegSeqIdx'

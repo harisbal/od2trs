@@ -20,8 +20,8 @@ def prepare_tcs_info(tcs, distances):
     tcs_legs.name = 'Legs'
 
     # Add the grouping information
-    if settings.distance_bins:
-        distance_grp = pd.cut(tcs_dists, bins=settings.distance_bins)
+    if settings.parameters['distance_bins']:
+        distance_grp = pd.cut(tcs_dists, bins=settings.parameters['distance_bins'])
         distance_grp.name = 'DistanceGroup'
 
     tcs_info = pd.concat([tcs_legs, tcs_dists, distance_grp], axis=1)
@@ -31,13 +31,14 @@ def prepare_tcs_info(tcs, distances):
 
 def assign_distribution_group(tcs_info, observed_tcs_distr):
 
+    distr_dims = settings.parameters['distribution_dims']
     # Keep only the distribution group id and its definition
     distr_group_ids = observed_tcs_distr.reset_index()
-    distr_group_ids.set_index(settings.distribution_dims, inplace=True)
+    distr_group_ids.set_index(distr_dims, inplace=True)
     distr_group_ids = distr_group_ids['DistrGroupId']
 
     tcs_info = pd.merge(tcs_info, distr_group_ids.to_frame(),
-                        left_on=settings.distribution_dims, right_index=True,
+                        left_on=distr_dims, right_index=True,
                         how='left')
 
     return tcs_info

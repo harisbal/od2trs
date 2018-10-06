@@ -10,6 +10,7 @@ import settings
 import generation.assign_tcs_info as info_tcs
 import generation.filter_tcs as filter_tcs
 
+
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
@@ -32,7 +33,7 @@ def fetch_prepare_od(infilepath, trips_thresh):
     od.set_index(idx_names, inplace=True)
     od = od.squeeze()
 
-    grp_keys = [None, None, settings.d_grp_purposes, None, None]
+    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None]
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
     odg = odg.reset_index()
@@ -52,11 +53,12 @@ def fetch_prepare_od(infilepath, trips_thresh):
 
     # Filter out HB_FromHome when origin is external (home location is external)
     # and HB_ToHome when destination is to external
-    mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith(settings.int_zone_str) &
-               (od_filtered.index.get_level_values('Purpose') == 'HB_FromHome'))
+    internal_zone_str = settings.parameters['int_zone_str']
+    mask_fh = (~od_filtered.index.get_level_values('OrigZoneId').str.startswith(internal_zone_str) &
+               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['origin_purposes'])))
 
-    mask_th = (~od_filtered.index.get_level_values('DestZoneId').str.startswith(settings.int_zone_str) &
-               (od_filtered.index.get_level_values('Purpose') == 'HB_ToHome'))
+    mask_th = (~od_filtered.index.get_level_values('DestZoneId').str.startswith(internal_zone_str) &
+               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['destination_purposes'])))
 
     od_filtered.loc[mask_fh] = np.nan
     od_filtered.loc[mask_th] = np.nan
@@ -101,7 +103,6 @@ def filter_graph_edges_trip_purpose(G, home_zone, filter_edge_purpose_names):
         elif attr['Purpose'] in hbth_names:
             if (target == home_zone):
                 filt_G.add_edge(source, target, Purpose=attr['Purpose'])
-
     return filt_G
 
 
@@ -195,9 +196,7 @@ def create_potential_zones_seqs(start_zone, max_legs):
     :return: potential_tripchains
     """
 
-    settings.init()
-
-    G_filt = filter_graph_edges_trip_purpose(globalG, start_zone, settings.filter_purposes)
+    G_filt = filter_graph_edges_trip_purpose(globalG, start_zone, settings.parameters['filter_purposes'])
 
     zones_seqs = []
     simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, max_cycle_len=max_legs)
@@ -222,7 +221,7 @@ def limit_maximum_external_zones(zones_seq, max_external_zones=None):
 
         cnt = 0
         for zone in zones_seq:
-            if not zone.startswith(settings.int_zone_str):
+            if not zone.startswith(params['int_zone_str']):
                 cnt += 1
             if cnt > max_external_zones:
                 continue
@@ -254,7 +253,7 @@ def convert_zones_seq_to_tcs(zones_seq, G):
 
         return leg_attrs
 
-    filter_purpose_orig, filter_purpose_dest, filter_purpose_interm = settings.filter_purposes
+    filter_purpose_orig, filter_purpose_dest, filter_purpose_interm = settings.parameters['filter_purposes']
 
     tcs_legs_attrs = list()
 
@@ -312,9 +311,9 @@ def chronologically_sensible_tcs(tcs, timeperiod_sequence):
 
 def create_possible_tcs(zones_seq):
     # Wrapper for all the tests to identify sensible tcs
-    zones_seq = limit_maximum_external_zones(zones_seq, settings.max_external_zones_in_tc)
+    zones_seq = limit_maximum_external_zones(zones_seq, settings.parameters['max_external_zones_in_tc'])
     possible_tcs = convert_zones_seq_to_tcs(zones_seq, globalG)
-    possible_tcs = chronologically_sensible_tcs(possible_tcs, settings.ordered_time_periods)
+    possible_tcs = chronologically_sensible_tcs(possible_tcs, settings.parameters['ordered_time_periods'])
 
     return possible_tcs
 
@@ -384,8 +383,6 @@ def init_pool(G):
 
 def main(max_legs, trips_thresh, observed_tcs_distr):
 
-    settings.init()
-
     print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
@@ -398,7 +395,7 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
     # TODO Create a file with the zones definition
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E02...
-    internal_zones = [n for n in G if n.startswith(settings.int_zone_str)]
+    internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
     zone_distances = read_distances(settings.filepaths['distances'])
 
@@ -429,4 +426,5 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
 
 
 if __name__ == '__main__':
+    settings.init()
     main()
