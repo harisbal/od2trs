@@ -55,7 +55,7 @@ def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, d
                        'MaxLegs': legs,
                        'TripsThresh': trips_thresh,
                        'DistrConstrEnabled': distr_constr_enabled,
-                       'OptimRelGap': params['optimisation']['optimisation_rel_gap'],
+                       'OptimRelGap': params['optimisation']['mip tolerances mipgap'],
                        'ObsDistrPercThresh': params['distribution_percentage_thresh'],
                        'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance']}
 

@@ -39,7 +39,7 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.distr_grps = distr_grps
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
-    model.optimisation_rel_gap = params['optimisation_rel_gap']
+    model.optimisation_rel_gap = params['mip tolerances mipgap']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
@@ -100,13 +100,13 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     opt = SolverFactory('cplex')
 
-    opt.options['workmem'] = params['optimisation_work_memory']
-    opt.options['mip strategy file'] = params['optimisation_mip_strategy_file']
+    opt.options['workmem'] = params['work memory']
+    opt.options['mip strategy file'] = params['mip strategy file']
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
     if model.optimisation_rel_gap:
-        opt.options['mip tolerances mipgap'] = params['optimisation_rel_gap']
+        opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
 
     if send_to_neos:
         solver_manager = SolverManagerFactory('neos')

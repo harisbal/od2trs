@@ -15,7 +15,7 @@ def init(outfolder=None):
     parameters['trips_direction'] = 'test'
     parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [3, 4, 5]
+    parameters['max_legs'] = [3]
     parameters['trips_thresh'] = [1]
 
     parameters['max_external_zones_in_tc'] = None
@@ -27,7 +27,7 @@ def init(outfolder=None):
 
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': 6_000}
+    parameters['filters'] = {'Distance': 5_700}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     parameters['distribution_percentage_thresh'] = None
@@ -38,9 +38,9 @@ def init(outfolder=None):
     parameters['optimisation']['distribution_percentage_tolerance'] = 0.01
     # MIP relative gap
     parameters['optimisation']['mip strategy probe'] = 2
-    parameters['optimisation']['optimisation_rel_gap'] = None
-    parameters['optimisation']['optimisation_work_memory'] = 10000
-    parameters['optimisation']['optimisation_mip_strategy_file'] = 2
+    parameters['optimisation']['mip tolerances mipgap'] = None
+    parameters['optimisation']['work memory'] = 10000
+    parameters['optimisation']['mip strategy file'] = 2
 
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
