@@ -106,84 +106,6 @@ def filter_graph_edges_trip_purpose(G, home_zone, filter_edge_purpose_names):
     return filt_G
 
 
-def purpose_sensible_tcs(zones_seq, G, filter_edge_purpose_names):
-
-    # Return a list with the allowed purposes and time periods for this leg if the purpses are allowed
-    # e.g. [HBW_FH, HBO_FH]
-
-    def filter_legs_by_allowed_purposes(start_zone, end_zone, filter_purposes):
-        leg_data = G.get_edge_data(start_zone, end_zone)
-        purposes = None
-        timeperiods = None
-        if leg_data:
-            data = [v for k, v in leg_data.items() if v['Purpose'] in filter_purposes]
-            if data:
-                purposes = list()
-                timeperiods = list()
-
-                for edge_attrs in data:
-                    purposes.append(edge_attrs['Purpose'])
-                    timeperiods.append(edge_attrs['TimePeriod'])
-
-        return purposes, timeperiods
-
-    origin_purposes, destination_purposes, intermediate_purposes = filter_edge_purpose_names
-
-    purpose_possible_tcs = dict()
-
-    tc_id = 0
-    tc_leg_attrs = None
-    # check for empty list
-    if zones_seq:
-
-        first_leg_purposes, first_leg_timeperiods = filter_legs_by_allowed_purposes(zones_seq[0], zones_seq[1],
-                                                                                    origin_purposes)
-
-        last_leg_purposes, last_leg_timeperiods = filter_legs_by_allowed_purposes(zones_seq[-2], zones_seq[-1],
-                                                                                  destination_purposes)
-
-        # Check if first and last leg fulfil the criteria
-        # If they don't, function has returned None
-        if first_leg_purposes and last_leg_purposes:
-            # list of tuples the allowed (purposes, timeperiods) for each leg
-            tc_leg_attrs = [list(zip(first_leg_purposes, first_leg_timeperiods)),
-                            list(zip(last_leg_purposes, last_leg_timeperiods))]
-        else:
-            pass
-
-        if len(zones_seq) - 1 > 2:  # -1 because we manually added the last zone of the chain
-            # The rest can only be NHB trips
-            interm_edges = zones_seq[1:-1]
-
-            for u, v in pairwise(interm_edges):
-                interm_leg_purposes, interm_leg_timeperiods = filter_legs_by_allowed_purposes(u, v,
-                                                                                              intermediate_purposes)
-                if interm_leg_purposes:
-                    # Insert the attributes of the allowed leg before the last one
-                    tc_leg_attrs.insert(len(tc_leg_attrs)-1, list(zip(interm_leg_purposes, interm_leg_timeperiods)))
-                else:
-                    # If even for one of the intermediate legs no allowed purposes can be retrieved then stop
-                    tc_leg_attrs = None
-                    break
-
-
-        # For each leg of the tc a list of allowed purposes has been identified
-        # The following function will return all possible combinations
-        # e.g. [[(HBW_FH, AM) (HBO_FH, IP)], [(NHBW, OP), (NHBO, AM)], [(HBO_TH, IP)]] -->
-        # [(HBW_FH, AM), (NHBW, OP), (HBO_TH, IP)], [(HBW_FH, AM), (NHBO, AM), (HBO_TH, IP)], ..]
-        if tc_leg_attrs:
-            tcs = list(itertools.product(*tc_leg_attrs))
-            for tc in tcs:
-                purposes = [attrs[0] for attrs in tc]
-                timeperiods = [attrs[1] for attrs in tc]
-
-                purpose_possible_tcs[tc_id] = {'Zones': zones_seq, 'Purposes': purposes,
-                                               'TimePeriods': timeperiods}
-                tc_id += 1
-
-    return purpose_possible_tcs
-
-
 def create_potential_zones_seqs(start_zone, max_legs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
@@ -383,7 +305,6 @@ def init_pool(G):
 
 def main(max_legs, trips_thresh, observed_tcs_distr):
 
-    print('Reading...')
     od = fetch_prepare_od(settings.filepaths['od'], trips_thresh)
 
     G = nx.from_pandas_edgelist(od.reset_index(),
@@ -391,13 +312,14 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
                                 ['Purpose', 'TimePeriod'],
                                 nx.MultiDiGraph())
 
-    print('Identifying Zone Sequences...')
     # TODO Create a file with the zones definition
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E02...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
     zone_distances = read_distances(settings.filepaths['distances'])
+
+    #internal_zones = ['E01014603']
 
     possible_tcs = list()
     with Pool(cpu_count()-1, initializer=init_pool, initargs=[G]) as pool:
