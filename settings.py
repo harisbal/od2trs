@@ -12,7 +12,7 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'sample_100'
-    parameters['trips_direction'] = 'test'
+    parameters['trips_direction'] = 'internalToInternal'
     parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [3]
@@ -37,10 +37,15 @@ def init(outfolder=None):
     # Maximum allowed deviation between observed and estimated distributions' percentage
     parameters['optimisation']['distribution_percentage_tolerance'] = 0.01
     # MIP relative gap
-    parameters['optimisation']['mip strategy probe'] = 2
-    parameters['optimisation']['mip tolerances mipgap'] = None
-    parameters['optimisation']['work memory'] = 10000
-    parameters['optimisation']['mip strategy file'] = 2
+    parameters['optimisation']['mip strategy probe'] = 0
+
+    #parameters['optimisation']['mip tolerances mipgap'] = 0.01 Used abs mip gap instead
+
+    # Optimisation stop threshold expressed as percentage of total OD trips
+    parameters['optimisation']['mip tolerances absmipgap'] = 0.025
+
+    parameters['optimisation']['work memory'] = 4000
+    parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
