@@ -39,7 +39,7 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.distr_grps = distr_grps
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
-    model.optimisation_rel_gap = params['mip tolerances mipgap']
+    #model.optimisation_rel_gap = params['mip tolerances mipgap']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
@@ -105,8 +105,9 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    if model.optimisation_rel_gap:
-        opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
+    if params['mip tolerances absmipgap']:
+        thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
+        opt.options['mip tolerances absmipgap'] = thresh
 
     if send_to_neos:
         solver_manager = SolverManagerFactory('neos')
