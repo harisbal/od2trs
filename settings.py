@@ -11,12 +11,16 @@ def init(outfolder=None):
     parameters = dict()
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'sample_100'
+    parameters['model_name'] = 'sample_10000_msoa'
     parameters['trips_direction'] = 'internalToInternal'
-    parameters['int_zone_str'] = 'E01'
+    parameters['int_zone_str'] = 'E02'
 
-    parameters['max_legs'] = [3]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
+
+    # Maximum values for columns sin the tours
+    # In this case distance is travel time in seconds
+    parameters['filters'] = {'Distance': 7_000}
 
     parameters['max_external_zones_in_tc'] = None
     parameters['submit_to_neos'] = False
@@ -24,10 +28,6 @@ def init(outfolder=None):
     parameters['distribution_dims'] = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
     parameters['distance_bins'] = [0, 900, 1800, 2700, 3600, float('inf')]
-
-    # Maximum values for columns sin the tours
-    # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': 5_700}
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     parameters['distribution_percentage_thresh'] = None
