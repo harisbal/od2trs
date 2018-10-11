@@ -11,16 +11,16 @@ def init(outfolder=None):
     parameters = dict()
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'sample_10000_msoa'
+    parameters['model_name'] = 'lsoa'
     parameters['trips_direction'] = 'internalToInternal'
-    parameters['int_zone_str'] = 'E02'
+    parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
 
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': 7_000}
+    parameters['filters'] = {'Distance': 12_000}
 
     parameters['max_external_zones_in_tc'] = None
     parameters['submit_to_neos'] = False
@@ -42,9 +42,9 @@ def init(outfolder=None):
     #parameters['optimisation']['mip tolerances mipgap'] = 0.01 Used abs mip gap instead
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances absmipgap'] = 0.025
+    parameters['optimisation']['mip tolerances absmipgap'] = None
 
-    parameters['optimisation']['work memory'] = 4000
+    parameters['optimisation']['work memory'] = 5000
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
     # Dictionary to group purposes in OD
