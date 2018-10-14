@@ -103,6 +103,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['workmem'] = params['work memory']
     opt.options['mip strategy file'] = params['mip strategy file']
     opt.options['mip strategy probe'] = params['mip strategy probe']
+    opt.options['emphasis mip'] = params['emphasis mip']
+
     opt.options['simplex display'] = 2
 
     if params['mip tolerances absmipgap']:

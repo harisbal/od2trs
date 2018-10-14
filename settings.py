@@ -12,15 +12,15 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'sample_perc_50'
-    parameters['int_zone_str'] = 'E0'
+    parameters['trips_direction'] = 'internalToInternal'
+    parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [3]
+    parameters['max_legs'] = [3, 4, 5]
     parameters['trips_thresh'] = [1]
 
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': 12_000}
+    parameters['filters'] = {'Distance': 10_400} # for lsoa
 
     parameters['max_external_zones_in_tc'] = None
     parameters['submit_to_neos'] = False
@@ -30,21 +30,24 @@ def init(outfolder=None):
     parameters['distance_bins'] = [0, 900, 1800, 2700, 3600, float('inf')]
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = None
+    parameters['distribution_percentage_thresh'] = 0.01
+
+    #parallel threads
+    parameters['cpus'] = 15
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
     # Maximum allowed deviation between observed and estimated distributions' percentage
     parameters['optimisation']['distribution_percentage_tolerance'] = 0.01
-    # MIP relative gap
-    parameters['optimisation']['mip strategy probe'] = 0
-
-    #parameters['optimisation']['mip tolerances mipgap'] = 0.01 Used abs mip gap instead
+    # MIP empasis
+    parameters['optimisation']['emphasis mip'] = 2 # Feasibility over Optimality
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances absmipgap'] = None
+    # parameters['optimisation']['mip tolerances mipgap'] = 0.01
+    parameters['optimisation']['mip tolerances absmipgap'] = 0.025
 
-    parameters['optimisation']['work memory'] = 5000
+    parameters['optimisation']['work memory'] = 15000
+    parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
     # Dictionary to group purposes in OD
