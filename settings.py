@@ -12,7 +12,7 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'sample_perc_50'
+    parameters['trips_direction'] = 'sample_perc_10'
     parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [3, 4, 5]
@@ -40,11 +40,11 @@ def init(outfolder=None):
     # Maximum allowed deviation between observed and estimated distributions' percentage
     parameters['optimisation']['distribution_percentage_tolerance'] = 0.01
     # MIP empasis
-    parameters['optimisation']['emphasis mip'] = 2 # Feasibility over Optimality
+    parameters['optimisation']['emphasis mip'] = 1 # Feasibility over Optimality
 
     # Optimisation stop threshold expressed as percentage of total OD trips
     # parameters['optimisation']['mip tolerances mipgap'] = 0.01
-    parameters['optimisation']['mip tolerances absmipgap'] = 0.025
+    parameters['optimisation']['mip tolerances absmipgap'] = 0.01 # Generally I'll use 0.025
 
     parameters['optimisation']['work memory'] = 4000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
