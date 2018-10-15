@@ -46,7 +46,7 @@ def init(outfolder=None):
     # parameters['optimisation']['mip tolerances mipgap'] = 0.01
     parameters['optimisation']['mip tolerances absmipgap'] = None # Generally I'll use 0.025
 
-    parameters['optimisation']['work memory'] = 20000
+    parameters['optimisation']['work memory'] = 4000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 

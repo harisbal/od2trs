@@ -317,6 +317,8 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
+    internal_zones = internal_zones[0:10]
+
     zone_distances = read_distances(settings.filepaths['distances'])
 
     if settings.parameters['cpus']:
