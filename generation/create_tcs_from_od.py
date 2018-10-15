@@ -314,15 +314,18 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
 
     # TODO Create a file with the zones definition
     # Very dirty quick solution
-    # TODO the check for internal zones is very crude (check if zone begins with E02...
+    # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
     zone_distances = read_distances(settings.filepaths['distances'])
 
-    #internal_zones = ['E01014603']
+    if settings.parameters['cpus']:
+        cpus = settings.parameters['cpus']
+    else:
+        cpus = cpu_count()-1
 
     possible_tcs = list()
-    with Pool(cpu_count()-1, initializer=init_pool, initargs=[G]) as pool:
+    with Pool(cpus, initializer=init_pool, initargs=[G]) as pool:
         for tcs in tqdm(pool.imap_unordered(
                         partial(create_tcs, max_legs=max_legs),
                         internal_zones), total=len(internal_zones)):

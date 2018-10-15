@@ -74,7 +74,7 @@ def main():
                                               params['trips_thresh']))
 
     for legs, trips_thresh in iteration_params:
-            print(r'\\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, trips_direction,
+            print('\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, trips_direction,
                                                                                        legs, trips_thresh))
 
             print('Preparing Distributions from observed data...')
