@@ -1,5 +1,4 @@
-import  pandas as pd
-
+import pandas as pd
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
@@ -75,21 +74,20 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     def distr_rule_lower(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
-                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
-
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+            lower_lim = ((_model.distr_group_percs[g_id] -
+                          _model.distr_perc_tolerance) * expr)
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
     def distr_rule_upper(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
-                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
-
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
-            return expr >= upper_lim
+
+            upper_lim = (_model.distr_group_percs[g_id] +
+                         _model.distr_perc_tolerance) * expr
+            return expr <= upper_lim
         else:
             return Constraint.Skip
 

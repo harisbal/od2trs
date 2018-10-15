@@ -15,14 +15,16 @@ def init(outfolder=None):
     parameters['trips_direction'] = 'sample_perc_10'
     parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [3]
+    parameters['max_legs'] = [3, 4, 5]
     parameters['trips_thresh'] = [1]
-
+    parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': 10_400} # for lsoa
 
     parameters['max_external_zones_in_tc'] = None
+
+    parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
     parameters['distribution_dims'] = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
@@ -33,7 +35,7 @@ def init(outfolder=None):
     parameters['distribution_percentage_thresh'] = 0.01
 
     #parallel threads
-    parameters['cpus'] = None
+    parameters['cpus'] = 16
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
