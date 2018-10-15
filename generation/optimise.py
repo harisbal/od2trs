@@ -39,7 +39,6 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.distr_grps = distr_grps
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
-    #model.optimisation_rel_gap = params['mip tolerances mipgap']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
@@ -74,27 +73,29 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
 
-    def distr_rule_low(_model, g_id):
+    def distr_rule_lower(_model, g_id):
         if _model.chains_distr_groups[g_id]:
             lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
                          * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
-    def distr_rule_high(_model, g_id):
+    def distr_rule_upper(_model, g_id):
         if _model.chains_distr_groups[g_id]:
             upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
                          * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return expr <= upper_lim
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.GROUP_IDS, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.GROUP_IDS, rule=distr_rule_high)
+        model.distr_rule_upper = Constraint(model.GROUP_IDS, rule=distr_rule_upper)
+        model.distr_rule_lower = Constraint(model.GROUP_IDS, rule=distr_rule_lower)
 
     params = settings.parameters['optimisation']
 
@@ -106,6 +107,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['emphasis mip'] = params['emphasis mip']
 
     opt.options['simplex display'] = 2
+
+    #opt.options['mip limits solutions'] = 1
 
     if params['mip tolerances absmipgap']:
         thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
