@@ -15,7 +15,7 @@ def init(outfolder=None):
     parameters['trips_direction'] = 'internalToInternal'
     parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [5]
+    parameters['max_legs'] = [3, 4]
     parameters['trips_thresh'] = [1]
 
     # Maximum values for columns sin the tours
@@ -42,7 +42,7 @@ def init(outfolder=None):
     #parameters['optimisation']['mip tolerances mipgap'] = 0.01 Used abs mip gap instead
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances absmipgap'] = None
+    parameters['optimisation']['mip tolerances absmipgap'] = 0.05
 
     parameters['optimisation']['work memory'] = 5000
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
