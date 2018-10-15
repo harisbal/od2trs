@@ -39,7 +39,6 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.distr_grps = distr_grps
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
-    #model.optimisation_rel_gap = params['mip tolerances mipgap']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())

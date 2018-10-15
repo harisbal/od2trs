@@ -12,7 +12,7 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'internalToInternal'
+    parameters['trips_direction'] = 'sample_perc_50'
     parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [3, 4, 5]
@@ -33,7 +33,7 @@ def init(outfolder=None):
     parameters['distribution_percentage_thresh'] = 0.01
 
     #parallel threads
-    parameters['cpus'] = 15
+    parameters['cpus'] = None
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -46,7 +46,7 @@ def init(outfolder=None):
     # parameters['optimisation']['mip tolerances mipgap'] = 0.01
     parameters['optimisation']['mip tolerances absmipgap'] = 0.025
 
-    parameters['optimisation']['work memory'] = 15000
+    parameters['optimisation']['work memory'] = 4000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
