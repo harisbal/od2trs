@@ -87,7 +87,7 @@ def main():
                 print('No tripchains discovered')
                 return None
 
-            for distr_constr_enabled in [True, False]:
+            for distr_constr_enabled in params['distribution_constraints_states']:
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
                 results = opt.main(tcs, tcs_info, od, observed_tcs_distr, distr_constr_enabled,
                                    submit_to_neos=params['submit_to_neos'])
