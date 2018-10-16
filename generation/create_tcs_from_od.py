@@ -121,7 +121,7 @@ def create_potential_zones_seqs(start_zone, max_legs):
     G_filt = filter_graph_edges_trip_purpose(globalG, start_zone, settings.parameters['filter_purposes'])
 
     zones_seqs = []
-    simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, max_cycle_len=max_legs)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, limit=max_legs)
     # Make the home zone the initial zone of the chain
     for sc in simple_cycles:
         # Complete the tours (repeat first zone)
@@ -312,8 +312,6 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
-
-    #internal_zones = ['E01014747']
 
     zone_distances = read_distances(settings.filepaths['distances'])
 

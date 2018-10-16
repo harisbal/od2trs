@@ -17,13 +17,14 @@ def init(outfolder=None):
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['distribution_constraints_states'] = [True]
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': 10_400} # for lsoa
+    parameters['filters'] = {'Distance': 10_500} # for lsoa
 
     parameters['max_external_zones_in_tc'] = None
 
+    # parallel threads
     parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
@@ -33,9 +34,6 @@ def init(outfolder=None):
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
     parameters['distribution_percentage_thresh'] = None
-
-    #parallel threads
-    parameters['cpus'] = 20
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -49,7 +47,7 @@ def init(outfolder=None):
     parameters['optimisation']['mip tolerances absmipgap'] = None # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
 
-    parameters['optimisation']['work memory'] = 4000
+    parameters['optimisation']['work memory'] = 25000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
