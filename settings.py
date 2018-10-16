@@ -17,7 +17,7 @@ def init(outfolder=None):
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True]
+    parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': 10_400} # for lsoa
