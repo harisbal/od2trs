@@ -105,9 +105,13 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
+    #opt.options['mip limits solutions'] = 1
+
     if params['mip tolerances absmipgap']:
         thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
         opt.options['mip tolerances absmipgap'] = thresh
+    elif params['mip tolerances mipgap']:
+        opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
 
     if send_to_neos:
         solver_manager = SolverManagerFactory('neos')
