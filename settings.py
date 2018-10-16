@@ -12,12 +12,12 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'sample_perc_10'
+    parameters['trips_direction'] = 'sample_100'
     parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [3, 4, 5]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['distribution_constraints_states'] = [True]
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': 10_400} # for lsoa
@@ -32,7 +32,7 @@ def init(outfolder=None):
     parameters['distance_bins'] = [0, 900, 1800, 2700, 3600, float('inf')]
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = 0.01
+    parameters['distribution_percentage_thresh'] = None
 
     #parallel threads
     parameters['cpus'] = 16
