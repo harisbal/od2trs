@@ -12,10 +12,10 @@ def init(outfolder=None):
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'sample_perc_10'
+    parameters['trips_direction'] = 'sample_perc_01'
     parameters['int_zone_str'] = 'E01'
 
-    parameters['max_legs'] = [3, 4, 5]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True]
     # Maximum values for columns sin the tours
@@ -49,7 +49,7 @@ def init(outfolder=None):
     parameters['optimisation']['mip tolerances absmipgap'] = None # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
 
-    parameters['optimisation']['work memory'] = 25000
+    parameters['optimisation']['work memory'] = 4000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
