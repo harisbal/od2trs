@@ -121,7 +121,7 @@ def create_potential_zones_seqs(start_zone, max_legs):
     G_filt = filter_graph_edges_trip_purpose(globalG, start_zone, settings.parameters['filter_purposes'])
 
     zones_seqs = []
-    simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, max_cycle_len=max_legs)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=start_zone, limit=max_legs)
     # Make the home zone the initial zone of the chain
     for sc in simple_cycles:
         # Complete the tours (repeat first zone)
