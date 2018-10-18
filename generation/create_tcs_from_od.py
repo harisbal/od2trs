@@ -285,10 +285,13 @@ def assign_tcs_ids(tcs):
     # Assign proper ids
     tc_id = 1
     for df in tcs:
-        no_tcs = df.index.levels[0].values.size
+        no_tcs = df.index.get_level_values('TripChainId').unique().size
         new_levels = list(range(tc_id, tc_id+no_tcs))
         if not df.empty:
-            df.index.set_levels(new_levels, level='TripChainId', inplace=True)
+            if isinstance(df.index, pd.MultiIndex):
+                df.index.set_levels(new_levels, level='TripChainId', inplace=True)
+            else:
+                df.rename(index=dict(zip(df.index.values, new_levels)), inplace=True)
             tc_id += no_tcs
     return tcs
 
@@ -313,6 +316,8 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
+    internal_zones = internal_zones[0:9]
+
     zone_distances = read_distances(settings.filepaths['distances'])
 
     if settings.parameters['cpus']:
@@ -321,6 +326,7 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
         cpus = cpu_count()-1
 
     possible_tcs = list()
+    possible_tcs_info = list()
     with Pool(cpus, initializer=init_pool, initargs=[G]) as pool:
         for tcs in tqdm(pool.imap_unordered(
                         partial(create_tcs, max_legs=max_legs),
@@ -333,14 +339,14 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
                 tcs = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
 
                 possible_tcs.append(tcs)
+                possible_tcs_info.append(tcs_info)
 
     possible_tcs = assign_tcs_ids(possible_tcs)
     tcs = pd.concat(possible_tcs)
 
-    # TODO I shouldn't do this twice...
-    tcs_info = info_tcs.main(tcs, observed_tcs_distr,
-                             zone_distances=zone_distances,
-                             drop_unobserved_distr_group_tcs=True)
+    possible_tcs_info = assign_tcs_ids(possible_tcs_info)
+    tcs_info = pd.concat(possible_tcs_info)
+
     tcs = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
     print('Total tcs after filtering: {:,}'.format(tcs.index.unique(level='TripChainId').size))
     return tcs, tcs_info, od

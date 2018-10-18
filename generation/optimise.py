@@ -100,8 +100,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt = SolverFactory('cplex')
 
     opt.options['workmem'] = params['work memory']
-    opt.options['mip strategy file'] = params['mip strategy file']
-    opt.options['mip strategy probe'] = params['mip strategy probe']
+    #opt.options['mip strategy file'] = params['mip strategy file']
+    #opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
     opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
