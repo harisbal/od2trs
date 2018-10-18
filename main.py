@@ -1,6 +1,7 @@
 import os
 import itertools
 import shutil
+import pickle
 
 import generation.create_tcs_from_od as create_tcs
 import generation.prepare_observed_tcs_distributions as prepare_obs_tcs_distr
@@ -23,6 +24,21 @@ def create_folders(folder_list):
     for folder in folder_list:
         if not os.path.exists(folder):
             os.makedirs(folder)
+
+
+def export_pickles(d, outfolder=r'./cache'):
+    create_folders([outfolder])
+    for key, var in d.items():
+        outpath = os.path.join(outfolder, '{}.p'.format(key))
+        pickle.dump(var, open(outpath, 'wb'))
+
+
+def load_pickles(d_in, infolder=r'./cache'):
+    d_out = dict()
+    for key, var in d_in.items():
+        inpath = os.path.join(infolder, '{}.p'.format(key))
+        d_out[key] = pickle.load(open(inpath, 'rb'))
+    return d_out
 
 
 def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, distr_constr_enabled):
@@ -50,7 +66,7 @@ def export_results(od, tcs, tcs_info, distr_grps, results, legs, trips_thresh, d
     with open(filepaths['summary'], 'w') as f:
         run_summary = {'DataSource': params['data_source'],
                        'ModelName': params['model_name'],
-                       'TripsDirection': params['trips_direction'],
+                       'TripsDirection': params['run_name'],
                        'DistributionDims': ','.join(params['distribution_dims']),
                        'MaxLegs': legs,
                        'TripsThresh': trips_thresh,
@@ -67,25 +83,45 @@ def main():
     settings.init()
     params = settings.parameters
 
+    data_source = params['data_source']
     model_name = params['model_name']
-    trips_direction = params['trips_direction']
+    run_name = params['run_name']
+    prepare_tcs = params['prepare_tcs']
 
     iteration_params = list(itertools.product(params['max_legs'],
                                               params['trips_thresh']))
 
     for legs, trips_thresh in iteration_params:
-            print('\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, trips_direction,
+            print('\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, run_name,
                                                                                        legs, trips_thresh))
+
+            d_pickles_export = dict()
+            pickle_suffix = '{}_{}_{}_{}legs_{}thresh'.format(data_source, model_name, run_name, legs, trips_thresh)
+            d_pickles_export['tcs'+pickle_suffix] = None
+            d_pickles_export['tcs_info'+pickle_suffix] = None
+            d_pickles_export['od'+pickle_suffix] = None
 
             print('Preparing Distributions from observed data...')
             observed_tcs_distr = prepare_obs_tcs_distr.main(legs)
 
-            print('Creating TripChains...')
-            tcs, tcs_info, od = create_tcs.main(legs, trips_thresh, observed_tcs_distr)
+            if prepare_tcs:
+                print('Creating TripChains...')
+                tcs, tcs_info, od = create_tcs.main(legs, trips_thresh, observed_tcs_distr)
 
-            if tcs.empty:
-                print('No tripchains discovered')
-                return None
+                if tcs.empty:
+                    print('No tripchains discovered')
+                    return None
+
+                d_pickles_export['tcs'+pickle_suffix] = tcs
+                d_pickles_export['tcs_info'+pickle_suffix] = tcs_info
+                d_pickles_export['od'+pickle_suffix] = od
+                export_pickles(d_pickles_export)
+            else:
+                # dict with the loaded variables
+                d_pickles_import = load_pickles(d_pickles_export)
+                tcs = d_pickles_import['tcs'+pickle_suffix]
+                tcs_info = d_pickles_import['tcs_info'+pickle_suffix]
+                od = d_pickles_import['od'+pickle_suffix]
 
             for distr_constr_enabled in params['distribution_constraints_states']:
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))

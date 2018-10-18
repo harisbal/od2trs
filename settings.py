@@ -10,14 +10,15 @@ def init(outfolder=None):
 
     parameters = dict()
 
+    parameters['prepare_tcs'] = True
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['trips_direction'] = 'sample_perc_01'
+    parameters['run_name'] = 'sample_perc_10'
     parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True]
+    parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns sin the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': 10_500} # for lsoa
@@ -50,7 +51,6 @@ def init(outfolder=None):
     parameters['optimisation']['work memory'] = 25000
     parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
-
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
                                     'HBW_ToHome': 'HB_ToHome', 'HBO_ToHome': 'HB_ToHome',
@@ -73,11 +73,11 @@ def init(outfolder=None):
 
     filepaths['infolder'] = r'./generation/inputs/{}/{}/{}'.format(parameters['data_source'],
                                                                    parameters['model_name'],
-                                                                   parameters['trips_direction'])
+                                                                   parameters['run_name'])
 
     filepaths['outfolder'] = r'./generation/outputs/{}/{}/{}'.format(parameters['data_source'],
                                                                      parameters['model_name'],
-                                                                     parameters['trips_direction'])
+                                                                     parameters['run_name'])
 
     filepaths['od'] = os.path.join(filepaths['infolder'], 'od.csv')
 
