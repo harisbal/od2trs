@@ -104,7 +104,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    print(opt.options['mip tolerances mipgap'])
+    opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
 
     if params['mip tolerances absmipgap']:
         thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
