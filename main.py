@@ -96,7 +96,7 @@ def main():
                                                                                        legs, trips_thresh))
 
             d_pickles_export = dict()
-            pickle_suffix = '{}_{}_{}_{}legs_{}thresh'.format(data_source, model_name, run_name, legs, trips_thresh)
+            pickle_suffix = '_{}_{}_{}_{}legs_{}thresh'.format(data_source, model_name, run_name, legs, trips_thresh)
             d_pickles_export['tcs'+pickle_suffix] = None
             d_pickles_export['tcs_info'+pickle_suffix] = None
             d_pickles_export['od'+pickle_suffix] = None
