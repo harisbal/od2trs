@@ -11,9 +11,11 @@ def init(outfolder=None):
     parameters = dict()
 
     parameters['prepare_tcs'] = True
+    parameters['run_optimisation'] = True
+
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['run_name'] = 'sample_perc_01'
+    parameters['run_name'] = 'sample_perc_10'
     parameters['int_zone_str'] = 'E01'
 
     parameters['max_legs'] = [5]

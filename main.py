@@ -87,12 +87,13 @@ def main():
     model_name = params['model_name']
     run_name = params['run_name']
     prepare_tcs = params['prepare_tcs']
+    run_optimisation = params['run_optimisation']
 
     iteration_params = list(itertools.product(params['max_legs'],
                                               params['trips_thresh']))
 
     for legs, trips_thresh in iteration_params:
-            print('\n Model Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, run_name,
+            print('\nModel Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, run_name,
                                                                                        legs, trips_thresh))
 
             d_pickles_export = dict()
@@ -123,15 +124,16 @@ def main():
                 tcs_info = d_pickles_import['tcs_info'+pickle_suffix]
                 od = d_pickles_import['od'+pickle_suffix]
 
-            for distr_constr_enabled in params['distribution_constraints_states']:
-                print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                results = opt.main(tcs, tcs_info, od, observed_tcs_distr, distr_constr_enabled,
-                                   submit_to_neos=params['submit_to_neos'])
+            if run_optimisation:
+                for distr_constr_enabled in params['distribution_constraints_states']:
+                    print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
+                    results = opt.main(tcs, tcs_info, od, observed_tcs_distr, distr_constr_enabled,
+                                       submit_to_neos=params['submit_to_neos'])
 
-                print('Exporting')
-                export_results(od, tcs, tcs_info, observed_tcs_distr, results, legs, trips_thresh, distr_constr_enabled)
+                    print('Exporting')
+                    export_results(od, tcs, tcs_info, observed_tcs_distr, results, legs, trips_thresh, distr_constr_enabled)
 
-                print('Complete!')
+                    print('Complete!')
 
 
 if __name__ == '__main__':

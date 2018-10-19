@@ -3,7 +3,7 @@ import  pandas as pd
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
-from pyomo.util.timing import report_timing
+#from pyomo.util.timing import report_timing
 
 import settings
 
@@ -48,7 +48,7 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=1)
+    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
@@ -70,7 +70,6 @@ def run_model(model, distr_constr_enabled, send_to_neos):
             return (0, expr, model.trips[leg_id])
         else:
             return Constraint.Skip
-
     model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
 
     def distr_rule_low(_model, g_id):
@@ -100,8 +99,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt = SolverFactory('cplex')
 
     opt.options['workmem'] = params['work memory']
-    #opt.options['mip strategy file'] = params['mip strategy file']
-    #opt.options['mip strategy probe'] = params['mip strategy probe']
+    opt.options['mip strategy file'] = params['mip strategy file']
+    opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
     opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
@@ -124,7 +123,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
 
 def main(tcs, tcs_info, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
-    report_timing()
+    #report_timing()
     mymodel = prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results
