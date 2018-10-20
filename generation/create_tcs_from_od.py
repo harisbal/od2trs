@@ -316,8 +316,6 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(settings.parameters['int_zone_str'])]
 
-    internal_zones = internal_zones[0:9]
-
     zone_distances = read_distances(settings.filepaths['distances'])
 
     if settings.parameters['cpus']:
@@ -341,13 +339,16 @@ def main(max_legs, trips_thresh, observed_tcs_distr):
                 possible_tcs.append(tcs)
                 possible_tcs_info.append(tcs_info)
 
-    possible_tcs = assign_tcs_ids(possible_tcs)
-    tcs = pd.concat(possible_tcs)
+    print('Assigning new ids')
+    tcs = assign_tcs_ids(possible_tcs)
+    tcs_info = assign_tcs_ids(possible_tcs_info)
 
-    possible_tcs_info = assign_tcs_ids(possible_tcs_info)
-    tcs_info = pd.concat(possible_tcs_info)
+    del possible_tcs
+    del possible_tcs_info
 
-    tcs = filter_tcs.main(tcs, tcs_info, observed_tcs_distr)
+    tcs = pd.concat(tcs)
+    tcs_info = pd.concat(tcs_info)
+
     print('Total tcs after filtering: {:,}'.format(tcs.index.unique(level='TripChainId').size))
     return tcs, tcs_info, od
 

@@ -10,13 +10,13 @@ def init(outfolder=None):
 
     parameters = dict()
 
-    parameters['prepare_tcs'] = True
-    parameters['run_optimisation'] = False
+    parameters['prepare_tcs'] = False
+    parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['run_name'] = 'sample_perc_50'
-    parameters['int_zone_str'] = 'E01'
+    parameters['run_name'] = 'sample_perc_10'
+    parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
@@ -51,7 +51,7 @@ def init(outfolder=None):
     parameters['optimisation']['mip tolerances mipgap'] = None
 
     parameters['optimisation']['work memory'] = 25000
-    parameters['optimisation']['mip strategy probe'] = 0 # Level of probing (did not notice any effect but I should re-avaluate)
+    parameters['optimisation']['mip strategy probe'] = 3 # Level of probing (did not notice any effect but I should re-avaluate)
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
