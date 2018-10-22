@@ -29,6 +29,7 @@ def main(tcs, tcs_info, observed_distr):
     tcs_info = filter_low_freq_distr_groups(tcs_info, observed_distr)
     tcs_info = filter_tcs_by_dict(tcs_info, settings.parameters['filters'])
 
+    # TODO maybe use get_level_values()
     # Remove unused tcs
     stack_lvl = 'LegSeqIdx'
     tcs = tcs.unstack(stack_lvl)

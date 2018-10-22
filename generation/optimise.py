@@ -49,6 +49,7 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
     model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
 
     model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
+    model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
@@ -75,7 +76,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     def distr_rule_low(_model, g_id):
         if _model.chains_distr_groups[g_id]:
             lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
-                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+                         * _model.total_chains)
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return lower_lim <= expr
         else:
@@ -84,7 +85,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     def distr_rule_high(_model, g_id):
         if _model.chains_distr_groups[g_id]:
             upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
-                         * sum(_model.nchains[tc_id] for tc_id in _model.CHAIN_IDS))
+                         * _model.total_chains)
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return expr <= upper_lim
         else:
@@ -103,7 +104,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
+    #opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
 
     if params['mip tolerances absmipgap']:
         thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
