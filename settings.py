@@ -11,16 +11,16 @@ def init(outfolder=None):
     max_tc_distance = 10_800
 
     parameters = dict()
-
+    #'E01033339 - 'E01014948'
     parameters['prepare_tcs'] = True
-    parameters['run_optimisation'] = False
+    parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
     parameters['run_name'] = 'sample_perc_01'
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [3]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns sin the tours
@@ -30,7 +30,7 @@ def init(outfolder=None):
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = 1
+    parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
     parameters['distribution_dims'] = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
@@ -39,7 +39,7 @@ def init(outfolder=None):
     parameters['distance_bins'].append(float('inf'))
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = 0.01
+    parameters['distribution_percentage_thresh'] = None
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -76,11 +76,11 @@ def init(outfolder=None):
 
     filepaths = dict()
 
-    filepaths['infolder'] = r'./generation/inputs/{}/{}/{}'.format(parameters['data_source'],
+    filepaths['infolder'] = r'./tcod/inputs/{}/{}/{}'.format(parameters['data_source'],
                                                                    parameters['model_name'],
                                                                    parameters['run_name'])
 
-    filepaths['outfolder'] = r'./generation/outputs/{}/{}/{}'.format(parameters['data_source'],
+    filepaths['outfolder'] = r'./tcod/outputs/{}/{}/{}'.format(parameters['data_source'],
                                                                      parameters['model_name'],
                                                                      parameters['run_name'])
 
