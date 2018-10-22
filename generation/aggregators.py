@@ -1,30 +1,38 @@
 import pandas as pd
 
+import generation.io as myio
+
 import settings
 
 
-def prepare_tcs_info(tcs, distances):
+def summarise_tcs(tcs):
     """
     Function to return info for each chain
 
-    :param tcs: tripchains
+    :param tcs: df
     :param distances: pd.Series
     :return: Dataframe with the tripchains info (distance, Legs, etc)
     """
 
-    # Join legs with distances
-    tcs = pd.merge(tcs, distances.to_frame(), left_on=['OrigZoneId', 'DestZoneId'], right_index=True)
+    aggr_dimensions = list()
 
-    tcs_dists = tcs['Distance'].groupby(level='TripChainId').sum()
-    tcs_legs = tcs.reset_index(level='LegSeqIdx')['LegSeqIdx'].groupby(level='TripChainId').max() + 1
-    tcs_legs.name = 'Legs'
+    legs = tcs.reset_index(level='LegSeqIdx')['LegSeqIdx'].groupby(level='TripChainId').max() + 1
+    legs.name = 'Legs'
+    aggr_dimensions.append(legs)
+
+    # Join legs with distances
+    distances = myio.read_distances(settings.filepaths['distances'])
+    tcs = pd.merge(tcs, distances.to_frame(), left_on=['OrigZoneId', 'DestZoneId'], right_index=True)
+    distances = tcs['Distance'].groupby(level='TripChainId').sum()
+    aggr_dimensions.append(distances)
 
     # Add the grouping information
     if settings.parameters['distance_bins']:
-        distance_grp = pd.cut(tcs_dists, bins=settings.parameters['distance_bins'])
-        distance_grp.name = 'DistanceGroup'
+        distance_grps = pd.cut(distances, bins=settings.parameters['distance_bins'])
+        distance_grps.name = 'DistanceGroup'
+        aggr_dimensions.append(distance_grps)
 
-    tcs_info = pd.concat([tcs_legs, tcs_dists, distance_grp], axis=1)
+    tcs_info = pd.concat(aggr_dimensions, axis=1)
 
     return tcs_info
 
@@ -40,17 +48,5 @@ def assign_distribution_group(tcs_info, observed_tcs_distr):
     tcs_info = pd.merge(tcs_info, distr_group_ids.to_frame(),
                         left_on=distr_dims, right_index=True,
                         how='left')
-
-    return tcs_info
-
-
-def main(tcs, observed_tcs_distr, zone_distances, drop_unobserved_distr_group_tcs=False):
-
-    tcs_info = prepare_tcs_info(tcs, zone_distances)
-    tcs_info = assign_distribution_group(tcs_info, observed_tcs_distr)
-
-    if drop_unobserved_distr_group_tcs:
-        # Drop the tcs that did not have a match (do not exist in the observed distrs)
-        tcs_info = tcs_info.dropna(subset=['DistrGroupId'])
 
     return tcs_info

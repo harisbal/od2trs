@@ -13,14 +13,14 @@ def init(outfolder=None):
     parameters = dict()
 
     parameters['prepare_tcs'] = True
-    parameters['run_optimisation'] = True
+    parameters['run_optimisation'] = False
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'msoa'
-    parameters['run_name'] = 'sample_perc_10'
+    parameters['model_name'] = 'lsoa'
+    parameters['run_name'] = 'sample_perc_01'
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [5]
+    parameters['max_legs'] = [3]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns sin the tours
@@ -30,7 +30,7 @@ def init(outfolder=None):
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = None
+    parameters['cpus'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['distribution_dims'] = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
