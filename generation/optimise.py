@@ -3,7 +3,7 @@ import  pandas as pd
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
-#from pyomo.util.timing import report_timing
+from pyomo.util.timing import report_timing
 
 import settings
 
@@ -124,7 +124,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
 
 def main(tcs, tcs_info, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
-    #report_timing()
+    report_timing()
     mymodel = prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results
