@@ -21,6 +21,7 @@ def main():
 
     settings.init()
     params = settings.parameters
+    flpths = settings.filepaths
 
     data_source = params['data_source']
     model_name = params['model_name']
@@ -39,13 +40,15 @@ def main():
             d_pickles = prepare_pickle_dict(run_info)
 
             print('Preparing Distributions from observed data...')
-            observed_tcs_distr = distrs.get_observed_tcs_info(legs).pipe(distrs.prepare_distribution)
+            observed_tcs_distr = (distrs.get_observed_tcs_info(legs)
+                                  .pipe(distrs.prepare_distribution))
 
             if prepare_tcs:
                 print('Creating TripChains...')
-                tcs, tcs_info, od = converters.od_to_tcs(legs, trips_thresh, observed_tcs_distr)
+                od = myio.fetch_prepare_od(flpths['od'], trips_thresh)
+                tours_descr, tours_info = converters.od_to_tours(od, legs, observed_tcs_distr)
 
-                if tcs.empty:
+                if tours_descr.empty:
                     print('No tripchains discovered')
                     return None
 
@@ -53,8 +56,8 @@ def main():
             else:
                 # dict with the loaded variables
                 d_pickles = myio.load_pickles(d_pickles, run_info)
-                tcs = d_pickles['tcs']
-                tcs_info = d_pickles['tcs_info']
+                tours_descr = d_pickles['tours_descr']
+                tours_info = d_pickles['tours_info']
                 od = d_pickles['od']
 
             if run_optimisation:
@@ -62,12 +65,12 @@ def main():
                 for distr_constr_enabled in params['distribution_constraints_states']:
                     run_info[-1] = distr_constr_enabled
                     print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                    optim_results = opt.main(tcs, tcs_info, od,
+                    optim_results = opt.main(tours_descr, tours_info, od,
                                              observed_tcs_distr, distr_constr_enabled,
                                              submit_to_neos=params['submit_to_neos'])
 
                     print('Exporting')
-                    myio.export_results(od, tcs, tcs_info, observed_tcs_distr, optim_results, run_info)
+                    myio.export_results(od, tours_descr, tours_info, observed_tcs_distr, optim_results, run_info)
 
                     print('Complete!')
 

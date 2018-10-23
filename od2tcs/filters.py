@@ -1,5 +1,26 @@
-import settings
 import networkx as nx
+import settings
+
+
+def identify_possible_tours(tcs):
+    params = settings.parameters
+    # TODO clean this part
+    possible_tours = list()
+    for tc in tcs:
+        tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
+                                               params['ordered_time_periods'])
+        tc.no_external_zones = tc.count_external_zones()
+
+        if not tc.tour:
+            continue
+        if params['max_external_zones_in_tc']:
+            if not tc.no_external_zones <= params['max_external_zones_in_tc']:
+                continue
+        if not tc.chron_ordered:
+            continue
+        possible_tours.append(tc)
+
+    return possible_tours
 
 
 def low_freq_distr_groups(tcs_info_df, observed_distr):
