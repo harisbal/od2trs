@@ -76,11 +76,11 @@ def init(outfolder=None):
 
     filepaths = dict()
 
-    filepaths['infolder'] = r'./tcod/inputs/{}/{}/{}'.format(parameters['data_source'],
+    filepaths['infolder'] = r'./od2tcs/inputs/{}/{}/{}'.format(parameters['data_source'],
                                                                    parameters['model_name'],
                                                                    parameters['run_name'])
 
-    filepaths['outfolder'] = r'./tcod/outputs/{}/{}/{}'.format(parameters['data_source'],
+    filepaths['outfolder'] = r'./od2tcs/outputs/{}/{}/{}'.format(parameters['data_source'],
                                                                      parameters['model_name'],
                                                                      parameters['run_name'])
 

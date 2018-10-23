@@ -6,13 +6,13 @@ import itertools
 import pandas as pd
 import networkx as nx
 
-import tcod.io as myio
-import tcod.utilities as util
-import tcod.network_tools as nettools
-import tcod.distributions as distrs
-import tcod.filters as filters
+import od2tcs.io as myio
+import od2tcs.utilities as util
+import od2tcs.network_tools as nettools
+import od2tcs.distributions as distrs
+import od2tcs.filters as filters
 
-from tcod.tc import Leg, TripChain
+from od2tcs.tc import Leg, TripChain
 
 import settings
 
