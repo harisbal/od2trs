@@ -1,6 +1,6 @@
 import pandas as pd
 
-import tcod.io as myio
+import od2tcs.io as myio
 
 import settings
 

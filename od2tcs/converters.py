@@ -6,13 +6,13 @@ import itertools
 import pandas as pd
 import networkx as nx
 
-import tcod.io as myio
-import tcod.utilities as util
-import tcod.network_tools as nettools
-import tcod.distributions as distrs
-import tcod.filters as filters
+import od2tcs.io as myio
+import od2tcs.utilities as util
+import od2tcs.network_tools as nettools
+import od2tcs.distributions as distrs
+import od2tcs.filters as filters
 
-from tcod.tc import Leg, TripChain
+from od2tcs.tc import Leg, TripChain
 
 import settings
 
@@ -46,8 +46,6 @@ def zones_seq_to_tcs(zones_seq, G):
                                   filter_purpose_orig)
     avail_legs = list()
     for la in leg_attrs:
-        if zones_seq[1]=='E01014948':
-            a=1
         leg = Leg(origin=zones_seq[0], destination=zones_seq[1], **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
@@ -87,8 +85,7 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
 
     attr_cols = ['Purpose', 'Timeperiod']
 
-    G = od_to_G(od,
-                orig_col='Origin', dest_col='Destination',
+    G = od_to_G(od, orig_col='Origin', dest_col='Destination',
                 attr_cols=attr_cols)
 
     # TODO Create a file with the zones definition
@@ -96,7 +93,7 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
-    internal_zones = ['E01033339']
+    #internal_zones = ['E01033339']
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
@@ -104,7 +101,7 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
 
     d_filtered_tours = dict()
     with Pool(cpus) as pool:
-        tc_id=1
+        tc_id = 1
         for tour_zone_seqs in tqdm(pool.imap_unordered(partial(
                                    nettools.identify_tour_zone_sequences, max_legs=max_legs, G=G),
                                    internal_zones), total=len(internal_zones)):
@@ -117,9 +114,6 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
                         tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
                                                                params['ordered_time_periods'])
                         tc.no_external_zones = tc.count_external_zones()
-
-                        if tc.legs[-1].destination == 'E01014948':
-                            a = 1
 
                         if not tc.tour:
                             continue

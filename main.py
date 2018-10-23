@@ -1,9 +1,9 @@
 import itertools
 
-import tcod.converters as converters
-import tcod.distributions as distrs
-import tcod.optimise as opt
-import tcod.io as myio
+import od2tcs.converters as converters
+import od2tcs.distributions as distrs
+import od2tcs.optimise as opt
+import od2tcs.io as myio
 
 import settings
 

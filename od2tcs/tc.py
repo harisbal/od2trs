@@ -1,6 +1,6 @@
 import pandas as pd
 
-import tcod.utilities as util
+import od2tcs.utilities as util
 import settings
 
 

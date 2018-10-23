@@ -1,9 +1,10 @@
 import networkx as nx
-import tcod.filters as filters
+import od2tcs.filters as filters
 import settings
 
 
 def identify_tour_zone_sequences(start_zone, max_legs, G):
+    settings.init()
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
