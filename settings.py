@@ -11,13 +11,12 @@ def init(outfolder=None):
     max_tc_distance = 10_800
 
     parameters = dict()
-    #'E01033339 - 'E01014948'
     parameters['prepare_tcs'] = True
     parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'lsoa'
-    parameters['run_name'] = 'sample_perc_01'
+    parameters['run_name'] = 'sample_perc_20'
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
@@ -39,7 +38,7 @@ def init(outfolder=None):
     parameters['distance_bins'].append(float('inf'))
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = None
+    parameters['distribution_percentage_thresh'] = 0.01
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -50,7 +49,7 @@ def init(outfolder=None):
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances absmipgap'] = None # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances absmipgap'] = 0.020 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
 
     parameters['optimisation']['work memory'] = 10_000

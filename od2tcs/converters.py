@@ -93,7 +93,6 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
-    #internal_zones = ['E01033339']
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
@@ -129,8 +128,9 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
                         d_filtered_tours.update(tc.to_dict())
 
     if d_filtered_tours:
-        print('Concatenating')
+        print('Concatenating: {} initial tours'.format(len(d_filtered_tours)))
         tours_descr_df = pd.DataFrame.from_dict(d_filtered_tours, orient='index')
+        del d_filtered_tours
         tours_descr_df.columns = tours_descr_df.columns.str.capitalize()
         tours_descr_df.index.names = ['Tripchainid', 'Legseqidx']
         tours_descr_df.dropna(axis=1, inplace=True)
@@ -147,6 +147,5 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
         mask = tours_descr_df.index.get_level_values(level='Tripchainid').isin(used_tours_ids)
         tours_descr_df = tours_descr_df[mask]
 
-        del d_filtered_tours
-        print('Total tcs after filtering: {:,}'.format(tours_descr_df.index.unique(level='Tripchainid').size))
+        print('Total tours after filtering: {:,}'.format(tours_descr_df.index.unique(level='Tripchainid').size))
         return tours_descr_df, tours_info_df, od
