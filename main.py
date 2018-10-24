@@ -34,7 +34,7 @@ def main():
 
     for legs, trips_thresh in iteration_params:
             print('\nModel Name: {}, Direction: {}, Legs:{}, trips_thresh:{}'.format(model_name, run_name,
-                                                                                       legs, trips_thresh))
+                                                                                     legs, trips_thresh))
 
             run_info = [data_source, model_name, run_name, legs, trips_thresh]
             d_pickles = prepare_pickle_dict(run_info)
