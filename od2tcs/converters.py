@@ -110,8 +110,8 @@ def multiproc_wrapper(source_zone, max_legs):
                    .pipe(filters.tcs_by_dict, params['filters']))
 
         # Remove unused tours
-        used_tours_ids = info_df.index.unique().values
-        mask = descr_df.index.get_level_values(level='Tripchainid').isin(used_tours_ids)
+        filter_ids = info_df.index.unique().values
+        mask = descr_df.index.get_level_values(level='Tripchainid').isin(filter_ids)
         descr_df = descr_df[mask]
 
         descrs.append(descr_df)
