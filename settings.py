@@ -52,7 +52,7 @@ def init(outfolder=None):
     parameters['optimisation']['mip tolerances absmipgap'] = 0.025 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
 
-    parameters['optimisation']['work memory'] = 10_000
+    parameters['optimisation']['work memory'] = 20_000
     parameters['optimisation']['mip strategy probe'] = 3
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
     # Dictionary to group purposes in OD

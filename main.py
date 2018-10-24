@@ -10,9 +10,9 @@ import settings
 
 def prepare_pickle_dict(run_info):
     d_pickles = dict()
-    pickle_suffix = '_{}_{}_{}_{}legs_{}thresh'.format(*run_info)
-    d_pickles['tcs' + pickle_suffix] = None
-    d_pickles['tcs_info' + pickle_suffix] = None
+    pickle_suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
+    d_pickles['tours_descr' + pickle_suffix] = None
+    d_pickles['tours_info' + pickle_suffix] = None
     d_pickles['od' + pickle_suffix] = None
     return d_pickles
 
@@ -37,6 +37,7 @@ def main():
                                                                                      legs, trips_thresh))
 
             run_info = [data_source, model_name, run_name, legs, trips_thresh]
+            #TODO pickling mechanism needs immediate revision
             d_pickles = prepare_pickle_dict(run_info)
 
             print('Preparing Distributions from observed data...')
@@ -51,11 +52,14 @@ def main():
                 if tours_descr.empty:
                     print('No tripchains discovered')
                     return None
-
+                suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
+                d_pickles['tours_descr'+suffix] = tours_descr
+                d_pickles['tours_info'+suffix] = tours_info
+                d_pickles['od'+suffix] = od
                 myio.export_pickles(d_pickles)
             else:
                 # dict with the loaded variables
-                d_pickles = myio.load_pickles(d_pickles, run_info)
+                d_pickles = myio.load_pickles(d_pickles)
                 tours_descr = d_pickles['tours_descr']
                 tours_info = d_pickles['tours_info']
                 od = d_pickles['od']

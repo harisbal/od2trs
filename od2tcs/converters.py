@@ -85,21 +85,18 @@ def multiproc_wrapper(source_zone, max_legs):
     if not zones_seqs:
         return None
 
-    descrs = list()
-    infos = list()
-
+    tours_ds = dict()
     for zs in zones_seqs:
         tcs = zones_seq_to_tcs(zs, global_tcid, global_G)
         possible_tours = filters.identify_possible_tours(tcs)
 
-        tours_dfs = list()
         for pt in possible_tours:
-            tours_dfs.append(pt.to_df())
+            tours_ds.update(pt.to_dict())
 
-        if not tours_dfs:
-            continue
-
-        descr_df = pd.concat(tours_dfs)
+    descrs = list()
+    infos = list()
+    if tours_ds:
+        descr_df = pd.DataFrame.from_dict(tours_ds, orient='index')
         descr_df.columns = descr_df.columns.str.capitalize()
         descr_df.index.names = ['Tripchainid', 'Legseqidx']
         descr_df.dropna(axis=1, inplace=True)
@@ -150,8 +147,6 @@ def od_to_tours(od, max_legs, observed_tcs_distr):
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
-
-    #internal_zones = ['E01014451']
 
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']

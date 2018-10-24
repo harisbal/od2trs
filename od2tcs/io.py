@@ -28,12 +28,12 @@ def export_pickles(d, outfolder=r'./cache'):
         pickle.dump(var, open(outpath, 'wb'))
 
 
-def load_pickles(d_pickles, run_info, infolder=r'./cache'):
+def load_pickles(d_pickles, infolder=r'./cache'):
     d_out = dict()
-    str_run_info = '_'.join(run_info)
-    for key, var in d_pickles.items():
-        inpath = os.path.join(infolder, '{}_{}.p'.format(key, str_run_info))
-        d_out[key] = pickle.load(open(inpath, 'rb'))
+    for key in d_pickles:
+        val = key.split('-', 1)[0]
+        inpath = os.path.join(infolder, '{}.p'.format(key))
+        d_out[val] = pickle.load(open(inpath, 'rb'))
     return d_out
 
 
