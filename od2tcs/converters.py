@@ -1,18 +1,18 @@
 from tqdm import tqdm
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool, Value, cpu_count
 from functools import partial
 
 import itertools
 import pandas as pd
 import networkx as nx
 
-import od2tcs.io as myio
 import od2tcs.utilities as util
 import od2tcs.network_tools as nettools
 import od2tcs.distributions as distrs
 import od2tcs.filters as filters
 
 from od2tcs.tc import Leg, TripChain
+from od2tcs.counter import Counter
 
 import settings
 
@@ -25,7 +25,7 @@ def od_to_G(od, orig_col, dest_col, attr_cols):
     return G
 
 
-def zones_seq_to_tcs(zones_seq, G):
+def zones_seq_to_tcs(zones_seq, tcid, G):
 
     def filter_leg_attrs_by_purpose(leg_attrs, filter_purposes):
         leg_attrs = [la for la in leg_attrs if la['Purpose'] in filter_purposes]
@@ -72,19 +72,77 @@ def zones_seq_to_tcs(zones_seq, G):
     tcs = list()
     for lc in legs_combs:
         tc = TripChain(lc)
+        tc.id = tcid.value
         tcs.append(tc)
+        tcid.increment()
     return tcs
 
 
-def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
-
-    flpths = settings.filepaths
+def multiproc_wrapper(source_zone, max_legs):
     params = settings.parameters
 
-    od = myio.fetch_prepare_od(flpths['od'], trips_thresh)
+    zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, global_G)
+    if not zones_seqs:
+        return None
+
+    descrs = list()
+    infos = list()
+
+    for zs in zones_seqs:
+        tcs = zones_seq_to_tcs(zs, global_tcid, global_G)
+        possible_tours = filters.identify_possible_tours(tcs)
+
+        tours_dfs = list()
+        for pt in possible_tours:
+            tours_dfs.append(pt.to_df())
+
+        if not tours_dfs:
+            continue
+
+        descr_df = pd.concat(tours_dfs)
+        descr_df.columns = descr_df.columns.str.capitalize()
+        descr_df.index.names = ['Tripchainid', 'Legseqidx']
+        descr_df.dropna(axis=1, inplace=True)
+
+        info_df = distrs.summarise_tcs_df(descr_df)
+        info_df = (info_df.pipe(distrs.assign_distribution_group, global_observed_tcs_distr)
+                   .pipe(filters.low_freq_distr_groups, global_observed_tcs_distr)
+                   .pipe(filters.tcs_by_dict, params['filters']))
+
+        # Remove unused tours
+        used_tours_ids = info_df.index.unique().values
+        mask = descr_df.index.get_level_values(level='Tripchainid').isin(used_tours_ids)
+        descr_df = descr_df[mask]
+
+        descrs.append(descr_df)
+        infos.append(info_df)
+
+    if descrs and infos:
+        descr_df = pd.concat(descrs)
+        info_df = pd.concat(infos)
+        tours_df = (descr_df, info_df)
+        return tours_df
+    else:
+        return None
+
+
+def init_multiproc_wrapper(G, observed_tcs_distr, tcid):
+    global global_G
+    global global_observed_tcs_distr
+    global global_tcid
+
+    global_tcid = tcid
+    global_G = G
+    global_observed_tcs_distr = observed_tcs_distr
+
+    settings.init()
+
+
+def od_to_tours(od, max_legs, observed_tcs_distr):
+
+    params = settings.parameters
 
     attr_cols = ['Purpose', 'Timeperiod']
-
     G = od_to_G(od, orig_col='Origin', dest_col='Destination',
                 attr_cols=attr_cols)
 
@@ -93,59 +151,33 @@ def od_to_tcs(max_legs, trips_thresh, observed_tcs_distr):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
+    #internal_zones = ['E01014451']
+
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
         cpus = cpu_count()-1
 
-    d_filtered_tours = dict()
-    with Pool(cpus) as pool:
-        tc_id = 1
-        for tour_zone_seqs in tqdm(pool.imap_unordered(partial(
-                                   nettools.identify_tour_zone_sequences, max_legs=max_legs, G=G),
-                                   internal_zones), total=len(internal_zones)):
-            if tour_zone_seqs:
-                for tzs in tour_zone_seqs:
-                    tcs = zones_seq_to_tcs(tzs, G)
+    tcid = Counter(1)
+    descrs = list()
+    infos = list()
+    with Pool(cpus, initializer=init_multiproc_wrapper,
+              initargs=[G, observed_tcs_distr, tcid]) as pool:
+        for tours in tqdm(pool.imap_unordered(partial(
+                          multiproc_wrapper,
+                          max_legs=max_legs),
+                          internal_zones), total=len(internal_zones)):
+            if tours:
+                tours_descr_df, tours_info_df = tours
+                descrs.append(tours_descr_df)
+                infos.append(tours_info_df)
 
-                    #TODO clean this part
-                    for tc in tcs:
-                        tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
-                                                               params['ordered_time_periods'])
-                        tc.no_external_zones = tc.count_external_zones()
+    if descrs:
+        tours_descr_df = pd.concat(descrs)
+        tours_info_df = pd.concat(infos)
+    else:
+        raise ValueError('No tours identified')
 
-                        if not tc.tour:
-                            continue
-                        if params['max_external_zones_in_tc']:
-                            if not tc.no_external_zones <= params['max_external_zones_in_tc']:
-                                continue
-                        if not tc.chron_ordered:
-                            continue
+    print('Total tours after filtering: {:,}'.format(tours_descr_df.index.unique().size))
 
-                        tc.id = tc_id
-                        tc_id += 1
-
-                        d_filtered_tours.update(tc.to_dict())
-
-    if d_filtered_tours:
-        print('Concatenating: {} initial tours'.format(len(d_filtered_tours)))
-        tours_descr_df = pd.DataFrame.from_dict(d_filtered_tours, orient='index')
-        del d_filtered_tours
-        tours_descr_df.columns = tours_descr_df.columns.str.capitalize()
-        tours_descr_df.index.names = ['Tripchainid', 'Legseqidx']
-        tours_descr_df.dropna(axis=1, inplace=True)
-        print('Summarising')
-        tours_info_df = distrs.summarise_tcs_df(tours_descr_df)
-        tours_info_df = (tours_info_df
-                         .pipe(distrs.assign_distribution_group, observed_tcs_distr)
-                         .pipe(filters.low_freq_distr_groups, observed_tcs_distr)
-                         .pipe(filters.tcs_by_dict, params['filters']))
-
-        print('Filtering')
-        # Remove unused tours
-        used_tours_ids = tours_info_df.index.unique(level='Tripchainid').values
-        mask = tours_descr_df.index.get_level_values(level='Tripchainid').isin(used_tours_ids)
-        tours_descr_df = tours_descr_df[mask]
-
-        print('Total tours after filtering: {:,}'.format(tours_descr_df.index.unique(level='Tripchainid').size))
-        return tours_descr_df, tours_info_df, od
+    return tours_descr_df, tours_info_df

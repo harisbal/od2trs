@@ -75,5 +75,10 @@ class TripChain:
         d_tc = dict()
         for idx_leg, leg in enumerate(self.legs):
             d_tc[(self.id, idx_leg)] = vars(leg)
-
         return d_tc
+
+    def to_df(self):
+        df = pd.DataFrame.from_dict(self.to_dict(),
+                                    orient='index')
+        return df
+
