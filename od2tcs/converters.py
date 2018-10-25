@@ -101,7 +101,7 @@ def multiproc_wrapper(source_zone, max_legs):
     if tours_ds:
         descr_df = pd.DataFrame.from_dict(tours_ds, orient='index')
         descr_df.columns = descr_df.columns.str.capitalize()
-        descr_df.index.names = ['Tripchainid', 'Legseqidx']
+        descr_df.index.names = ['Tripchainid', 'Legidx']
         descr_df.dropna(axis=1, inplace=True)
 
         info_df = distrs.summarise_tcs_df(descr_df)

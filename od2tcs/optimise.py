@@ -24,7 +24,7 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
 
     def init_chain_distr_grps(_model):
         _tcs_info = _model.tcs_info.reset_index()
-        _tcs_infog = _tcs_info.groupby(['DistrGroupId'])['Tripchainid'].apply(list)
+        _tcs_infog = _tcs_info.groupby(['Distrgroupid'])['Tripchainid'].apply(list)
         d_distr_grps = _tcs_infog.to_dict()
 
         return d_distr_grps
@@ -104,13 +104,14 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    #opt.options['workdir'] = r'C:\Users\haris.ballis\Desktop\local_tcs_od\workdir'
-
     if params['mip tolerances absmipgap']:
         thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
         opt.options['mip tolerances absmipgap'] = thresh
     elif params['mip tolerances mipgap']:
         opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
+
+    if params['timelimit']:
+        opt.options['timelimit'] = params['timelimit']
 
     if send_to_neos:
         solver_manager = SolverManagerFactory('neos')

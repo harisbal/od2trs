@@ -1,4 +1,4 @@
-TourId,Legs,Distance,Timeperiod
+TourId,Legs,Distance,Timeperiodseq
 5008,2,1587.8,"AM,AM"
 5152,2,3995.3,"IP,PM"
 8411,4,3620.7,"AM,PM,PM,OP"

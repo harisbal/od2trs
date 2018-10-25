@@ -34,7 +34,7 @@ def low_freq_distr_groups(tcs_info_df, observed_distr):
         observed_distr = observed_distr.loc[mask]
 
     observed_distr_grp_ids = observed_distr.index.unique().tolist()
-    tcs_info_df = tcs_info_df[tcs_info_df.DistrGroupId.isin(observed_distr_grp_ids)]
+    tcs_info_df = tcs_info_df[tcs_info_df.Distrgroupid.isin(observed_distr_grp_ids)]
     return tcs_info_df
 
 

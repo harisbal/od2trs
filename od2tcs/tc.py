@@ -39,7 +39,7 @@ class TripChain:
         self.tour = self.is_tour()
         self.chron_ordered = None
         self.no_external_zones = None
-        self.DistributionGroup = None
+        self.Distrgroup= None
 
     def is_tour(self):
         if self.legs[0].origin == self.legs[-1].destination:

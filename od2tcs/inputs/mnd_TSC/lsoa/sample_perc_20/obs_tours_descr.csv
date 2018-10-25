@@ -1,4 +1,4 @@
-TourId,Legseqidx,Origin,Destination,Timeperiod,IsFirstLeg,IsLastLeg,Purpose,Direction,TravelTime_s
+TourId,Legidx,Origin,Destination,Timeperiod,IsFirstLeg,IsLastLeg,Purpose,Direction,TravelTime_s
 251,0,E01014796,E01033345,IP,True,False,HB,FromHome,1132.1
 251,1,E01033345,E01014796,IP,False,True,HB,ToHome,1083.1
 286,0,E01014510,E01032514,PM,True,False,HB,FromHome,1173.7

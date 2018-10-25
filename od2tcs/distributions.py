@@ -1,6 +1,7 @@
 import pandas as pd
-
 import od2tcs.io as myio
+import od2tcs.utilities as util
+from ast import literal_eval as make_tuple
 
 import settings
 
@@ -19,7 +20,7 @@ def prepare_distribution(observed_tcs_info):
 
     observed_tcs_distr = pd.concat([sizes, percs], axis=1)
     observed_tcs_distr = observed_tcs_distr.reset_index()
-    observed_tcs_distr.index.name = 'DistrGroupId'
+    observed_tcs_distr.index.name = 'Distrgroupid'
 
     threshold = settings.parameters['distribution_percentage_thresh']
 
@@ -45,7 +46,11 @@ def get_observed_tcs_info(max_legs):
     # To kms (dist_bins in kms)
     # observed_tcs_info.Distance /= 1000
 
-    observed_tcs_info['DistanceGroup'] = pd.cut(observed_tcs_info['Distance'], settings.parameters['distance_bins'])
+    observed_tcs_info['Distancegroup'] = pd.cut(observed_tcs_info['Distance'], settings.parameters['distance_bins'])
+
+    # Convert the Timeperiod sequence to tuples
+    observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].str.split(',')
+    observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].apply(tuple)
 
     return observed_tcs_info
 
@@ -56,7 +61,7 @@ def assign_distribution_group(tcs_info_df, observed_tcs_distr):
     # Keep only the distribution group id and its definition
     distr_group_ids = observed_tcs_distr.reset_index()
     distr_group_ids.set_index(distr_dims, inplace=True)
-    distr_group_ids = distr_group_ids['DistrGroupId']
+    distr_group_ids = distr_group_ids['Distrgroupid']
 
     tcs_info_df = pd.merge(tcs_info_df, distr_group_ids.to_frame(),
                            left_on=distr_dims, right_index=True,
@@ -74,22 +79,30 @@ def summarise_tcs_df(tcs_df):
     :return: Dataframe with the tripchains info (distance, Legs, etc)
     """
 
+    distr_dims = settings.parameters['distribution_dims']
+    dist_bins = settings.parameters['distance_bins']
+
     aggr_dimensions = list()
+    if 'Legs' in distr_dims:
+        legs = tcs_df.reset_index(level='Legidx')['Legidx'].groupby(level='Tripchainid').max() + 1
+        legs.name = 'Legs'
+        aggr_dimensions.append(legs)
 
-    legs = tcs_df.reset_index(level='Legseqidx')['Legseqidx'].groupby(level='Tripchainid').max() + 1
-    legs.name = 'Legs'
-    aggr_dimensions.append(legs)
-
-    # Join legs with distances
-    distances = myio.read_distances(settings.filepaths['distances'])
-    tcs_df = pd.merge(tcs_df, distances.to_frame(), left_on=['Origin', 'Destination'], right_index=True)
-    distances = tcs_df['Distance'].groupby(level='Tripchainid').sum()
-    aggr_dimensions.append(distances)
+    if 'Timeperiodseq' in distr_dims:
+        tpseq = tcs_df['Timeperiod'].groupby(level='Tripchainid').apply(tuple)
+        tpseq.name = 'Timeperiodseq'
+        aggr_dimensions.append(tpseq)
 
     # Add the grouping information
-    if settings.parameters['distance_bins']:
+    if dist_bins:
+        # Join legs with distances
+        distances = myio.read_distances(settings.filepaths['distances'])
+        tcs_df = pd.merge(tcs_df, distances.to_frame(), left_on=['Origin', 'Destination'], right_index=True)
+        distances = tcs_df['Distance'].groupby(level='Tripchainid').sum()
+        aggr_dimensions.append(distances)
+
         distance_grps = pd.cut(distances, bins=settings.parameters['distance_bins'])
-        distance_grps.name = 'DistanceGroup'
+        distance_grps.name = 'Distancegroup'
         aggr_dimensions.append(distance_grps)
 
     tcs_info_df = pd.concat(aggr_dimensions, axis=1)

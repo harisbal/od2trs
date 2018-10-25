@@ -1,5 +1,4 @@
 import itertools
-import pandas as pd
 
 
 def pairwise(iterable):

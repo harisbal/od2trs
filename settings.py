@@ -15,14 +15,14 @@ def init(outfolder=None):
     parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'lsoa'
+    parameters['model_name'] = 'msoa'
     parameters['run_name'] = 'sample_perc_10'
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
-    # Maximum values for columns sin the tours
+    # Maximum values for columns in the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
 
@@ -32,13 +32,13 @@ def init(outfolder=None):
     parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
-    parameters['distribution_dims'] = ['DistanceGroup', 'Legs'] # Could include Activities but tcs not ready yet
+    parameters['distribution_dims'] = ['Distancegroup', 'Timeperiodseq'] # Could include Activities but tcs not ready yet
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
     parameters['distance_bins'] = list(range(0, max_tc_distance, 1800))
     parameters['distance_bins'].append(float('inf'))
 
     # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = 0.01
+    parameters['distribution_percentage_thresh'] = 0.0011 # Check in analysis/summary_observed_tours.xlsx
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -51,10 +51,12 @@ def init(outfolder=None):
     # Optimisation stop threshold expressed as percentage of total OD trips
     parameters['optimisation']['mip tolerances absmipgap'] = 0.025 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
+    parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 20_000
     parameters['optimisation']['mip strategy probe'] = 3
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
+
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
                                     'HBW_ToHome': 'HB_ToHome', 'HBO_ToHome': 'HB_ToHome',
