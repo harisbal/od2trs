@@ -59,10 +59,6 @@ target/
 
 \.idea/
 
-optimisation/inputs/
-
-tripchain_generation/inputs/
-
-tripchain_generation/outputs/
+.ipynb_checkpoints/
 
 optimisation/results\.txt
