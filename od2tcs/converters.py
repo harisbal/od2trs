@@ -73,12 +73,11 @@ def zones_seq_to_tcs(zones_seq, G):
     legs_combs = list(itertools.product(*legs_combs))
 
     tcs = list()
-
-    for lc in legs_combs:
-        with counter_lock:
+    with counter_lock:
+        for lc in legs_combs:
             tc = TripChain(legs=lc, id=tcid.value)
             tcid.value += 1
-        tcs.append(tc)
+            tcs.append(tc)
     return tcs
 
 
