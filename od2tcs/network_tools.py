@@ -3,7 +3,48 @@ import od2tcs.filters as filters
 import settings
 
 
-def identify_tour_zone_sequences(source_zone, max_legs, G):
+def reduce_graph_limit_cycle_length(G, source, limit):
+    """
+
+    Parameters
+    ----------
+    G : NetworkX DiGraph
+       A directed graph
+    source : node
+      the node where cycles will originate from
+    limit : int
+      an integer specifying the maximum allowed length of cycles
+    Returns
+    -------
+    G : NetworkX DiGraph
+       A directed graph where cycles starting from source
+       cannot be longer than the limit
+
+    """
+
+    sccs = nx.strongly_connected_components(G)
+    for scc in sccs:
+        if source in scc:
+            subG = G.subgraph(scc)
+            break
+
+    lens_from_source = nx.single_source_shortest_path_length(subG, source=source)
+    lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=source))
+
+    lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
+                      for k in set(lens_from_source)}
+
+    # if the cycle len is greater than the limit do not include nodes in the new G
+    nodes = set()
+    nodes.add(source)
+    for k, length in lens_min_cycle.items():
+        if length <= limit:
+            nodes.add(k)
+
+    return G.subgraph(nodes)
+
+
+def identify_tour_zone_sequences(source, max_legs, G):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -15,11 +56,13 @@ def identify_tour_zone_sequences(source_zone, max_legs, G):
     :return: potential_tripchains
     """
 
-    G_filt = filters.filter_graph_edges_by_purpose(G, source_zone,
+    G_filt = filters.filter_graph_edges_by_purpose(G, source,
                                                    settings.parameters['filter_purposes'])
 
+    #G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
+
     tour_zone_seqs = list()
-    simple_cycles = nx.simple_cycles_root(G_filt, root=source_zone, limit=max_legs)
+    simple_cycles = nx.simple_cycles_root(G_filt, root=source, limit=max_legs)
     # Make the home zone the initial zone of the chain
     for sc in simple_cycles:
         # Complete the tours (repeat first zone)

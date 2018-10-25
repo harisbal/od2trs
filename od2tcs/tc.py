@@ -26,7 +26,7 @@ class TripChain:
     """
     A TripChain is a sequence of legs
     """
-    def __init__(self, legs):
+    def __init__(self, legs, id=None):
         """
         :param legs: list of Leg
         """
@@ -35,7 +35,7 @@ class TripChain:
         else:
             raise ValueError('Only one Leg found')
 
-        self.id = None
+        self.id = id
         self.tour = self.is_tour()
         self.chron_ordered = None
         self.no_external_zones = None

@@ -62,6 +62,7 @@ def main():
                 d_pickles = myio.load_pickles(d_pickles)
                 tours_descr = d_pickles['tours_descr']
                 tours_info = d_pickles['tours_info']
+                print('{} tours imported'.format(tours_info.index.unique().size))
                 od = d_pickles['od']
 
             if run_optimisation:

@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from multiprocessing import Pool, Value, cpu_count
+from multiprocessing import Pool, Value, Lock, cpu_count
 from functools import partial
 
 import itertools
@@ -25,7 +25,9 @@ def od_to_G(od, orig_col, dest_col, attr_cols):
     return G
 
 
-def zones_seq_to_tcs(zones_seq, tcid, G):
+def zones_seq_to_tcs(zones_seq, G):
+
+    global tcid
 
     def filter_leg_attrs_by_purpose(leg_attrs, filter_purposes):
         leg_attrs = [la for la in leg_attrs if la['Purpose'] in filter_purposes]
@@ -69,12 +71,14 @@ def zones_seq_to_tcs(zones_seq, tcid, G):
     legs_combs.append(avail_legs.copy())
 
     legs_combs = list(itertools.product(*legs_combs))
+
     tcs = list()
+
     for lc in legs_combs:
-        tc = TripChain(lc)
-        tc.id = tcid.value
+        with counter_lock:
+            tc = TripChain(legs=lc, id=tcid.value)
+            tcid.value += 1
         tcs.append(tc)
-        tcid.increment()
     return tcs
 
 
@@ -87,7 +91,7 @@ def multiproc_wrapper(source_zone, max_legs):
 
     tours_ds = dict()
     for zs in zones_seqs:
-        tcs = zones_seq_to_tcs(zs, global_tcid, global_G)
+        tcs = zones_seq_to_tcs(zs, global_G)
         possible_tours = filters.identify_possible_tours(tcs)
 
         for pt in possible_tours:
@@ -123,16 +127,18 @@ def multiproc_wrapper(source_zone, max_legs):
         return None
 
 
-def init_multiproc_wrapper(G, observed_tcs_distr, tcid):
+def init_multiproc_wrapper(G, observed_tcs_distr, _tcid, _lock):
     global global_G
     global global_observed_tcs_distr
-    global global_tcid
-
-    global_tcid = tcid
-    global_G = G
-    global_observed_tcs_distr = observed_tcs_distr
+    global tcid
+    global counter_lock
 
     settings.init()
+
+    global_G = G
+    global_observed_tcs_distr = observed_tcs_distr
+    tcid = _tcid
+    counter_lock = _lock
 
 
 def od_to_tours(od, max_legs, observed_tcs_distr):
@@ -147,17 +153,19 @@ def od_to_tours(od, max_legs, observed_tcs_distr):
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
-
+    #internal_zones = internal_zones[0:50]
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
         cpus = cpu_count()-1
 
-    tcid = Counter(1)
+    tcid = Value('i', 1)
+    tcid_lock = Lock()
+
     descrs = list()
     infos = list()
     with Pool(cpus, initializer=init_multiproc_wrapper,
-              initargs=[G, observed_tcs_distr, tcid]) as pool:
+              initargs=[G, observed_tcs_distr, tcid, tcid_lock]) as pool:
         for tours in tqdm(pool.imap_unordered(partial(
                           multiproc_wrapper,
                           max_legs=max_legs),
@@ -170,6 +178,9 @@ def od_to_tours(od, max_legs, observed_tcs_distr):
     if descrs:
         tours_descr_df = pd.concat(descrs)
         tours_info_df = pd.concat(infos)
+        if not tours_info_df.index.is_unique:
+            raise ValueError('Returned index is duplicated')
+
     else:
         raise ValueError('No tours identified')
 
