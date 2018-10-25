@@ -22,26 +22,29 @@ def reduce_graph_limit_cycle_length(G, source, limit):
 
     """
 
+    subG = None
     sccs = nx.strongly_connected_components(G)
     for scc in sccs:
         if source in scc:
             subG = G.subgraph(scc)
             break
+    if subG:
+        lens_from_source = nx.single_source_shortest_path_length(subG, source=source)
+        lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=source))
 
-    lens_from_source = nx.single_source_shortest_path_length(subG, source=source)
-    lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=source))
+        lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
+                          for k in set(lens_from_source)}
 
-    lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
-                      for k in set(lens_from_source)}
+        # if the cycle len is greater than the limit do not include nodes in the new G
+        nodes = set()
+        nodes.add(source)
+        for k, length in lens_min_cycle.items():
+            if length <= limit:
+                nodes.add(k)
 
-    # if the cycle len is greater than the limit do not include nodes in the new G
-    nodes = set()
-    nodes.add(source)
-    for k, length in lens_min_cycle.items():
-        if length <= limit:
-            nodes.add(k)
-
-    return G.subgraph(nodes)
+        return G.subgraph(nodes)
+    else:
+        return G
 
 
 def identify_tour_zone_sequences(source, max_legs, G):
@@ -59,7 +62,7 @@ def identify_tour_zone_sequences(source, max_legs, G):
     G_filt = filters.filter_graph_edges_by_purpose(G, source,
                                                    settings.parameters['filter_purposes'])
 
-    #G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
+    G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
 
     tour_zone_seqs = list()
     simple_cycles = nx.simple_cycles_root(G_filt, root=source, limit=max_legs)
