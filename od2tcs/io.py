@@ -93,40 +93,28 @@ def read_distances(infilepath):
     return s
 
 
-def export_results(od, tcs, tcs_info, distr_grps, results, run_info):
+def export_results(run_info, od, tcs, tcs_info, distr_grps, results):
 
     settings.init()
-    _, _, _, legs, trips_thresh, distr_constr_enabled = run_info
+    filenames = settings.filenames
 
-    flpths = settings.filepaths
-    run_name = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
-    out_folder = os.path.join(flpths['outfolder'], run_name)
+    data_source = run_info['DataSource']
+    model_name = run_info['ModelName']
+    run_name = run_info['RunName']
+    legs = run_info['MaxLegs']
+    trips_thresh = run_info['TripsThresh']
+    distr_constr_enabled = run_info['DistrConstrEnabled']
 
-    # TODO clean this
-    # Initialise with the outfolder
-    settings.init(out_folder)
-    params = settings.parameters
-    flpths = settings.filepaths
+    outfolder = r'./outputs/{}/{}/{}/'.format(data_source, model_name, run_name)
+    outfolder += '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
+    create_folders([outfolder])
 
-    create_folders([out_folder])
+    od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
+    tcs.to_csv(os.path.join(outfolder, filenames['tours_mdl_descr']), index=True)
+    tcs_info.to_csv(os.path.join(outfolder, filenames['tours_mdl_info']), index=True)
+    distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
 
-    od.to_csv(flpths['od_filtered'], index=True)
-    tcs.to_csv(flpths['tours_mdl_descr'], index=True)
-    tcs_info.to_csv(flpths['tours_mdl_info'], index=True)
-    distr_grps.to_csv(flpths['target_distribution'], index=True, header=True)
+    results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
 
-    results.write(filename=flpths['optimisation_results'], format='json')
-
-    with open(flpths['summary'], 'w') as f:
-        run_summary = {'DataSource': params['data_source'],
-                       'ModelName': params['model_name'],
-                       'TripsDirection': params['run_name'],
-                       'DistributionDims': ','.join(params['distribution_dims']),
-                       'MaxLegs': legs,
-                       'TripsThresh': trips_thresh,
-                       'DistrConstrEnabled': distr_constr_enabled,
-                       'OptimAbsGap': params['optimisation']['mip tolerances absmipgap'],
-                       'ObsDistrPercThresh': params['distribution_percentage_thresh'],
-                       'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance']}
-
-        print(run_summary, file=f)
+    with open(os.path.join(outfolder, filenames['metadata']), 'w') as f:
+        print(run_info, file=f)
