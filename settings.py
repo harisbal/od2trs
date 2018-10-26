@@ -3,7 +3,7 @@
 import os
 
 
-def init(proccessfolder=r'./processing'):
+def init():
 
     global parameters
     global filepaths
@@ -16,8 +16,8 @@ def init(proccessfolder=r'./processing'):
     parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'lsoa'
-    parameters['run_name'] = 'sample_perc_01'
+    parameters['model_name'] = 'msoa'
+    parameters['run_name'] = 'sample_perc_20'
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
