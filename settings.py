@@ -3,10 +3,11 @@
 import os
 
 
-def init(outfolder=None):
+def init(proccessfolder=r'./processing'):
 
     global parameters
     global filepaths
+    global filenames
 
     max_tc_distance = 10_800
 
@@ -15,8 +16,8 @@ def init(outfolder=None):
     parameters['run_optimisation'] = True
 
     parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'msoa'
-    parameters['run_name'] = 'sample_perc_10'
+    parameters['model_name'] = 'lsoa'
+    parameters['run_name'] = 'sample_perc_01'
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
@@ -77,23 +78,19 @@ def init(outfolder=None):
 
     filepaths = dict()
 
-    filepaths['infolder'] = r'./od2tcs/inputs/{}/{}/{}'.format(parameters['data_source'],
-                                                               parameters['model_name'],
-                                                               parameters['run_name'])
-
-    filepaths['outfolder'] = r'./od2tcs/outputs/{}/{}/{}'.format(parameters['data_source'],
-                                                                 parameters['model_name'],
-                                                                 parameters['run_name'])
+    filepaths['infolder'] = r'./inputs/{}/{}/{}'.format(parameters['data_source'],
+                                                        parameters['model_name'],
+                                                        parameters['run_name'])
 
     filepaths['od'] = os.path.join(filepaths['infolder'], 'od.csv')
 
     filepaths['distances'] = os.path.join(filepaths['infolder'], 'distance_matrix.csv')
     filepaths['obs_tours_info'] = os.path.join(filepaths['infolder'], 'obs_tours_info.csv')
 
-    if outfolder:
-        filepaths['od_filtered'] = os.path.join(outfolder, 'od_filtered.csv')
-        filepaths['tours_mdl_descr'] = os.path.join(outfolder, 'tours_mdl_descr.csv')
-        filepaths['tours_mdl_info'] = os.path.join(outfolder, 'tours_mdl_info.csv')
-        filepaths['target_distribution'] = os.path.join(outfolder, 'target_distribution.csv')
-        filepaths['optimisation_results'] = os.path.join(outfolder, 'results.json')
-        filepaths['summary'] = os.path.join(outfolder, 'summary.txt')
+    filenames = dict()
+    filenames['od_filtered'] = 'od_filtered.csv'
+    filenames['tours_mdl_descr'] = 'tours_mdl_descr.csv'
+    filenames['tours_mdl_info'] = 'tours_mdl_info.csv'
+    filenames['target_distribution'] = 'target_distribution.csv'
+    filenames['optimisation_results'] = 'results.json'
+    filenames['metadata'] = 'metadata.txt'
