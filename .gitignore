@@ -61,4 +61,6 @@ target/
 
 .ipynb_checkpoints/
 
-optimisation/results\.txt
+od2tcs/inputs/
+
+optimisation\results\.txt
