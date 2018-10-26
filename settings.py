@@ -17,10 +17,10 @@ def init():
 
     parameters['data_source'] = 'mnd_TSC'
     parameters['model_name'] = 'msoa'
-    parameters['run_name'] = 'sample_perc_20'
+    parameters['run_name'] = 'sample_perc_01'
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [5]
+    parameters['max_legs'] = [3]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns in the tours
