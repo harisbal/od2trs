@@ -12,12 +12,14 @@ def prepare_distribution(observed_tcs_info, distr_dims):
     """
 
     # TODO I can improve it so it picks the right combination to maintain the specified threshold
-    def _calculate_thresh(s, remain_perc, step=0.00001):
-        for _thresh in np.arange(0, 1, step):
-            mask = s > _thresh
-            perc = s[mask].sum()
-            if perc <= remain_perc:
-                return _thresh
+    def _create_filter_mask(s, remain_perc):
+        """
+        filter out groups so that the remaining ones account for the remain_perc
+        """
+        s = s.sort_values()
+        s_cumsum = s.cumsum()
+        mask = s_cumsum >= 1-remain_perc
+        return mask
 
     sizes = observed_tcs_info.groupby(distr_dims).size()
     sizes.name = 'Size'
@@ -34,9 +36,9 @@ def prepare_distribution(observed_tcs_info, distr_dims):
         if not (0 < remain_perc <= 1):
             raise ValueError('filter remain_perc should be between 0 and 1')
 
-        thresh = _calculate_thresh(observed_tcs_distr['Percentage'], remain_perc)
-        observed_tcs_distr = observed_tcs_distr[observed_tcs_distr['Percentage'] >= thresh]
+        mask = _create_filter_mask(observed_tcs_distr['Percentage'], remain_perc)
         # Re-calculate the percentage
+        observed_tcs_distr = observed_tcs_distr.loc[mask]
         observed_tcs_distr['Percentage'] /= observed_tcs_distr['Percentage'].sum()
 
     return observed_tcs_distr

@@ -88,6 +88,7 @@ def main():
                             'MaxLegs': legs,
                             'TripsThresh': trips_thresh,
                             'DistrConstrEnabled': distr_constr_enabled,
+                            'DistrPercRemain': params['distribution_percentage_remain'],
                             'OptimAbsGap': params['optimisation']['mip tolerances absmipgap'],
                             'ObsDistrPercThresh': params['distribution_percentage_remain'],
                             'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance']}

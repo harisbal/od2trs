@@ -17,16 +17,17 @@ def init():
 
     parameters['data_sources'] = ['mnd_TSC']
     parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_10']
+    parameters['sample_sizes'] = ['sample_perc_20']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Timeperiodseq'],
-                                       ['Distancegroup', 'Legs']]
+    parameters['distribution_dims'] = [['Distancegroup', 'Timeperiodseq']]
+    # The percentage of remaining groups threshold
+    parameters['distribution_percentage_remain'] = 0.80  # Check in analysis/summary_observed_tours.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['distribution_constraints_states'] = [True]
     # Maximum values for columns in the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
@@ -41,9 +42,6 @@ def init():
     parameters['distance_bins'] = list(range(0, max_tc_distance, 1800))
     parameters['distance_bins'].append(float('inf'))
 
-    # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.95 # Check in analysis/summary_observed_tours.xlsx
-
     # Optimisation parameters
     parameters['optimisation'] = dict()
     # Maximum allowed deviation between observed and estimated distributions' percentage
@@ -55,10 +53,10 @@ def init():
     # Optimisation stop threshold expressed as percentage of total OD trips
     parameters['optimisation']['mip tolerances absmipgap'] = 0.01 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
-    parameters['optimisation']['timelimit'] = 12 * 3600  # in seconds
+    parameters['optimisation']['timelimit'] = 3 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 20_000
-    parameters['optimisation']['mip strategy probe'] = 0
+    parameters['optimisation']['mip strategy probe'] = 3
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
     # Dictionary to group purposes in OD
