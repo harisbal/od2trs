@@ -6,14 +6,14 @@ from ast import literal_eval as make_tuple
 import settings
 
 
-def prepare_distribution(observed_tcs_info):
+def prepare_distribution(observed_tcs_info, distr_dims):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the
     groups identified in the created tripchains.
     """
 
-    sizes = observed_tcs_info.groupby(settings.parameters['distribution_dims']).size()
+    sizes = observed_tcs_info.groupby(distr_dims).size()
     sizes.name = 'Size'
     percs = sizes.div(sizes.sum())
     percs.name = 'Percentage'
@@ -34,10 +34,10 @@ def prepare_distribution(observed_tcs_info):
     return observed_tcs_distr
 
 
-def get_observed_tcs_info(max_legs):
+def get_observed_tcs_info(infilepath, max_legs):
 
     # observed tours info
-    observed_tcs_info = pd.read_csv(settings.filepaths['obs_tours_info'])
+    observed_tcs_info = pd.read_csv(infilepath)
 
     # Keep only the tours with less than max_legs legs
     mask = observed_tcs_info['Legs'] <= max_legs
@@ -55,9 +55,8 @@ def get_observed_tcs_info(max_legs):
     return observed_tcs_info
 
 
-def assign_distribution_group(tcs_info_df, observed_tcs_distr):
+def assign_distribution_group(tcs_info_df, observed_tcs_distr, distr_dims):
 
-    distr_dims = settings.parameters['distribution_dims']
     # Keep only the distribution group id and its definition
     distr_group_ids = observed_tcs_distr.reset_index()
     distr_group_ids.set_index(distr_dims, inplace=True)
@@ -70,7 +69,7 @@ def assign_distribution_group(tcs_info_df, observed_tcs_distr):
     return tcs_info_df
 
 
-def summarise_tcs_df(tcs_df):
+def summarise_tcs_df(tcs_df, distr_dims, distances=None):
     """
     Function to return info for each chain
 
@@ -79,7 +78,6 @@ def summarise_tcs_df(tcs_df):
     :return: Dataframe with the tripchains info (distance, Legs, etc)
     """
 
-    distr_dims = settings.parameters['distribution_dims']
     dist_bins = settings.parameters['distance_bins']
 
     aggr_dimensions = list()
@@ -96,7 +94,6 @@ def summarise_tcs_df(tcs_df):
     # Add the grouping information
     if dist_bins:
         # Join legs with distances
-        distances = myio.read_distances(settings.filepaths['distances'])
         tcs_df = pd.merge(tcs_df, distances.to_frame(), left_on=['Origin', 'Destination'], right_index=True)
         distances = tcs_df['Distance'].groupby(level='Tripchainid').sum()
         aggr_dimensions.append(distances)

@@ -10,9 +10,9 @@ import od2tcs.utilities as util
 import od2tcs.network_tools as nettools
 import od2tcs.distributions as distrs
 import od2tcs.filters as filters
+import od2tcs.io as myio
 
 from od2tcs.tc import Leg, TripChain
-from od2tcs.counter import Counter
 
 import settings
 
@@ -81,7 +81,7 @@ def zones_seq_to_tcs(zones_seq, G):
     return tcs
 
 
-def multiproc_wrapper(source_zone, max_legs):
+def multiproc_wrapper(source_zone, distr_dims, max_legs):
     params = settings.parameters
 
     zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, global_G)
@@ -104,8 +104,8 @@ def multiproc_wrapper(source_zone, max_legs):
         descr_df.index.names = ['Tripchainid', 'Legidx']
         descr_df.dropna(axis=1, inplace=True)
 
-        info_df = distrs.summarise_tcs_df(descr_df)
-        info_df = (info_df.pipe(distrs.assign_distribution_group, global_observed_tcs_distr)
+        info_df = distrs.summarise_tcs_df(descr_df, distr_dims, distances)
+        info_df = (info_df.pipe(distrs.assign_distribution_group, global_observed_tcs_distr, distr_dims)
                    .pipe(filters.low_freq_distr_groups, global_observed_tcs_distr)
                    .pipe(filters.tcs_by_dict, params['filters']))
 
@@ -126,9 +126,10 @@ def multiproc_wrapper(source_zone, max_legs):
         return None
 
 
-def init_multiproc_wrapper(G, observed_tcs_distr, _tcid, _lock):
+def init_multiproc_wrapper(G, observed_tcs_distr, _distances, _tcid, _lock):
     global global_G
     global global_observed_tcs_distr
+    global distances
     global tcid
     global counter_lock
 
@@ -136,11 +137,13 @@ def init_multiproc_wrapper(G, observed_tcs_distr, _tcid, _lock):
 
     global_G = G
     global_observed_tcs_distr = observed_tcs_distr
+
+    distances = _distances
     tcid = _tcid
     counter_lock = _lock
 
 
-def od_to_tours(od, max_legs, observed_tcs_distr):
+def od_to_tours(od, max_legs, observed_tcs_distr, distr_dims, distances=None):
 
     params = settings.parameters
 
@@ -152,7 +155,7 @@ def od_to_tours(od, max_legs, observed_tcs_distr):
     # Very dirty quick solution
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
-    #internal_zones = internal_zones[0:50]
+
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
@@ -163,10 +166,12 @@ def od_to_tours(od, max_legs, observed_tcs_distr):
 
     descrs = list()
     infos = list()
+
     with Pool(cpus, initializer=init_multiproc_wrapper,
-              initargs=[G, observed_tcs_distr, tcid, tcid_lock]) as pool:
+              initargs=[G, observed_tcs_distr, distances, tcid, tcid_lock]) as pool:
         for tours in tqdm(pool.imap_unordered(partial(
                           multiproc_wrapper,
+                          distr_dims=distr_dims,
                           max_legs=max_legs),
                           internal_zones), total=len(internal_zones)):
             if tours:

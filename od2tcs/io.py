@@ -99,13 +99,14 @@ def export_results(run_info, od, tcs, tcs_info, distr_grps, results):
     filenames = settings.filenames
 
     data_source = run_info['DataSource']
-    model_name = run_info['ModelName']
-    run_name = run_info['RunName']
+    aggr_level = run_info['AggrLevel']
+    sample_size = run_info['SampleSize']
+    distr_dims = run_info['DistrDims']
     legs = run_info['MaxLegs']
     trips_thresh = run_info['TripsThresh']
     distr_constr_enabled = run_info['DistrConstrEnabled']
 
-    outfolder = r'./outputs/{}/{}/{}/'.format(data_source, model_name, run_name)
+    outfolder = r'./outputs/{}/{}/{}/{}/'.format(data_source, distr_dims, aggr_level, sample_size)
     outfolder += '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
     create_folders([outfolder])
 
