@@ -81,16 +81,16 @@ def zones_seq_to_tcs(zones_seq, G):
     return tcs
 
 
-def multiproc_wrapper(source_zone, distr_dims, max_legs):
+def multiproc_wrapper(source_zone, observed_tcs_distr, distr_dims, max_legs):
     params = settings.parameters
 
-    zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, global_G)
+    zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, G)
     if not zones_seqs:
         return None
 
     tours_ds = dict()
     for zs in zones_seqs:
-        tcs = zones_seq_to_tcs(zs, global_G)
+        tcs = zones_seq_to_tcs(zs, G)
         possible_tours = filters.identify_possible_tours(tcs)
 
         for pt in possible_tours:
@@ -105,8 +105,7 @@ def multiproc_wrapper(source_zone, distr_dims, max_legs):
         descr_df.dropna(axis=1, inplace=True)
 
         info_df = distrs.summarise_tcs_df(descr_df, distr_dims, distances)
-        info_df = (info_df.pipe(distrs.assign_distribution_group, global_observed_tcs_distr, distr_dims)
-                   .pipe(filters.low_freq_distr_groups, global_observed_tcs_distr)
+        info_df = (info_df.pipe(distrs.assign_distribution_group, observed_tcs_distr, distr_dims)
                    .pipe(filters.tcs_by_dict, params['filters']))
 
         # Remove unused tours
@@ -126,18 +125,15 @@ def multiproc_wrapper(source_zone, distr_dims, max_legs):
         return None
 
 
-def init_multiproc_wrapper(G, observed_tcs_distr, _distances, _tcid, _lock):
-    global global_G
-    global global_observed_tcs_distr
+def init_multiproc_wrapper(_G, _distances, _tcid, _lock):
+    global G
     global distances
     global tcid
     global counter_lock
 
     settings.init()
 
-    global_G = G
-    global_observed_tcs_distr = observed_tcs_distr
-
+    G = _G
     distances = _distances
     tcid = _tcid
     counter_lock = _lock
@@ -168,9 +164,10 @@ def od_to_tours(od, max_legs, observed_tcs_distr, distr_dims, distances=None):
     infos = list()
 
     with Pool(cpus, initializer=init_multiproc_wrapper,
-              initargs=[G, observed_tcs_distr, distances, tcid, tcid_lock]) as pool:
+              initargs=[G, distances, tcid, tcid_lock]) as pool:
         for tours in tqdm(pool.imap_unordered(partial(
                           multiproc_wrapper,
+                          observed_tcs_distr=observed_tcs_distr,
                           distr_dims=distr_dims,
                           max_legs=max_legs),
                           internal_zones), total=len(internal_zones)):

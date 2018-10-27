@@ -1,3 +1,4 @@
+import numpy as np
 import networkx as nx
 import settings
 
@@ -21,21 +22,6 @@ def identify_possible_tours(tcs):
         possible_tours.append(tc)
 
     return possible_tours
-
-
-def low_freq_distr_groups(tcs_info_df, observed_distr):
-    # Keep distribution groups when their share is greater than thresh_perc
-    thresh_perc = settings.parameters['distribution_percentage_thresh']
-    if thresh_perc:
-        if not (0 < thresh_perc <= 1):
-            raise ValueError('filter thresh_perc should be between 0 and 1')
-
-        mask = observed_distr['Percentage'] >= thresh_perc
-        observed_distr = observed_distr.loc[mask]
-
-    observed_distr_grp_ids = observed_distr.index.unique().tolist()
-    tcs_info_df = tcs_info_df[tcs_info_df.Distrgroupid.isin(observed_distr_grp_ids)]
-    return tcs_info_df
 
 
 def tcs_by_dict(tcs_info_df, d_filters):

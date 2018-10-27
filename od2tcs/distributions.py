@@ -1,7 +1,5 @@
 import pandas as pd
-import od2tcs.io as myio
-import od2tcs.utilities as util
-from ast import literal_eval as make_tuple
+import numpy as np
 
 import settings
 
@@ -13,6 +11,14 @@ def prepare_distribution(observed_tcs_info, distr_dims):
     groups identified in the created tripchains.
     """
 
+    # TODO I can improve it so it picks the right combination to maintain the specified threshold
+    def _calculate_thresh(s, remain_perc, step=0.00001):
+        for _thresh in np.arange(0, 1, step):
+            mask = s > _thresh
+            perc = s[mask].sum()
+            if perc <= remain_perc:
+                return _thresh
+
     sizes = observed_tcs_info.groupby(distr_dims).size()
     sizes.name = 'Size'
     percs = sizes.div(sizes.sum())
@@ -22,13 +28,15 @@ def prepare_distribution(observed_tcs_info, distr_dims):
     observed_tcs_distr = observed_tcs_distr.reset_index()
     observed_tcs_distr.index.name = 'Distrgroupid'
 
-    threshold = settings.parameters['distribution_percentage_thresh']
+    # Assure that the remaining groups after filtering will be over the threshold
+    remain_perc = settings.parameters['distribution_percentage_remain']
+    if remain_perc:
+        if not (0 < remain_perc <= 1):
+            raise ValueError('filter remain_perc should be between 0 and 1')
 
-    if threshold:
-        # Drop rows where the distribution perc is lower than the threshold
-        mask = observed_tcs_distr.Percentage >= threshold
-        observed_tcs_distr = observed_tcs_distr[mask]
-        # Recalculate the percentages
+        thresh = _calculate_thresh(observed_tcs_distr['Percentage'], remain_perc)
+        observed_tcs_distr = observed_tcs_distr[observed_tcs_distr['Percentage'] >= thresh]
+        # Re-calculate the percentage
         observed_tcs_distr['Percentage'] /= observed_tcs_distr['Percentage'].sum()
 
     return observed_tcs_distr
@@ -51,7 +59,6 @@ def get_observed_tcs_info(infilepath, max_legs):
     # Convert the Timeperiod sequence to tuples
     observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].str.split(',')
     observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].apply(tuple)
-
     return observed_tcs_info
 
 
