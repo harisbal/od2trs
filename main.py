@@ -22,19 +22,18 @@ def main():
 
     settings.init()
     params = settings.parameters
-    filenames = settings.filenames
 
     # prepare_tcs = params['prepare_tcs']
     run_optimisation = params['run_optimisation']
 
     iteration_params = list(itertools.product(params['data_sources'],
-                                              params['distribution_dims'],
                                               params['aggr_levels'],
                                               params['sample_sizes'],
+                                              params['distribution_dims'],
                                               params['max_legs'],
                                               params['trips_thresh']))
 
-    for data_source, distr_dims, aggr_level, sample_size, legs, trips_thresh in iteration_params:
+    for data_source, aggr_level, sample_size, distr_dims, legs, trips_thresh in iteration_params:
 
         infolder = r'./inputs/{}/{}/{}'.format(data_source, aggr_level, sample_size)
 
@@ -84,12 +83,13 @@ def main():
                 run_info = {'DataSource': data_source,
                             'AggrLevel': aggr_level,
                             'SampleSize': sample_size,
-                            'DistrDims': '-'.join(params['distribution_dims']),
+                            'DistrDims': '-'.join(distr_dims),
                             'MaxLegs': legs,
                             'TripsThresh': trips_thresh,
                             'DistrConstrEnabled': distr_constr_enabled,
+                            'DistrPercRemain': params['distribution_percentage_remain'],
                             'OptimAbsGap': params['optimisation']['mip tolerances absmipgap'],
-                            'ObsDistrPercThresh': params['distribution_percentage_thresh'],
+                            'ObsDistrPercThresh': params['distribution_percentage_remain'],
                             'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance']}
 
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))

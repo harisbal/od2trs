@@ -1,7 +1,5 @@
 import pandas as pd
-import od2tcs.io as myio
-import od2tcs.utilities as util
-from ast import literal_eval as make_tuple
+import numpy as np
 
 import settings
 
@@ -13,6 +11,16 @@ def prepare_distribution(observed_tcs_info, distr_dims):
     groups identified in the created tripchains.
     """
 
+    # TODO I can improve it so it picks the right combination to maintain the specified threshold
+    def _create_filter_mask(s, remain_perc):
+        """
+        filter out groups so that the remaining ones account for the remain_perc
+        """
+        s = s.sort_values()
+        s_cumsum = s.cumsum()
+        mask = s_cumsum >= 1-remain_perc
+        return mask
+
     sizes = observed_tcs_info.groupby(distr_dims).size()
     sizes.name = 'Size'
     percs = sizes.div(sizes.sum())
@@ -22,13 +30,15 @@ def prepare_distribution(observed_tcs_info, distr_dims):
     observed_tcs_distr = observed_tcs_distr.reset_index()
     observed_tcs_distr.index.name = 'Distrgroupid'
 
-    threshold = settings.parameters['distribution_percentage_thresh']
+    # Assure that the remaining groups after filtering will be over the threshold
+    remain_perc = settings.parameters['distribution_percentage_remain']
+    if remain_perc:
+        if not (0 < remain_perc <= 1):
+            raise ValueError('filter remain_perc should be between 0 and 1')
 
-    if threshold:
-        # Drop rows where the distribution perc is lower than the threshold
-        mask = observed_tcs_distr.Percentage >= threshold
-        observed_tcs_distr = observed_tcs_distr[mask]
-        # Recalculate the percentages
+        mask = _create_filter_mask(observed_tcs_distr['Percentage'], remain_perc)
+        # Re-calculate the percentage
+        observed_tcs_distr = observed_tcs_distr.loc[mask]
         observed_tcs_distr['Percentage'] /= observed_tcs_distr['Percentage'].sum()
 
     return observed_tcs_distr
@@ -51,7 +61,6 @@ def get_observed_tcs_info(infilepath, max_legs):
     # Convert the Timeperiod sequence to tuples
     observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].str.split(',')
     observed_tcs_info['Timeperiodseq'] = observed_tcs_info['Timeperiodseq'].apply(tuple)
-
     return observed_tcs_info
 
 
@@ -64,7 +73,12 @@ def assign_distribution_group(tcs_info_df, observed_tcs_distr, distr_dims):
 
     tcs_info_df = pd.merge(tcs_info_df, distr_group_ids.to_frame(),
                            left_on=distr_dims, right_index=True,
-                           how='left')
+                           how='right')
+
+    # This should not happen. If it does it means that some tours were not identified
+    if tcs_info_df.Distrgroupid.isna().sum() > 0:
+        missing_groups = tcs_info_df.loc[tcs_info_df.Disttrgroupid.isna()]
+        raise ValueError('Observed groups missing from modelled tours: {} '.format(missing_groups))
 
     return tcs_info_df
 

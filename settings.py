@@ -16,11 +16,12 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa',  'msoa']
+    parameters['aggr_levels'] = ['msoa']
     parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
-                                       ['Distancegroup', 'Timeperiodseq']]
+    parameters['distribution_dims'] = [['Distancegroup', 'Timeperiodseq']]
+    # The percentage of remaining groups threshold
+    parameters['distribution_percentage_remain'] = 0.95  # Check in analysis/summary_observed_tours.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -41,9 +42,6 @@ def init():
     parameters['distance_bins'] = list(range(0, max_tc_distance, 1800))
     parameters['distance_bins'].append(float('inf'))
 
-    # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = 0.0011 # Check in analysis/summary_observed_tours.xlsx
-
     # Optimisation parameters
     parameters['optimisation'] = dict()
     # Maximum allowed deviation between observed and estimated distributions' percentage
@@ -55,7 +53,7 @@ def init():
     # Optimisation stop threshold expressed as percentage of total OD trips
     parameters['optimisation']['mip tolerances absmipgap'] = 0.01 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
-    parameters['optimisation']['timelimit'] = 12 * 3600  # in seconds
+    parameters['optimisation']['timelimit'] = 3 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 20_000
     parameters['optimisation']['mip strategy probe'] = 3
