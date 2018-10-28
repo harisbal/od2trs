@@ -73,7 +73,12 @@ def assign_distribution_group(tcs_info_df, observed_tcs_distr, distr_dims):
 
     tcs_info_df = pd.merge(tcs_info_df, distr_group_ids.to_frame(),
                            left_on=distr_dims, right_index=True,
-                           how='left')
+                           how='right')
+
+    # This should not happen. If it does it means that some tours were not identified
+    if tcs_info_df.Distrgroupid.isna().sum() > 0:
+        missing_groups = tcs_info_df.loc[tcs_info_df.Disttrgroupid.isna()]
+        raise ValueError('Observed groups missing from modelled tours: {} '.format(missing_groups))
 
     return tcs_info_df
 

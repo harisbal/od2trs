@@ -16,18 +16,18 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_20']
+    parameters['aggr_levels'] = ['msoa']
+    parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Timeperiodseq']]
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.80  # Check in analysis/summary_observed_tours.xlsx
+    parameters['distribution_percentage_remain'] = 0.95  # Check in analysis/summary_observed_tours.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True]
+    parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns in the tours
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa

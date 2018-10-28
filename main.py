@@ -22,7 +22,6 @@ def main():
 
     settings.init()
     params = settings.parameters
-    filenames = settings.filenames
 
     # prepare_tcs = params['prepare_tcs']
     run_optimisation = params['run_optimisation']
