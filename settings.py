@@ -16,10 +16,11 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['msoa']
+    parameters['aggr_levels'] = ['lsoa']
     parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Timeperiodseq']]
+    parameters['distribution_dims'] = [['Distancegroup', 'Legs']] # ['Distancegroup', 'Timeperiodseq']
+
     # The percentage of remaining groups threshold
     parameters['distribution_percentage_remain'] = 0.95  # Check in analysis/summary_observed_tours.xlsx
 
