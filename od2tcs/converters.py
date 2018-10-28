@@ -152,6 +152,8 @@ def od_to_tours(od, max_legs, observed_tcs_distr, distr_dims, distances=None):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
+    #internal_zones = internal_zones[0:25]
+
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:

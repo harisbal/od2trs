@@ -5,6 +5,7 @@ import od2tcs.converters as converters
 import od2tcs.distributions as distrs
 import od2tcs.optimise as opt
 import od2tcs.io as myio
+import od2tcs.filters as filters
 
 import settings
 
@@ -97,9 +98,15 @@ def main():
                                          observed_tcs_distr, distr_constr_enabled,
                                          submit_to_neos=params['submit_to_neos'])
 
+                solution_tour_times_used = filters.extract_tour_times_used(optim_results)
+                tour_times_used = solution_tour_times_used[0]
+                tours_info_run = tours_info.join(tour_times_used)
+                tours_info_run.fillna({'Timesused': 0}, inplace=True)
+                tours_info_run['Timesused'] = tours_info_run['Timesused'].astype(int)
+
                 print('Exporting')
                 myio.export_results(run_info,
-                                    od, tours_descr, tours_info, observed_tcs_distr,
+                                    od, tours_descr, tours_info_run, observed_tcs_distr,
                                     optim_results)
 
                 print('Complete!')

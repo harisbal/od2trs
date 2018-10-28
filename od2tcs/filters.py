@@ -1,4 +1,5 @@
-import numpy as np
+import re
+import pandas as pd
 import networkx as nx
 import settings
 
@@ -54,3 +55,25 @@ def filter_graph_edges_by_purpose(G, home_zone, filter_edge_purpose_names):
             if (target==home_zone):
                 filt_G.add_edge(source, target, Purpose=attr['Purpose'])
     return filt_G
+
+
+def extract_tour_times_used(optim_results):
+    """
+    Returns dictionary of the number times each tour is used for each solution
+    :param optim_results:
+    :return:
+    """
+    solutions = optim_results['Solution']
+    d_tour_times_used = dict()
+    for sol_id, sol in enumerate(solutions):
+        d = sol['Variable']
+        for k, v in d.items():
+            tour_id = int(re.search('[\d+]', k)[0])
+            d_tour_times_used[(sol_id, tour_id)] = v['Value']
+
+    # to df
+    sr = pd.Series(d_tour_times_used).astype(int)
+    sr.index.names = ['Solutionno', 'Tourid']
+    sr.name = 'Timesused'
+    return sr
+

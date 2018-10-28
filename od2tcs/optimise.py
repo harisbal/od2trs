@@ -124,7 +124,9 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(tcs, tcs_info, od, distr_grps, distr_constr_enabled, submit_to_neos=False):
+def main(tcs, tcs_info, od, distr_grps,
+         distr_constr_enabled, submit_to_neos=False):
+
     report_timing()
     mymodel = prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
