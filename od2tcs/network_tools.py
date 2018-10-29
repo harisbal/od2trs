@@ -59,8 +59,8 @@ def identify_tour_zone_sequences(source, max_legs, G):
     :return: potential_tripchains
     """
 
-    G_filt = filters.filter_graph_edges_by_purpose(G, source,
-                                                   settings.parameters['filter_purposes'])
+    G_filt = filters.filter_graph_edges_by_direction(G, source,
+                                                     settings.parameters['filter_directions'])
 
     G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
 

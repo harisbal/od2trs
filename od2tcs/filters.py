@@ -32,28 +32,28 @@ def trs_by_dict(trs_info_df, d_filters):
     return trs_info_df
 
 
-def filter_graph_edges_by_purpose(G, home_zone, filter_edge_purpose_names):
+def filter_graph_edges_by_direction(G, origin_source, filter_edge_directions_names):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
     """
 
-    hbfh_names, hbth_names, nhb_names = filter_edge_purpose_names
+    fh_names, th_names, nhb_names = filter_edge_directions_names
 
     # Give better name
     # Creates a graph that origins edges from and to
     filt_G = nx.MultiDiGraph()
     for source, target, attr in G.edges(data=True):
-        if attr['Purpose'] in nhb_names:
+        if attr['Direction'] in nhb_names:
             # NHB trips are added only when the source is not home
-            if not (source == home_zone or target == home_zone):
-                filt_G.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hbfh_names:
-            if (source==home_zone):
-                filt_G.add_edge(source, target, Purpose=attr['Purpose'])
-        elif attr['Purpose'] in hbth_names:
-            if (target==home_zone):
-                filt_G.add_edge(source, target, Purpose=attr['Purpose'])
+            if not (source == origin_source or target == origin_source):
+                filt_G.add_edge(source, target, Purpose=attr['Direction'])
+        elif attr['Direction'] in fh_names:
+            if (source == origin_source):
+                filt_G.add_edge(source, target, Purpose=attr['Direction'])
+        elif attr['Direction'] in th_names:
+            if (target == origin_source):
+                filt_G.add_edge(source, target, Purpose=attr['Direction'])
     return filt_G
 
 

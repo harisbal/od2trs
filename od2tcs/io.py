@@ -43,12 +43,12 @@ def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
 
 def fetch_prepare_od(infilepath, trips_thresh):
 
-    idx_names = ['Source', 'Target', 'Purpose', 'Mode', 'Timeperiod']
+    idx_names = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'Timeperiod']
     od = pd.read_csv(infilepath)
     od.set_index(idx_names, inplace=True)
     od = od.squeeze()
 
-    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None]
+    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None, None]
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
     odg = odg.reset_index()
@@ -70,10 +70,10 @@ def fetch_prepare_od(infilepath, trips_thresh):
     # and HB_ToHome when destination is to external
     internal_zone_str = settings.parameters['int_zone_str']
     mask_fh = (~od_filtered.index.get_level_values('Source').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['origin_purposes'])))
+               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['origin_directions'])))
 
     mask_th = (~od_filtered.index.get_level_values('Target').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['destination_purposes'])))
+               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['destination_directions'])))
 
     od_filtered.loc[mask_fh] = np.nan
     od_filtered.loc[mask_th] = np.nan
@@ -104,7 +104,7 @@ def create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info):
 
     mrg = pd.merge(left=trs_obs_descr.reset_index(),
                    right=trs_mdl_descr.reset_index(),
-                   on=['Legidx', 'Source', 'Purpose', 'Timeperiod'])
+                   on=['Legidx', 'Source', 'Purpose', 'Direction', 'Timeperiod'])
 
 
 

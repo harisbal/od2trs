@@ -10,7 +10,6 @@ import od2tcs.utilities as util
 import od2tcs.network_tools as nettools
 import od2tcs.distributions as distrs
 import od2tcs.filters as filters
-import od2tcs.io as myio
 
 from od2tcs.tc import Leg, TripChain
 
@@ -29,23 +28,23 @@ def zones_seq_to_trs(zones_seq, G):
 
     global tcid
 
-    def filter_leg_attrs_by_purpose(leg_attrs, filter_purposes):
-        leg_attrs = [la for la in leg_attrs if la['Purpose'] in filter_purposes]
+    def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
+        leg_attrs = [la for la in leg_attrs if la['Direction'] in filter_directions]
         return leg_attrs
 
-    def prepare_leg_attrs(G, source, target, filter_purposes):
+    def prepare_leg_attrs(G, source, target, filter_directions):
         leg_attrs = G.get_edge_data(source, target).values()
-        leg_attrs = filter_leg_attrs_by_purpose(leg_attrs, filter_purposes)
+        leg_attrs = filter_leg_attrs_by_purpose(leg_attrs, filter_directions)
 
         return leg_attrs
 
-    filter_purpose_orig, filter_purpose_dest, filter_purpose_interm = settings.parameters['filter_purposes']
+    filter_direction_orig, filter_direction_dest, filter_direction_interm = settings.parameters['filter_directions']
 
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
     leg_attrs = prepare_leg_attrs(G, zones_seq[0], zones_seq[1],
-                                  filter_purpose_orig)
+                                  filter_direction_orig)
     avail_legs = list()
     for la in leg_attrs:
         leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
@@ -55,7 +54,7 @@ def zones_seq_to_trs(zones_seq, G):
     if len(zones_seq) >= 4: # A tc containing intermediate zones visits at least 4
         for o, d in util.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(G, o, d, filter_purpose_interm)
+            leg_attrs = prepare_leg_attrs(G, o, d, filter_direction_interm)
             for la in leg_attrs:
                 leg = Leg(source=o, target=d, **la)
                 avail_legs.append(leg)
@@ -63,7 +62,7 @@ def zones_seq_to_trs(zones_seq, G):
 
     # Last leg attrs
     leg_attrs = prepare_leg_attrs(G, zones_seq[-2], zones_seq[-1],
-                                  filter_purpose_dest)
+                                  filter_direction_dest)
     avail_legs.clear()
     for la in leg_attrs:
         leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
@@ -143,7 +142,7 @@ def od_to_trs(od, max_legs, observed_trs_distr, distr_dims, distances=None):
 
     params = settings.parameters
 
-    attr_cols = ['Purpose', 'Timeperiod']
+    attr_cols = ['Purpose', 'Direction', 'Timeperiod']
     G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols)
 
@@ -152,7 +151,7 @@ def od_to_trs(od, max_legs, observed_trs_distr, distr_dims, distances=None):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
-    internal_zones = internal_zones[0:100]
+    #internal_zones = internal_zones[0:100]
 
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']

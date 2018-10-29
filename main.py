@@ -10,22 +10,11 @@ import od2tcs.filters as filters
 import settings
 
 
-def prepare_pickle_dict(run_info):
-    d_pickles = dict()
-    pickle_suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
-    d_pickles['trs_descr' + pickle_suffix] = None
-    d_pickles['trs_info' + pickle_suffix] = None
-    d_pickles['od' + pickle_suffix] = None
-    return d_pickles
-
-
 def main():
 
     settings.init()
     params = settings.parameters
     filenames = settings.filenames
-    # prepare_trs = params['prepare_trs']
-    run_optimisation = params['run_optimisation']
 
     iteration_params = list(itertools.product(params['data_sources'],
                                               params['aggr_levels'],
@@ -52,35 +41,18 @@ def main():
         trs_obs_distr = (distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
                            .pipe(distrs.prepare_distribution, distr_dims))
 
-        #TODO revise pickling (maybe remove)
-        #d_pickles = prepare_pickle_dict(run_info)
+        distances = myio.read_distances(filepaths['distances'])
+        print('Creating TripChains...')
+        od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
+        trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
+                                                           trs_obs_distr, distr_dims,
+                                                           distances)
 
-        prepare_trs = True
-        if prepare_trs:
-            distances = myio.read_distances(filepaths['distances'])
-            print('Creating TripChains...')
-            od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
-            trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
-                                                                     trs_obs_distr, distr_dims,
-                                                                     distances)
+        if trs_mdl_descr.empty:
+            print('No tripchains discovered')
+            return None
 
-            if trs_mdl_descr.empty:
-                print('No tripchains discovered')
-                return None
-            #suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
-            #d_pickles['trs_mdl_descr'+suffix] = trs_mdl_descr
-            #d_pickles['trs_mdl_info'+suffix] = trs_mdl_info
-            #d_pickles['od'+suffix] = od
-            #myio.export_pickles(d_pickles)
-        else:
-            # dict with the loaded variables
-            d_pickles = myio.load_pickles(d_pickles)
-            trs_mdl_descr = d_pickles['trs_mdl_descr']
-            trs_mdl_info = d_pickles['trs_mdl_info']
-            print('{} trs imported'.format(trs_mdl_info.index.unique().size))
-            od = d_pickles['od']
-
-        if run_optimisation:
+        if params['run_optimisation']:
             for distr_constr_enabled in params['distribution_constraints_states']:
 
                 run_info = {'DataSource': data_source, 'AggrLevel': aggr_level,

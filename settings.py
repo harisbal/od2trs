@@ -12,7 +12,6 @@ def init():
     max_tc_distance = 10_800
 
     parameters = dict()
-    parameters['prepare_trs'] = True
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
@@ -36,7 +35,7 @@ def init():
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = 2
+    parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
@@ -61,22 +60,19 @@ def init():
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 
     # Dictionary to group purposes in OD
-    parameters['d_grp_purposes'] = {'HBW_FromHome': 'HB_FromHome', 'HBO_FromHome': 'HB_FromHome',
-                                    'HBW_ToHome': 'HB_ToHome', 'HBO_ToHome': 'HB_ToHome',
-                                    'NHBW_NonHomeBased': 'NHB_NonHomeBased',
-                                    'NHBO_NonHomeBased': 'NHB_NonHomeBased',
-                                    'HB_FromHome': 'HB_FromHome',
-                                    'HB_ToHome': 'HB_ToHome',
-                                    'NHB_NonHomeBased': 'NHB_NonHomeBased'
-                                    }
+    parameters['d_grp_purposes'] = {'HBW': 'HB', 'HBO': 'HB',
+                                    'NHBW': 'NHB',
+                                    'NHBO': 'NHB',
+                                    'HB': 'HB',
+                                    'NHB': 'NHB'}
 
-    parameters['origin_purposes'] = ['HB_FromHome']
-    parameters['destination_purposes'] = ['HB_ToHome']
-    parameters['intermediate_purposes'] = ['NHB_NonHomeBased']
+    parameters['origin_directions'] = ['FromHome']
+    parameters['destination_directions'] = ['ToHome']
+    parameters['intermediate_directions'] = ['NonHomeBased']
 
-    parameters['filter_purposes'] = [parameters['origin_purposes'],
-                                     parameters['destination_purposes'],
-                                     parameters['intermediate_purposes']]
+    parameters['filter_directions'] = [parameters['origin_directions'],
+                                       parameters['destination_directions'],
+                                       parameters['intermediate_directions']]
 
     filenames = dict()
     filenames['od'] = 'od.csv'
