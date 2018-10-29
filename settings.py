@@ -15,13 +15,14 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_01']
+    parameters['aggr_levels'] = ['lsoa', 'msoa']
+    parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but trs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Legs']] # ['Distancegroup', 'Timeperiodseq']
+    parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
+                                       ['Distancegroup', 'Timeperiodseq']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = 0.95  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -39,7 +40,7 @@ def init():
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
-    parameters['distance_bins'] = list(range(0, max_tc_distance, 1800))
+    parameters['distance_bins'] = list(range(0, max_tc_distance, 900))
     parameters['distance_bins'].append(float('inf'))
 
     # Optimisation parameters
@@ -53,7 +54,7 @@ def init():
     # Optimisation stop threshold expressed as percentage of total OD trips
     parameters['optimisation']['mip tolerances absmipgap'] = 0.01 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
-    parameters['optimisation']['timelimit'] = 3 * 3600  # in seconds
+    parameters['optimisation']['timelimit'] = 2 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 20_000
     parameters['optimisation']['mip strategy probe'] = 3
@@ -85,3 +86,5 @@ def init():
     filenames['target_distribution'] = 'target_distribution.csv'
     filenames['optimisation_results'] = 'results.json'
     filenames['metadata'] = 'metadata.txt'
+    filenames['comp_descr_gml'] = 'comp_descr.gml'
+

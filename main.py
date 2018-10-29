@@ -77,12 +77,17 @@ def main():
                 trs_mdl_info_run['Timesused'] = trs_mdl_info_run['Timesused'].astype(int)
 
                 print('Exporting')
+                outfolder = r'./outputs/{}/{}/{}/{}/'.format(data_source, '-'.join(distr_dims), aggr_level, sample_size)
+                runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
+                outfolder = os.path.join(outfolder, runfolder)
 
-                myio.create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info_run)
+                myio.create_folders([outfolder])
 
-                myio.export_results(run_info,
-                                    od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
-                                    optim_results)
+                myio.export_results(run_info, od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
+                                    optim_results, outfolder)
+
+                myio.create_comparison_gml(trs_obs_descr, trs_mdl_descr, trs_mdl_info_run,
+                                           outfolder)
 
                 print('Complete!')
 

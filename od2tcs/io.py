@@ -3,38 +3,14 @@ import shutil
 import pickle
 import numpy as np
 import pandas as pd
+import networkx as nx
 import settings
-
-
-def move_results(source_fldr, dst_fldr):
-    files = os.listdir(source_fldr)
-    for f in files:
-        # Specifying the full filepath allows for overwrite
-        src = os.path.join(source_fldr, f)
-        dst = os.path.join(dst_fldr, f)
-        shutil.move(src, dst)
 
 
 def create_folders(folder_list):
     for folder in folder_list:
         if not os.path.exists(folder):
             os.makedirs(folder)
-
-
-def export_pickles(d, outfolder=r'./cache'):
-    create_folders([outfolder])
-    for key, var in d.items():
-        outpath = os.path.join(outfolder, '{}.p'.format(key))
-        pickle.dump(var, open(outpath, 'wb'))
-
-
-def load_pickles(d_pickles, infolder=r'./cache'):
-    d_out = dict()
-    for key in d_pickles:
-        val = key.split('-', 1)[0]
-        inpath = os.path.join(infolder, '{}.p'.format(key))
-        d_out[val] = pickle.load(open(inpath, 'rb'))
-    return d_out
 
 
 def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
@@ -97,41 +73,43 @@ def read_distances(infilepath):
     return s
 
 
-def create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info):
+def create_comparison_gml(trs_obs_descr, trs_mdl_descr, trs_mdl_info, outfolder):
     # First get the tours that were used by the optimisation
     trs_mdl_used = trs_mdl_info[trs_mdl_info['Timesused'] > 0]
     trs_mdl_descr = trs_mdl_descr.loc(axis=0)[trs_mdl_used.index]
 
-    mrg = pd.merge(left=trs_obs_descr.reset_index(),
-                   right=trs_mdl_descr.reset_index(),
-                   on=['Legidx', 'Source', 'Purpose', 'Direction', 'Timeperiod'])
+    jn_cols = ['Legidx', 'Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+
+    left = trs_obs_descr.reset_index(level='Legidx')[jn_cols]
+    right = trs_mdl_descr.reset_index(level='Legidx')[jn_cols]
+
+    mrg = pd.merge(left=left.reset_index(),
+                   right=right.reset_index(),
+                   on=jn_cols, how='outer',
+                   suffixes=('obs', 'mdl'),
+                   indicator=True)
+
+    mrg.rename(columns={'_merge': 'Exist'}, inplace=True)
+    mrg['Exist'] = mrg['Exist'].str.replace('left_only', 'obs_only')
+    mrg['Exist'] = mrg['Exist'].str.replace('right_only', 'mdl_only')
+
+    attr_cols = ['Purpose', 'Direction', 'Timeperiod',
+                 'Exist', 'Touridmdl', 'Touridobs']
+
+    g = nx.from_pandas_edgelist(mrg, 'Source', 'Target',
+                                attr_cols, nx.MultiDiGraph())
+
+    outfilepath = os.path.join(outfolder, settings.filenames['comp_descr_gml'])
+    nx.write_gml(g, outfilepath)
 
 
-
-
-
-
-
-
-def export_results(run_info, od, trs, trs_info, distr_grps, results):
+def export_results(run_info, od, trs_descr, trs_info, distr_grps, results, outfolder):
 
     settings.init()
     filenames = settings.filenames
 
-    data_source = run_info['DataSource']
-    aggr_level = run_info['AggrLevel']
-    sample_size = run_info['SampleSize']
-    distr_dims = run_info['DistrDims']
-    legs = run_info['MaxLegs']
-    trips_thresh = run_info['TripsThresh']
-    distr_constr_enabled = run_info['DistrConstrEnabled']
-
-    outfolder = r'./outputs/{}/{}/{}/{}/'.format(data_source, distr_dims, aggr_level, sample_size)
-    outfolder += '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
-    create_folders([outfolder])
-
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
-    trs.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
+    trs_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
     trs_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
 
