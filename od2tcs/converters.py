@@ -144,7 +144,7 @@ def od_to_tours(od, max_legs, observed_tcs_distr, distr_dims, distances=None):
     params = settings.parameters
 
     attr_cols = ['Purpose', 'Timeperiod']
-    G = od_to_G(od, orig_col='Origin', dest_col='Destination',
+    G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols)
 
     # TODO Create a file with the zones definition

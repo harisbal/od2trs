@@ -108,7 +108,7 @@ def summarise_tcs_df(tcs_df, distr_dims, distances=None):
     # Add the grouping information
     if dist_bins:
         # Join legs with distances
-        tcs_df = pd.merge(tcs_df, distances.to_frame(), left_on=['Origin', 'Destination'], right_index=True)
+        tcs_df = pd.merge(tcs_df, distances.to_frame(), left_on=['Source', 'Target'], right_index=True)
         distances = tcs_df['Distance'].groupby(level='Tripchainid').sum()
         aggr_dimensions.append(distances)
 

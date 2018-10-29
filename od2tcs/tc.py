@@ -6,7 +6,7 @@ import settings
 
 class Leg:
     """
-    A leg is a trip between an Origin and a Destination
+    A leg is a trip between an Source and a Target
     """
     def __init__(self, origin, destination,
                  purpose=None, timeperiod=None,

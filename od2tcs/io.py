@@ -39,7 +39,7 @@ def load_pickles(d_pickles, infolder=r'./cache'):
 
 def fetch_prepare_od(infilepath, trips_thresh):
 
-    idx_names = ['Origin', 'Destination', 'Purpose', 'Mode', 'Timeperiod']
+    idx_names = ['Source', 'Target', 'Purpose', 'Mode', 'Timeperiod']
     od = pd.read_csv(infilepath)
     od.set_index(idx_names, inplace=True)
     od = od.squeeze()
@@ -59,16 +59,16 @@ def fetch_prepare_od(infilepath, trips_thresh):
     # Reduce
     od_filtered = od_filtered[od_filtered.DailyTrips >= trips_thresh]
     # Remove intrazonals
-    mask = od_filtered.index.get_level_values('Origin') != od_filtered.index.get_level_values('Destination')
+    mask = od_filtered.index.get_level_values('Source') != od_filtered.index.get_level_values('Target')
     od_filtered = od_filtered[mask]
 
     # Filter out HB_FromHome when origin is external (home location is external)
     # and HB_ToHome when destination is to external
     internal_zone_str = settings.parameters['int_zone_str']
-    mask_fh = (~od_filtered.index.get_level_values('Origin').str.startswith(internal_zone_str) &
+    mask_fh = (~od_filtered.index.get_level_values('Source').str.startswith(internal_zone_str) &
                (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['origin_purposes'])))
 
-    mask_th = (~od_filtered.index.get_level_values('Destination').str.startswith(internal_zone_str) &
+    mask_th = (~od_filtered.index.get_level_values('Target').str.startswith(internal_zone_str) &
                (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['destination_purposes'])))
 
     od_filtered.loc[mask_fh] = np.nan
@@ -88,7 +88,7 @@ def fetch_prepare_od(infilepath, trips_thresh):
 def read_distances(infilepath):
     s = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
     s = s.astype(float)
-    s.index.names = ['Origin', 'Destination']
+    s.index.names = ['Source', 'Target']
     s.name = 'Distance'
     return s
 
