@@ -13,8 +13,8 @@ import settings
 def prepare_pickle_dict(run_info):
     d_pickles = dict()
     pickle_suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
-    d_pickles['tours_descr' + pickle_suffix] = None
-    d_pickles['tours_info' + pickle_suffix] = None
+    d_pickles['trs_descr' + pickle_suffix] = None
+    d_pickles['trs_info' + pickle_suffix] = None
     d_pickles['od' + pickle_suffix] = None
     return d_pickles
 
@@ -23,8 +23,8 @@ def main():
 
     settings.init()
     params = settings.parameters
-
-    # prepare_tcs = params['prepare_tcs']
+    filenames = settings.filenames
+    # prepare_trs = params['prepare_trs']
     run_optimisation = params['run_optimisation']
 
     iteration_params = list(itertools.product(params['data_sources'],
@@ -39,74 +39,77 @@ def main():
         infolder = r'./inputs/{}/{}/{}'.format(data_source, aggr_level, sample_size)
 
         filepaths = dict()
-        filepaths['od'] = os.path.join(infolder, 'od.csv')
-        filepaths['distances'] = os.path.join(infolder, 'distance_matrix.csv')
-        filepaths['obs_tours_info'] = os.path.join(infolder, 'obs_tours_info.csv')
+        filepaths['od'] = os.path.join(infolder, filenames['od'])
+        filepaths['distances'] = os.path.join(infolder, filenames['distances'])
+        filepaths['trs_obs_descr'] = os.path.join(infolder, filenames['trs_obs_descr'])
+        filepaths['trs_obs_info'] = os.path.join(infolder, filenames['trs_obs_info'])
 
         print('\nDistrDims: {} Aggr Level: {}, SampleSize: {}, Legs:{}, trips_thresh:{}'.format(distr_dims, aggr_level,
                                                                                                 sample_size, legs,
                                                                                                 trips_thresh))
         print('Preparing Distributions from observed data...')
-        observed_tcs_distr = (distrs.get_observed_tcs_info(filepaths['obs_tours_info'], legs)
-                              .pipe(distrs.prepare_distribution, distr_dims))
+        trs_obs_descr = myio.get_observed_trs_descr(filepaths['trs_obs_descr'])
+        trs_obs_distr = (distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
+                           .pipe(distrs.prepare_distribution, distr_dims))
 
         #TODO revise pickling (maybe remove)
         #d_pickles = prepare_pickle_dict(run_info)
 
-        prepare_tcs = True
-        if prepare_tcs:
+        prepare_trs = True
+        if prepare_trs:
             distances = myio.read_distances(filepaths['distances'])
             print('Creating TripChains...')
             od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
-            tours_descr, tours_info = converters.od_to_tours(od, legs,
-                                                             observed_tcs_distr, distr_dims,
-                                                             distances)
+            trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
+                                                                     trs_obs_distr, distr_dims,
+                                                                     distances)
 
-            if tours_descr.empty:
+            if trs_mdl_descr.empty:
                 print('No tripchains discovered')
                 return None
             #suffix = '-{}-{}-{}-{}legs-{}thresh'.format(*run_info)
-            #d_pickles['tours_descr'+suffix] = tours_descr
-            #d_pickles['tours_info'+suffix] = tours_info
+            #d_pickles['trs_mdl_descr'+suffix] = trs_mdl_descr
+            #d_pickles['trs_mdl_info'+suffix] = trs_mdl_info
             #d_pickles['od'+suffix] = od
             #myio.export_pickles(d_pickles)
         else:
             # dict with the loaded variables
             d_pickles = myio.load_pickles(d_pickles)
-            tours_descr = d_pickles['tours_descr']
-            tours_info = d_pickles['tours_info']
-            print('{} tours imported'.format(tours_info.index.unique().size))
+            trs_mdl_descr = d_pickles['trs_mdl_descr']
+            trs_mdl_info = d_pickles['trs_mdl_info']
+            print('{} trs imported'.format(trs_mdl_info.index.unique().size))
             od = d_pickles['od']
 
         if run_optimisation:
             for distr_constr_enabled in params['distribution_constraints_states']:
 
-                run_info = {'DataSource': data_source,
-                            'AggrLevel': aggr_level,
-                            'SampleSize': sample_size,
-                            'DistrDims': '-'.join(distr_dims),
-                            'MaxLegs': legs,
-                            'TripsThresh': trips_thresh,
+                run_info = {'DataSource': data_source, 'AggrLevel': aggr_level,
+                            'SampleSize': sample_size, 'DistrDims': '-'.join(distr_dims),
+                            'MaxLegs': legs, 'TripsThresh': trips_thresh,
                             'DistrConstrEnabled': distr_constr_enabled,
                             'DistrPercRemain': params['distribution_percentage_remain'],
                             'OptimAbsGap': params['optimisation']['mip tolerances absmipgap'],
                             'ObsDistrPercThresh': params['distribution_percentage_remain'],
-                            'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance']}
+                            'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance'],
+                            'DistBins': params['distance_bins']}
 
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                optim_results = opt.main(tours_descr, tours_info, od,
-                                         observed_tcs_distr, distr_constr_enabled,
+                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
+                                         trs_obs_distr, distr_constr_enabled,
                                          submit_to_neos=params['submit_to_neos'])
 
                 solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-                tour_times_used = solution_tour_times_used[0]
-                tours_info_run = tours_info.join(tour_times_used)
-                tours_info_run.fillna({'Timesused': 0}, inplace=True)
-                tours_info_run['Timesused'] = tours_info_run['Timesused'].astype(int)
+                trs_mdl_times_used = solution_tour_times_used[0]
+                trs_mdl_info_run = trs_mdl_info.join(trs_mdl_times_used)
+                trs_mdl_info_run.fillna({'Timesused': 0}, inplace=True)
+                trs_mdl_info_run['Timesused'] = trs_mdl_info_run['Timesused'].astype(int)
 
                 print('Exporting')
+
+                myio.create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info_run)
+
                 myio.export_results(run_info,
-                                    od, tours_descr, tours_info_run, observed_tcs_distr,
+                                    od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
                                     optim_results)
 
                 print('Complete!')

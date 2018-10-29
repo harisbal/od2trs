@@ -4,11 +4,11 @@ import networkx as nx
 import settings
 
 
-def identify_possible_tours(tcs):
+def identify_possible_trs(trs):
     params = settings.parameters
     # TODO clean this part
-    possible_tours = list()
-    for tc in tcs:
+    possible_trs = list()
+    for tc in trs:
         tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
                                                params['ordered_time_periods'])
         tc.no_external_zones = tc.count_external_zones()
@@ -20,16 +20,16 @@ def identify_possible_tours(tcs):
                 continue
         if not tc.chron_ordered:
             continue
-        possible_tours.append(tc)
+        possible_trs.append(tc)
 
-    return possible_tours
+    return possible_trs
 
 
-def tcs_by_dict(tcs_info_df, d_filters):
+def trs_by_dict(trs_info_df, d_filters):
     # Filter based dictionary
     for k, v in d_filters.items():
-        tcs_info_df = tcs_info_df[tcs_info_df[k] <= v]
-    return tcs_info_df
+        trs_info_df = trs_info_df[trs_info_df[k] <= v]
+    return trs_info_df
 
 
 def filter_graph_edges_by_purpose(G, home_zone, filter_edge_purpose_names):

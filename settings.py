@@ -12,31 +12,31 @@ def init():
     max_tc_distance = 10_800
 
     parameters = dict()
-    parameters['prepare_tcs'] = True
+    parameters['prepare_trs'] = True
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
     parameters['aggr_levels'] = ['lsoa']
     parameters['sample_sizes'] = ['sample_perc_01']
-    # Could include Activities but tcs not ready yet
+    # Could include Activities but trs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs']] # ['Distancegroup', 'Timeperiodseq']
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_tours.xlsx
+    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
-    # Maximum values for columns in the tours
+    # Maximum values for columns in the trs
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
 
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = None
+    parameters['cpus'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
@@ -79,9 +79,13 @@ def init():
                                      parameters['intermediate_purposes']]
 
     filenames = dict()
+    filenames['od'] = 'od.csv'
     filenames['od_filtered'] = 'od_filtered.csv'
-    filenames['tours_mdl_descr'] = 'tours_mdl_descr.csv'
-    filenames['tours_mdl_info'] = 'tours_mdl_info.csv'
+    filenames['distances'] = 'distances.csv'
+    filenames['trs_obs_info'] = 'trs_obs_info.csv'
+    filenames['trs_obs_descr'] = 'trs_obs_descr.csv'
+    filenames['trs_mdl_descr'] = 'trs_mdl_descr.csv'
+    filenames['trs_mdl_info'] = 'trs_mdl_info.csv'
     filenames['target_distribution'] = 'target_distribution.csv'
     filenames['optimisation_results'] = 'results.json'
     filenames['metadata'] = 'metadata.txt'

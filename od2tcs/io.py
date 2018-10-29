@@ -37,6 +37,10 @@ def load_pickles(d_pickles, infolder=r'./cache'):
     return d_out
 
 
+def get_observed_trs_descr(infilepath):
+    return pd.read_csv(infilepath)
+
+
 def fetch_prepare_od(infilepath, trips_thresh):
 
     idx_names = ['Source', 'Target', 'Purpose', 'Mode', 'Timeperiod']
@@ -93,7 +97,17 @@ def read_distances(infilepath):
     return s
 
 
-def export_results(run_info, od, tcs, tcs_info, distr_grps, results):
+def create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info):
+    # First get the tours that were used by the optimisation
+    trs_mdl_used = trs_mdl_info[trs_mdl_info['Timesused'] > 0]
+    trs_mdl_descr = trs_mdl_descr.loc[trs_mdl_used]
+
+
+
+
+
+
+def export_results(run_info, od, trs, trs_info, distr_grps, results):
 
     settings.init()
     filenames = settings.filenames
@@ -111,8 +125,8 @@ def export_results(run_info, od, tcs, tcs_info, distr_grps, results):
     create_folders([outfolder])
 
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
-    tcs.to_csv(os.path.join(outfolder, filenames['tours_mdl_descr']), index=True)
-    tcs_info.to_csv(os.path.join(outfolder, filenames['tours_mdl_info']), index=True)
+    trs.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
+    trs_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
 
     results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')

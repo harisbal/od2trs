@@ -8,24 +8,24 @@ from pyomo.util.timing import report_timing
 import settings
 
 
-def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
+def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
 
     def init_chains_descr(_model):
         _od = _model.od
-        _tcs = _model.tcs.reset_index()
-        _tcs = pd.merge(_tcs, _od['LegId'].to_frame(),
+        _trs = _model.trs.reset_index()
+        _trs = pd.merge(_trs, _od['LegId'].to_frame(),
                         left_on=_od.index.names, right_index=True,
                         how='left')
 
         # Can be slow
-        d_chains_descr = _tcs.groupby('LegId')['Tripchainid'].apply(list).to_dict()
+        d_chains_descr = _trs.groupby('LegId')['Tripchainid'].apply(list).to_dict()
 
         return d_chains_descr
 
     def init_chain_distr_grps(_model):
-        _tcs_info = _model.tcs_info.reset_index()
-        _tcs_infog = _tcs_info.groupby(['Distrgroupid'])['Tripchainid'].apply(list)
-        d_distr_grps = _tcs_infog.to_dict()
+        _trs_info = _model.trs_info.reset_index()
+        _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tripchainid'].apply(list)
+        d_distr_grps = _trs_infog.to_dict()
 
         return d_distr_grps
 
@@ -34,14 +34,14 @@ def prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled):
 
     model = ConcreteModel()
     model.od = od
-    model.tcs = tcs
-    model.tcs_info = tcs_info
+    model.trs = trs
+    model.trs_info = trs_info
     model.distr_grps = distr_grps
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
 
     model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
-    model.CHAIN_IDS = Set(initialize=model.tcs_info.index.unique().values.tolist())
+    model.CHAIN_IDS = Set(initialize=model.trs_info.index.unique().values.tolist())
     model.GROUP_IDS = Set(initialize=model.distr_grps.index.unique().values.tolist())
 
     d_leg_trips = model.od.reset_index().set_index('LegId')['DailyTrips'].to_dict()
@@ -124,10 +124,10 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(tcs, tcs_info, od, distr_grps,
+def main(trs, trs_info, od, distr_grps,
          distr_constr_enabled, submit_to_neos=False):
 
     report_timing()
-    mymodel = prepare_model(tcs, tcs_info, od, distr_grps, distr_constr_enabled)
+    mymodel = prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results

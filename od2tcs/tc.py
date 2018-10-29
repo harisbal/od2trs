@@ -8,12 +8,12 @@ class Leg:
     """
     A leg is a trip between an Source and a Target
     """
-    def __init__(self, origin, destination,
+    def __init__(self, source, target,
                  purpose=None, timeperiod=None,
                  distance=None, **kwargs):
 
-        self.origin = origin
-        self.destination = destination
+        self.source = source
+        self.target = target
         self.purpose = purpose
         self.timeperiod = timeperiod
         self.distance = distance
@@ -42,7 +42,7 @@ class TripChain:
         self.Distrgroup= None
 
     def is_tour(self):
-        if self.legs[0].origin == self.legs[-1].destination:
+        if self.legs[0].source == self.legs[-1].target:
             return True
         else:
             return False
@@ -67,7 +67,7 @@ class TripChain:
     def count_external_zones(self):
         cnt = 0
         for leg in self.legs:
-            if not leg.destination.startswith(settings.parameters['int_zone_str']):
+            if not leg.target.startswith(settings.parameters['int_zone_str']):
                 cnt += 1
         return cnt
 
