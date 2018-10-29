@@ -48,7 +48,7 @@ def zones_seq_to_tcs(zones_seq, G):
                                   filter_purpose_orig)
     avail_legs = list()
     for la in leg_attrs:
-        leg = Leg(origin=zones_seq[0], destination=zones_seq[1], **la)
+        leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
@@ -57,7 +57,7 @@ def zones_seq_to_tcs(zones_seq, G):
             avail_legs.clear()
             leg_attrs = prepare_leg_attrs(G, o, d, filter_purpose_interm)
             for la in leg_attrs:
-                leg = Leg(origin=o, destination=d, **la)
+                leg = Leg(source=o, target=d, **la)
                 avail_legs.append(leg)
             legs_combs.append(avail_legs.copy())
 
@@ -66,7 +66,7 @@ def zones_seq_to_tcs(zones_seq, G):
                                   filter_purpose_dest)
     avail_legs.clear()
     for la in leg_attrs:
-        leg = Leg(origin=zones_seq[-2], destination=zones_seq[-1], **la)
+        leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
@@ -144,7 +144,7 @@ def od_to_tours(od, max_legs, observed_tcs_distr, distr_dims, distances=None):
     params = settings.parameters
 
     attr_cols = ['Purpose', 'Timeperiod']
-    G = od_to_G(od, orig_col='Origin', dest_col='Destination',
+    G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols)
 
     # TODO Create a file with the zones definition
