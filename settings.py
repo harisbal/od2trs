@@ -15,12 +15,19 @@ def init():
     parameters['prepare_tcs'] = True
     parameters['run_optimisation'] = True
 
-    parameters['data_source'] = 'mnd_TSC'
-    parameters['model_name'] = 'msoa'
-    parameters['run_name'] = 'sample_perc_01'
+    parameters['data_sources'] = ['mnd_TSC_tests']
+    parameters['aggr_levels'] = ['lsoa', 'msoa']
+    parameters['sample_sizes'] = ['sample_perc_50']
+    # Could include Activities but tcs not ready yet
+    parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
+                                       ['Distancegroup', 'Timeperiodseq']]
+
+    # The percentage of remaining groups threshold
+    parameters['distribution_percentage_remain'] = 0.80 # Check in analysis/summary_observed_tours.xlsx
+
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [3]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [True, False]
     # Maximum values for columns in the tours
@@ -33,13 +40,9 @@ def init():
     parameters['cpus'] = None
     parameters['submit_to_neos'] = False
 
-    parameters['distribution_dims'] = ['Distancegroup', 'Timeperiodseq'] # Could include Activities but tcs not ready yet
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
-    parameters['distance_bins'] = list(range(0, max_tc_distance, 1800))
+    parameters['distance_bins'] = list(range(0, max_tc_distance, 900))
     parameters['distance_bins'].append(float('inf'))
-
-    # Ignore distribution groups which have (in the source data) a lower share than the below threshold
-    parameters['distribution_percentage_thresh'] = 0.0011 # Check in analysis/summary_observed_tours.xlsx
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
@@ -52,7 +55,7 @@ def init():
     # Optimisation stop threshold expressed as percentage of total OD trips
     parameters['optimisation']['mip tolerances absmipgap'] = 0.025 # Generally I'll use 0.025
     parameters['optimisation']['mip tolerances mipgap'] = None
-    parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
+    parameters['optimisation']['timelimit'] = 2 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 20_000
     parameters['optimisation']['mip strategy probe'] = 3
@@ -75,17 +78,6 @@ def init():
     parameters['filter_purposes'] = [parameters['origin_purposes'],
                                      parameters['destination_purposes'],
                                      parameters['intermediate_purposes']]
-
-    filepaths = dict()
-
-    filepaths['infolder'] = r'./inputs/{}/{}/{}'.format(parameters['data_source'],
-                                                        parameters['model_name'],
-                                                        parameters['run_name'])
-
-    filepaths['od'] = os.path.join(filepaths['infolder'], 'od.csv')
-
-    filepaths['distances'] = os.path.join(filepaths['infolder'], 'distance_matrix.csv')
-    filepaths['obs_tours_info'] = os.path.join(filepaths['infolder'], 'obs_tours_info.csv')
 
     filenames = dict()
     filenames['od_filtered'] = 'od_filtered.csv'

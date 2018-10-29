@@ -1,3 +1,5 @@
+import re
+import pandas as pd
 import networkx as nx
 import settings
 
@@ -21,21 +23,6 @@ def identify_possible_tours(tcs):
         possible_tours.append(tc)
 
     return possible_tours
-
-
-def low_freq_distr_groups(tcs_info_df, observed_distr):
-    # Keep distribution groups when their share is greater than thresh_perc
-    thresh_perc = settings.parameters['distribution_percentage_thresh']
-    if thresh_perc:
-        if not (0 < thresh_perc <= 1):
-            raise ValueError('filter thresh_perc should be between 0 and 1')
-
-        mask = observed_distr['Percentage'] >= thresh_perc
-        observed_distr = observed_distr.loc[mask]
-
-    observed_distr_grp_ids = observed_distr.index.unique().tolist()
-    tcs_info_df = tcs_info_df[tcs_info_df.Distrgroupid.isin(observed_distr_grp_ids)]
-    return tcs_info_df
 
 
 def tcs_by_dict(tcs_info_df, d_filters):
@@ -68,3 +55,25 @@ def filter_graph_edges_by_purpose(G, home_zone, filter_edge_purpose_names):
             if (target==home_zone):
                 filt_G.add_edge(source, target, Purpose=attr['Purpose'])
     return filt_G
+
+
+def extract_tour_times_used(optim_results):
+    """
+    Returns dictionary of the number times each tour is used for each solution
+    :param optim_results:
+    :return:
+    """
+    solutions = optim_results['Solution']
+    d_tour_times_used = dict()
+    for sol_id, sol in enumerate(solutions):
+        d = sol['Variable']
+        for k, v in d.items():
+            tour_id = int(re.search('[\d+]', k)[0])
+            d_tour_times_used[(sol_id, tour_id)] = v['Value']
+
+    # to df
+    sr = pd.Series(d_tour_times_used).astype(int)
+    sr.index.names = ['Solutionno', 'Tourid']
+    sr.name = 'Timesused'
+    return sr
+
