@@ -18,13 +18,13 @@ def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
                         how='left')
 
         # Can be slow
-        d_chains_descr = _trs.groupby('LegId')['Tripchainid'].apply(list).to_dict()
+        d_chains_descr = _trs.groupby('LegId')['Tourid'].apply(list).to_dict()
 
         return d_chains_descr
 
     def init_chain_distr_grps(_model):
         _trs_info = _model.trs_info.reset_index()
-        _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tripchainid'].apply(list)
+        _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tourid'].apply(list)
         d_distr_grps = _trs_infog.to_dict()
 
         return d_distr_grps

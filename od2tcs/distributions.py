@@ -96,12 +96,12 @@ def summarise_trs_df(trs_df, distr_dims, distances=None):
 
     aggr_dimensions = list()
     if 'Legs' in distr_dims:
-        legs = trs_df.reset_index(level='Legidx')['Legidx'].groupby(level='Tripchainid').max() + 1
+        legs = trs_df.reset_index(level='Legidx')['Legidx'].groupby(level='Tourid').max() + 1
         legs.name = 'Legs'
         aggr_dimensions.append(legs)
 
     if 'Timeperiodseq' in distr_dims:
-        tpseq = trs_df['Timeperiod'].groupby(level='Tripchainid').apply(tuple)
+        tpseq = trs_df['Timeperiod'].groupby(level='Tourid').apply(tuple)
         tpseq.name = 'Timeperiodseq'
         aggr_dimensions.append(tpseq)
 
@@ -109,7 +109,7 @@ def summarise_trs_df(trs_df, distr_dims, distances=None):
     if dist_bins:
         # Join legs with distances
         trs_df = pd.merge(trs_df, distances.to_frame(), left_on=['Source', 'Target'], right_index=True)
-        distances = trs_df['Distance'].groupby(level='Tripchainid').sum()
+        distances = trs_df['Distance'].groupby(level='Tourid').sum()
         aggr_dimensions.append(distances)
 
         distance_grps = pd.cut(distances, bins=settings.parameters['distance_bins'])

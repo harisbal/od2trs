@@ -37,8 +37,8 @@ def load_pickles(d_pickles, infolder=r'./cache'):
     return d_out
 
 
-def get_observed_trs_descr(infilepath):
-    return pd.read_csv(infilepath)
+def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
+    return pd.read_csv(infilepath, index_col=idx_cols)
 
 
 def fetch_prepare_od(infilepath, trips_thresh):
@@ -100,7 +100,13 @@ def read_distances(infilepath):
 def create_comparison_gmls(trs_obs_descr, trs_mdl_descr, trs_mdl_info):
     # First get the tours that were used by the optimisation
     trs_mdl_used = trs_mdl_info[trs_mdl_info['Timesused'] > 0]
-    trs_mdl_descr = trs_mdl_descr.loc[trs_mdl_used]
+    trs_mdl_descr = trs_mdl_descr.loc(axis=0)[trs_mdl_used.index]
+
+    mrg = pd.merge(left=trs_obs_descr.reset_index(),
+                   right=trs_mdl_descr.reset_index(),
+                   on=['Legidx', 'Source', 'Purpose', 'Timeperiod'])
+
+
 
 
 

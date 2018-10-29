@@ -36,7 +36,7 @@ def init():
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = 1
+    parameters['cpus'] = 2
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']

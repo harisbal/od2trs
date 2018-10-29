@@ -101,7 +101,7 @@ def multiproc_wrapper(source_zone, observed_trs_distr, distr_dims, max_legs):
     if trs_ds:
         descr_df = pd.DataFrame.from_dict(trs_ds, orient='index')
         descr_df.columns = descr_df.columns.str.capitalize()
-        descr_df.index.names = ['Tripchainid', 'Legidx']
+        descr_df.index.names = ['Tourid', 'Legidx']
         descr_df.dropna(axis=1, inplace=True)
 
         info_df = distrs.summarise_trs_df(descr_df, distr_dims, distances)
@@ -110,7 +110,7 @@ def multiproc_wrapper(source_zone, observed_trs_distr, distr_dims, max_legs):
 
         # Remove unused trs
         filter_ids = info_df.index.unique().values
-        mask = descr_df.index.get_level_values(level='Tripchainid').isin(filter_ids)
+        mask = descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
         descr_df = descr_df[mask]
 
         descrs.append(descr_df)
@@ -152,7 +152,7 @@ def od_to_trs(od, max_legs, observed_trs_distr, distr_dims, distances=None):
     # TODO the check for internal zones is very crude (check if zone begins with E0...
     internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
 
-    internal_zones = internal_zones[0:10]
+    internal_zones = internal_zones[0:100]
 
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
