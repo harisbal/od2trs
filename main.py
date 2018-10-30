@@ -37,9 +37,14 @@ def main():
                                                                                                 sample_size, legs,
                                                                                                 trips_thresh))
         print('Preparing Distributions from observed data...')
+        trs_obs_info = distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
         trs_obs_descr = myio.get_observed_trs_descr(filepaths['trs_obs_descr'])
-        trs_obs_distr = (distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
-                           .pipe(distrs.prepare_distribution, distr_dims))
+        trs_obs_distr = trs_obs_info.pipe(distrs.prepare_distribution, distr_dims)
+
+        trs_obs_info = distrs.assign_distribution_group(trs_obs_info, trs_obs_distr,
+                                                        distr_dims, dropna=False)
+
+        trs_obs_info['Inlowfreqgroup'] = trs_obs_info['Distrgroupid'].isna()
 
         distances = myio.read_distances(filepaths['distances'])
         print('Creating TripChains...')
@@ -71,7 +76,9 @@ def main():
                                          submit_to_neos=params['submit_to_neos'])
 
                 solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-                trs_mdl_times_used = solution_tour_times_used[0]
+                solution_tour_times_used.to_csv('tmp.csv')
+                last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
+                trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
                 trs_mdl_info_run = trs_mdl_info.join(trs_mdl_times_used)
                 trs_mdl_info_run.fillna({'Timesused': 0}, inplace=True)
                 trs_mdl_info_run['Timesused'] = trs_mdl_info_run['Timesused'].astype(int)
@@ -86,7 +93,8 @@ def main():
                 myio.export_results(run_info, od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
                                     optim_results, outfolder)
 
-                myio.create_comparison_gml(trs_obs_descr, trs_mdl_descr, trs_mdl_info_run,
+                myio.create_comparison_gml(trs_obs_descr, trs_obs_info,
+                                           trs_mdl_descr, trs_mdl_info_run,
                                            outfolder)
 
                 print('Complete!')

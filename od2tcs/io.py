@@ -73,13 +73,18 @@ def read_distances(infilepath):
     return s
 
 
-def create_comparison_gml(trs_obs_descr, trs_mdl_descr, trs_mdl_info, outfolder):
+def create_comparison_gml(trs_obs_descr, trs_obs_info,
+                          trs_mdl_descr, trs_mdl_info,
+                          outfolder):
     # First get the tours that were used by the optimisation
     trs_mdl_used = trs_mdl_info[trs_mdl_info['Timesused'] > 0]
     trs_mdl_descr = trs_mdl_descr.loc(axis=0)[trs_mdl_used.index]
 
-    jn_cols = ['Legidx', 'Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+    # Check which tours could actually be matched (not excluded by the low freq filter)
+    trs_obs_used = trs_obs_info[~trs_obs_info['Inlowfreqgroup']]
+    trs_obs_descr = trs_obs_descr.loc(axis=0)[trs_obs_used.index]
 
+    jn_cols = ['Legidx', 'Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
     left = trs_obs_descr.reset_index(level='Legidx')[jn_cols]
     right = trs_mdl_descr.reset_index(level='Legidx')[jn_cols]
 

@@ -15,9 +15,9 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa', 'msoa']
+    parameters['aggr_levels'] = ['lsoa', 'msoa' ]
     parameters['sample_sizes'] = ['sample_perc_10']
-    # Could include Activities but trs not ready yet
+    # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Timeperiodseq']]
 
@@ -56,7 +56,7 @@ def init():
     parameters['optimisation']['mip tolerances mipgap'] = None
     parameters['optimisation']['timelimit'] = 2 * 3600  # in seconds
 
-    parameters['optimisation']['work memory'] = 20_000
+    parameters['optimisation']['work memory'] = 25_000
     parameters['optimisation']['mip strategy probe'] = 3
     parameters['optimisation']['mip strategy file'] = 2 # write to disk
 

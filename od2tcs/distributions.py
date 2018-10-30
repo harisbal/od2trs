@@ -44,10 +44,10 @@ def prepare_distribution(observed_trs_info, distr_dims):
     return observed_trs_distr
 
 
-def get_observed_trs_info(infilepath, max_legs):
+def get_observed_trs_info(infilepath, max_legs, index_col='Tourid'):
 
     # observed trs info
-    observed_trs_info = pd.read_csv(infilepath)
+    observed_trs_info = pd.read_csv(infilepath, index_col=index_col)
 
     # Keep only the trs with less than max_legs legs
     mask = observed_trs_info['Legs'] <= max_legs
@@ -64,23 +64,29 @@ def get_observed_trs_info(infilepath, max_legs):
     return observed_trs_info
 
 
-def assign_distribution_group(trs_info_df, observed_trs_distr, distr_dims):
+def assign_distribution_group(trs_info, trs_obs_distr, distr_dims, dropna=False):
 
     # Keep only the distribution group id and its definition
-    distr_group_ids = observed_trs_distr.reset_index()
+    distr_group_ids = trs_obs_distr.reset_index()
     distr_group_ids.set_index(distr_dims, inplace=True)
     distr_group_ids = distr_group_ids['Distrgroupid']
 
-    trs_info_df = pd.merge(trs_info_df, distr_group_ids.to_frame(),
-                           left_on=distr_dims, right_index=True,
-                           how='right')
+    if dropna:
+        how = 'right'
+    else:
+        how = 'left'
+
+    trs_info = pd.merge(trs_info, distr_group_ids.to_frame(),
+                        left_on=distr_dims, right_index=True,
+                        how=how)
 
     # This should not happen. If it does it means that some trs were not identified
-    if trs_info_df.Distrgroupid.isna().sum() > 0:
-        missing_groups = trs_info_df.loc[trs_info_df.Disttrgroupid.isna()]
-        raise ValueError('Observed groups missing from modelled trs: {} '.format(missing_groups))
+    if dropna:
+        if trs_info.Distrgroupid.isna().sum() > 0:
+            missing_groups = trs_info.loc[trs_info.Distrgroupid.isna()]
+            raise ValueError('Observed groups missing from modelled trs: {} '.format(missing_groups))
 
-    return trs_info_df
+    return trs_info
 
 
 def summarise_trs_df(trs_df, distr_dims, distances=None):

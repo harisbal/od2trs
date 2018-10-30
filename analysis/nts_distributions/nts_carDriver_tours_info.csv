@@ -1,4 +1,4 @@
-TourId,NumLegs,Distance,Timeperiods,Activities
+Tourid,NumLegs,Distance,Timeperiods,Activities
 0,2,10000.0,AM;IP,Home;Other;Home
 1,2,4400.0,AM;AM,Home;Other;Home
 2,5,6700.0,IP;IP;PM;PM;PM,Home;Other;Other;Other;Other;Home

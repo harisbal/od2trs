@@ -80,7 +80,7 @@ def zones_seq_to_trs(zones_seq, G):
     return trs
 
 
-def multiproc_wrapper(source_zone, observed_trs_distr, distr_dims, max_legs):
+def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
     params = settings.parameters
 
     zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, G)
@@ -104,7 +104,8 @@ def multiproc_wrapper(source_zone, observed_trs_distr, distr_dims, max_legs):
         descr_df.dropna(axis=1, inplace=True)
 
         info_df = distrs.summarise_trs_df(descr_df, distr_dims, distances)
-        info_df = (info_df.pipe(distrs.assign_distribution_group, observed_trs_distr, distr_dims)
+        info_df = (info_df.pipe(distrs.assign_distribution_group, trs_obs_distr,
+                                distr_dims, dropna=True)
                    .pipe(filters.trs_by_dict, params['filters']))
 
         # Remove unused trs
@@ -138,7 +139,7 @@ def init_multiproc_wrapper(_G, _distances, _tcid, _lock):
     counter_lock = _lock
 
 
-def od_to_trs(od, max_legs, observed_trs_distr, distr_dims, distances=None):
+def od_to_trs(od, max_legs, trs_obs_distr, distr_dims, distances=None):
 
     params = settings.parameters
 
@@ -167,11 +168,11 @@ def od_to_trs(od, max_legs, observed_trs_distr, distr_dims, distances=None):
     with Pool(cpus, initializer=init_multiproc_wrapper,
               initargs=[G, distances, tcid, tcid_lock]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
-                          multiproc_wrapper,
-                          observed_trs_distr=observed_trs_distr,
-                          distr_dims=distr_dims,
-                          max_legs=max_legs),
-                          internal_zones), total=len(internal_zones)):
+                        multiproc_wrapper,
+                        trs_obs_distr=trs_obs_distr,
+                        distr_dims=distr_dims,
+                        max_legs=max_legs),
+                        internal_zones), total=len(internal_zones)):
             if trs:
                 trs_descr_df, trs_info_df = trs
                 descrs.append(trs_descr_df)

@@ -66,13 +66,11 @@ def extract_tour_times_used(optim_results):
     solutions = optim_results['Solution']
     d_tour_times_used = dict()
     for sol_id, sol in enumerate(solutions):
-        d = sol['Variable']
-        for k, v in d.items():
-            tour_id = int(re.search('[\d+]', k)[0])
+        for k, v in sol['Variable'].items():
+            tour_id = int(re.search('([\d]+)', k).group())
             d_tour_times_used[(sol_id, tour_id)] = v['Value']
-
     # to df
-    sr = pd.Series(d_tour_times_used).astype(int)
+    sr = pd.Series(d_tour_times_used).round(2).astype(int)
     sr.index.names = ['Solutionno', 'Tourid']
     sr.name = 'Timesused'
     return sr
