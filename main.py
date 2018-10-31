@@ -6,6 +6,7 @@ import od2tcs.distributions as distrs
 import od2tcs.optimise as opt
 import od2tcs.io as myio
 import od2tcs.filters as filters
+import od2tcs.analysis as analysis
 
 import settings
 
@@ -76,7 +77,6 @@ def main():
                                          submit_to_neos=params['submit_to_neos'])
 
                 solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-                solution_tour_times_used.to_csv('tmp.csv')
                 last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
                 trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
                 trs_mdl_info_run = trs_mdl_info.join(trs_mdl_times_used)
@@ -88,14 +88,20 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-                myio.create_folders([outfolder])
 
+                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
+                                                        trs_mdl_descr, trs_mdl_info_run)
+
+                attr_cols = ['Tourid', 'Purpose',
+                             'Direction', 'Timeperiod', 'Exist']
+                g_comp = analysis.prepare_comparison_graph(trs_obs_descr, trs_mdl_descr,
+                                                           trs_comp, attr_cols)
+                myio.create_folders([outfolder])
                 myio.export_results(run_info, od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
                                     optim_results, outfolder)
 
-                myio.create_comparison_gml(trs_obs_descr, trs_obs_info,
-                                           trs_mdl_descr, trs_mdl_info_run,
-                                           outfolder)
+                outfilepath_gml = os.path.join(outfolder, filenames['comp_descr_gml'])
+                myio.export_gml(g_comp, outfilepath_gml)
 
                 print('Complete!')
 

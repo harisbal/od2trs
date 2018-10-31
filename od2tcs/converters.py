@@ -190,3 +190,23 @@ def od_to_trs(od, max_legs, trs_obs_distr, distr_dims, distances=None):
     print('Total trs after filtering: {:,}'.format(trs_descr_df.index.unique().size))
 
     return trs_descr_df, trs_info_df
+
+
+def collapse_tours_descr(trs_descr, descr_cols):
+    seqs = list()
+    for c in descr_cols:
+        seq = trs_descr.groupby('Tourid')[c].apply(tuple)
+        seqs.append(seq)
+
+    trs_collapsed = pd.concat(seqs, axis=1)
+
+    return trs_collapsed
+
+
+def df_to_graph(df, attr_cols=None):
+
+    g = nx.from_pandas_edgelist(df.reset_index(),
+                                'Source', 'Target',
+                                attr_cols, nx.MultiDiGraph())
+
+    return g
