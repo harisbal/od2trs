@@ -92,16 +92,15 @@ def main():
                 trs_comp = analysis.compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
                                                         trs_mdl_descr, trs_mdl_info_run)
 
-                attr_cols = ['Tourid', 'Purpose',
+                attr_cols = ['Tourid', 'Legidx', 'Purpose',
                              'Direction', 'Timeperiod', 'Exist']
                 g_comp = analysis.prepare_comparison_graph(trs_obs_descr, trs_mdl_descr,
                                                            trs_comp, attr_cols)
                 myio.create_folders([outfolder])
-                myio.export_results(run_info, od, trs_mdl_descr, trs_mdl_info_run, trs_obs_distr,
-                                    optim_results, outfolder)
+                results = [run_info, od, trs_mdl_descr, trs_mdl_info_run,
+                           trs_obs_distr, optim_results, trs_comp, g_comp]
 
-                outfilepath_gml = os.path.join(outfolder, filenames['comp_descr_gml'])
-                myio.export_gml(g_comp, outfilepath_gml)
+                myio.export_results(results, outfolder)
 
                 print('Complete!')
 
