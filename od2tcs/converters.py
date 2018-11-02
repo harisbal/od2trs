@@ -16,11 +16,16 @@ from od2tcs.tc import Leg, TripChain
 import settings
 
 
-def od_to_G(od, orig_col, dest_col, attr_cols):
+def od_to_G(od, orig_col, dest_col, attr_cols, coords=None):
+
     G = nx.from_pandas_edgelist(od.reset_index(),
                                 orig_col, dest_col,
                                 attr_cols,
                                 nx.MultiDiGraph())
+
+    if coords is not None:
+        d_coords = coords.to_dict()
+        nx.set_node_attributes(G, d_coords, '(x,y)')
     return G
 
 
@@ -139,15 +144,15 @@ def init_multiproc_wrapper(_G, _distances, _tcid, _lock):
     counter_lock = _lock
 
 
-def od_to_trs(od, max_legs, trs_obs_distr, distr_dims, distances=None):
+def od_to_trs(od, max_legs, trs_obs_distr, distr_dims,
+              distances=None, coords=None):
 
     params = settings.parameters
 
-    attr_cols = ['Purpose', 'Direction', 'Timeperiod', 'Coordssource', 'Coordstarget']
-    # Treat the case where Coords are not used
-    attr_cols = [c for c in attr_cols if c in od.reset_index().columns]
+    attr_cols = ['Purpose', 'Direction', 'Timeperiod']
     G = od_to_G(od, orig_col='Source', dest_col='Target',
-                attr_cols=attr_cols)
+                attr_cols=attr_cols, coords=coords)
+
 
     # TODO Create a file with the zones definition
     # Very dirty quick solution

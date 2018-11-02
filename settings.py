@@ -76,7 +76,7 @@ def init():
     filenames = dict()
     filenames['od'] = 'od.csv'
     filenames['od_filtered'] = 'od_filtered.csv'
-    filenames['zone_coords'] = 'zone_coords.csv'
+    filenames['zones_info'] = 'zones_info.csv'
     filenames['distances'] = 'distances.csv'
     filenames['trs_obs_info'] = 'trs_obs_info.csv'
     filenames['trs_obs_descr'] = 'trs_obs_descr.csv'
