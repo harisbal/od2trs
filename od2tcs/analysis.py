@@ -14,7 +14,8 @@ def compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
     trs_obs_descr = trs_obs_descr.loc(axis=0)[trs_obs_used.index]
 
     descr_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-    left = converters.collapse_tours_descr(trs_obs_descr, descr_cols)
+    left = converters.collapse_tours_descr(trs_obs_descr, descr_cols,
+                                           remove_duplicates=True)
     right = converters.collapse_tours_descr(trs_mdl_descr, descr_cols)
 
     mrg = pd.merge(left=left.reset_index(),
@@ -34,6 +35,7 @@ def prepare_comparison_graph(trs_obs_descr, trs_mdl_descr, comp, attr_cols=None)
 
     dfs = list()
     col_names = ['_obs', '_mdl']
+
     for c in col_names:
         if c == '_obs':
             trs_descr = trs_obs_descr.copy()
