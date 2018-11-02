@@ -33,6 +33,7 @@ def main():
         filepaths['distances'] = os.path.join(infolder, filenames['distances'])
         filepaths['trs_obs_descr'] = os.path.join(infolder, filenames['trs_obs_descr'])
         filepaths['trs_obs_info'] = os.path.join(infolder, filenames['trs_obs_info'])
+        filepaths['zone_coords'] = os.path.join(infolder, filenames['zone_coords'])
 
         print('\nDistrDims: {} Aggr Level: {}, SampleSize: {}, Legs:{}, trips_thresh:{}'.format(distr_dims, aggr_level,
                                                                                                 sample_size, legs,
@@ -48,8 +49,10 @@ def main():
         trs_obs_info['Inlowfreqgroup'] = trs_obs_info['Distrgroupid'].isna()
 
         distances = myio.read_distances(filepaths['distances'])
+        coords = myio.read_zone_coords(filepaths['zone_coords'])
+
         print('Creating TripChains...')
-        od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
+        od = myio.fetch_prepare_od(filepaths['od'], trips_thresh, coords)
         trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
                                                            trs_obs_distr, distr_dims,
                                                            distances)

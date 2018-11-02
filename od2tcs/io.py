@@ -15,7 +15,7 @@ def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
     return pd.read_csv(infilepath, index_col=idx_cols)
 
 
-def fetch_prepare_od(infilepath, trips_thresh):
+def fetch_prepare_od(infilepath, trips_thresh, coords=None):
 
     idx_names = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'Timeperiod']
     od = pd.read_csv(infilepath)
@@ -30,6 +30,16 @@ def fetch_prepare_od(infilepath, trips_thresh):
     # Create a column called LegId / will be used to identify the OdPairs
     odg = odg.reset_index()
     odg.set_index(idx_names, inplace=True)
+
+    if coords is not None:
+        coords_source = coords.copy()
+        coords_source.name = 'Coordssource'
+        coords_target = coords.copy()
+        coords_target.name = 'Coordstarget'
+
+        # Add the coords for Source and Target
+        odg = odg.join(coords_source, on='Source')
+        odg = odg.join(coords_target, on='Target')
 
     #Ad hoc filtering
     od_filtered = odg.xs('Motorised', level='Mode')
@@ -64,11 +74,19 @@ def fetch_prepare_od(infilepath, trips_thresh):
 
 
 def read_distances(infilepath):
-    s = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
-    s = s.astype(float)
-    s.index.names = ['Source', 'Target']
-    s.name = 'Distance'
-    return s
+    sr = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
+    sr = sr.astype(float)
+    sr.index.names = ['Source', 'Target']
+    sr.name = 'Distance'
+    return sr
+
+
+def read_zone_coords(infilepath):
+    # combine XY as tuple
+    df = pd.read_csv(infilepath, index_col=[0])
+    sr = df[['X', 'Y']].apply(tuple, axis=1)
+    sr.name = 'Coords'
+    return sr
 
 
 def export_results(results, outfolder):

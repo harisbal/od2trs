@@ -143,7 +143,9 @@ def od_to_trs(od, max_legs, trs_obs_distr, distr_dims, distances=None):
 
     params = settings.parameters
 
-    attr_cols = ['Purpose', 'Direction', 'Timeperiod']
+    attr_cols = ['Purpose', 'Direction', 'Timeperiod', 'Coordssource', 'Coordstarget']
+    # Treat the case where Coords are not used
+    attr_cols = [c for c in attr_cols if c in od.reset_index().columns]
     G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols)
 

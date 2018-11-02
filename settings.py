@@ -1,7 +1,5 @@
 # settings.py
 
-import os
-
 
 def init():
 
@@ -15,14 +13,14 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['msoa']
+    parameters['aggr_levels'] = ['lsoa']
     parameters['sample_sizes'] = ['sample_perc_01']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Timeperiodseq']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = 0.90  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -78,6 +76,7 @@ def init():
     filenames = dict()
     filenames['od'] = 'od.csv'
     filenames['od_filtered'] = 'od_filtered.csv'
+    filenames['zone_coords'] = 'zone_coords.csv'
     filenames['distances'] = 'distances.csv'
     filenames['trs_obs_info'] = 'trs_obs_info.csv'
     filenames['trs_obs_descr'] = 'trs_obs_descr.csv'

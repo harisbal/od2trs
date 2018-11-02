@@ -43,17 +43,17 @@ def filter_graph_edges_by_direction(G, origin_source, filter_edge_directions_nam
     # Give better name
     # Creates a graph that origins edges from and to
     filt_G = nx.MultiDiGraph()
-    for source, target, attr in G.edges(data=True):
-        if attr['Direction'] in nhb_names:
+    for source, target, attrs in G.edges(data=True):
+        if attrs['Direction'] in nhb_names:
             # NHB trips are added only when the source is not home
             if not (source == origin_source or target == origin_source):
-                filt_G.add_edge(source, target, Purpose=attr['Direction'])
-        elif attr['Direction'] in fh_names:
-            if (source == origin_source):
-                filt_G.add_edge(source, target, Purpose=attr['Direction'])
-        elif attr['Direction'] in th_names:
-            if (target == origin_source):
-                filt_G.add_edge(source, target, Purpose=attr['Direction'])
+                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
+        elif attrs['Direction'] in fh_names:
+            if source == origin_source:
+                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
+        elif attrs['Direction'] in th_names:
+            if target == origin_source:
+                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
     return filt_G
 
 
