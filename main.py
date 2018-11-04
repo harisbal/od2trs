@@ -47,6 +47,7 @@ def main():
                                                         distr_dims, dropna=False)
 
         trs_obs_info['Inlowfreqgroup'] = trs_obs_info['Distrgroupid'].isna()
+        trs_obs_info['Timesused'] = 1
 
         distances = myio.read_distances(filepaths['distances'])
         coords = myio.read_zones_info(filepaths['zones_info'])['Coords']
@@ -103,7 +104,7 @@ def main():
                                                                    trs_comp, coords, attr_cols)
 
                 myio.create_folders([outfolder])
-                results = [run_info, od, trs_mdl_descr, trs_mdl_info_run,
+                results = [run_info, od, trs_obs_descr, trs_obs_info, trs_mdl_descr, trs_mdl_info_run,
                            trs_obs_distr, optim_results, trs_comp, trs_descr_comp]
 
                 myio.export_results(results, outfolder)
