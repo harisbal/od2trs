@@ -84,12 +84,15 @@ def export_results(results, outfolder):
     settings.init()
     filenames = settings.filenames
 
-    (run_info, od, trs_descr, trs_info,
-     distr_grps, optim_results, trs_comp, trs_descr_comp) = results
+    (run_info, od, trs_obs_descr, trs_obs_info,
+     trs_mdl_descr, trs_mdl_info, distr_grps,
+     optim_results, trs_comp, trs_descr_comp) = results
 
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
-    trs_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
-    trs_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
+    trs_mdl_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
+    trs_mdl_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
+    trs_obs_descr.to_csv(os.path.join(outfolder, filenames['trs_obs_descr']), index=True)
+    trs_obs_info.to_csv(os.path.join(outfolder, filenames['trs_obs_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
     optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
     trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=False, header=True)
