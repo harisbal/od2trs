@@ -95,7 +95,7 @@ def export_results(results, outfolder):
     trs_obs_info.to_csv(os.path.join(outfolder, filenames['trs_obs_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
     optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
-    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=False, header=True)
+    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=True, header=True)
     trs_descr_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), index=True, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 

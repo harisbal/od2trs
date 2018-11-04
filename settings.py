@@ -13,14 +13,14 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['msoa']
-    parameters['sample_sizes'] = ['sample_perc_10']
+    parameters['aggr_levels'] = ['lsoa']
+    parameters['sample_sizes'] = ['sample_perc_01']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Timeperiodseq']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.90 # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = None # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
