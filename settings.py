@@ -13,14 +13,14 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_01']
+    parameters['aggr_levels'] = ['msoa']
+    parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Timeperiodseq']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.90  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = 0.90 # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -84,8 +84,8 @@ def init():
     filenames['trs_mdl_info'] = 'trs_mdl_info.csv'
     filenames['target_distribution'] = 'target_distribution.csv'
     filenames['optimisation_results'] = 'results.json'
-    filenames['trs_descr_comp_gml'] = 'trs_descr_comp.gml'
     filenames['trs_descr_comp'] = 'trs_descr_comp.csv'
+    filenames['trs_comp'] = 'trs_comp.csv'
     filenames['metadata'] = 'metadata.txt'
 
 

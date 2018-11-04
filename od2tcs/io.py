@@ -85,15 +85,16 @@ def export_results(results, outfolder):
     filenames = settings.filenames
 
     (run_info, od, trs_descr, trs_info,
-     distr_grps, optim_results, tcs_comp, g_comp) = results
+     distr_grps, optim_results, trs_comp, trs_descr_comp) = results
 
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
     trs_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
     trs_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
-    tcs_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), header=True)
     optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
-    nx.write_gml(g_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
+    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=False, header=True)
+    trs_descr_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), index=True, header=True)
+    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 
     with open(os.path.join(outfolder, filenames['metadata']), 'w') as f:
         print(run_info, file=f)

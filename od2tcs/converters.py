@@ -199,7 +199,7 @@ def od_to_trs(od, max_legs, trs_obs_distr, distr_dims,
     return trs_descr_df, trs_info_df
 
 
-def collapse_tours_descr(trs_descr, descr_cols, remove_duplicates=False):
+def collapse_tours_descr(trs_descr, descr_cols, drop_duplicates=False):
     seqs = list()
     for c in descr_cols:
         seq = trs_descr.groupby('Tourid')[c].apply(tuple)
@@ -207,7 +207,7 @@ def collapse_tours_descr(trs_descr, descr_cols, remove_duplicates=False):
 
     trs_collapsed = pd.concat(seqs, axis=1)
 
-    if remove_duplicates:
+    if drop_duplicates:
         trs_collapsed.drop_duplicates(inplace=True)
 
     return trs_collapsed

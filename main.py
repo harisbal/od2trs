@@ -91,17 +91,20 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-
                 trs_comp = analysis.compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
                                                         trs_mdl_descr, trs_mdl_info_run)
 
-                attr_cols = ['Tourid', 'Legidx', 'Purpose',
-                             'Direction', 'Timeperiod', 'Exist']
-                g_comp = analysis.prepare_comparison_graph(trs_obs_descr, trs_mdl_descr,
-                                                           trs_comp, attr_cols)
+                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose',
+                             'Direction', 'Timeperiod', 'Inboth']
+
+                types = ['obs', 'mdl']
+
+                trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
+                                                                   trs_comp, coords, attr_cols)
+
                 myio.create_folders([outfolder])
                 results = [run_info, od, trs_mdl_descr, trs_mdl_info_run,
-                           trs_obs_distr, optim_results, trs_comp, g_comp]
+                           trs_obs_distr, optim_results, trs_comp, trs_descr_comp]
 
                 myio.export_results(results, outfolder)
 
