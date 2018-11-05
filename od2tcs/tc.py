@@ -10,11 +10,12 @@ class Leg:
     """
     def __init__(self, source, target,
                  purpose=None, timeperiod=None,
-                 distance=None, **kwargs):
+                 direction=None, distance=None, **kwargs):
 
         self.source = source
         self.target = target
         self.purpose = purpose
+        self.direction = direction
         self.timeperiod = timeperiod
         self.distance = distance
 

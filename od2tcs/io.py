@@ -1,18 +1,8 @@
 import os
-import shutil
-import pickle
 import numpy as np
 import pandas as pd
+import networkx as nx
 import settings
-
-
-def move_results(source_fldr, dst_fldr):
-    files = os.listdir(source_fldr)
-    for f in files:
-        # Specifying the full filepath allows for overwrite
-        src = os.path.join(source_fldr, f)
-        dst = os.path.join(dst_fldr, f)
-        shutil.move(src, dst)
 
 
 def create_folders(folder_list):
@@ -21,30 +11,18 @@ def create_folders(folder_list):
             os.makedirs(folder)
 
 
-def export_pickles(d, outfolder=r'./cache'):
-    create_folders([outfolder])
-    for key, var in d.items():
-        outpath = os.path.join(outfolder, '{}.p'.format(key))
-        pickle.dump(var, open(outpath, 'wb'))
-
-
-def load_pickles(d_pickles, infolder=r'./cache'):
-    d_out = dict()
-    for key in d_pickles:
-        val = key.split('-', 1)[0]
-        inpath = os.path.join(infolder, '{}.p'.format(key))
-        d_out[val] = pickle.load(open(inpath, 'rb'))
-    return d_out
+def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
+    return pd.read_csv(infilepath, index_col=idx_cols)
 
 
 def fetch_prepare_od(infilepath, trips_thresh):
 
-    idx_names = ['Source', 'Target', 'Purpose', 'Mode', 'Timeperiod']
+    idx_names = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'Timeperiod']
     od = pd.read_csv(infilepath)
     od.set_index(idx_names, inplace=True)
     od = od.squeeze()
 
-    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None]
+    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None, None]
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
     odg = odg.reset_index()
@@ -66,10 +44,10 @@ def fetch_prepare_od(infilepath, trips_thresh):
     # and HB_ToHome when destination is to external
     internal_zone_str = settings.parameters['int_zone_str']
     mask_fh = (~od_filtered.index.get_level_values('Source').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['origin_purposes'])))
+               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['origin_directions'])))
 
     mask_th = (~od_filtered.index.get_level_values('Target').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Purpose').isin(settings.parameters['destination_purposes'])))
+               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['destination_directions'])))
 
     od_filtered.loc[mask_fh] = np.nan
     od_filtered.loc[mask_th] = np.nan
@@ -86,36 +64,40 @@ def fetch_prepare_od(infilepath, trips_thresh):
 
 
 def read_distances(infilepath):
-    s = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
-    s = s.astype(float)
-    s.index.names = ['Source', 'Target']
-    s.name = 'Distance'
-    return s
+    sr = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
+    sr = sr.astype(float)
+    sr.index.names = ['Source', 'Target']
+    sr.name = 'Distance'
+    return sr
 
 
-def export_results(run_info, od, tcs, tcs_info, distr_grps, results):
+def read_zones_info(infilepath):
+    df = pd.read_csv(infilepath, index_col=[0])
+    df['Coords'] = df[['X', 'Y']].apply(tuple, axis=1)
+    df.drop(columns=['X', 'Y'], inplace=True)
+    df.name = 'Zonesinfo'
+    return df
+
+
+def export_results(results, outfolder):
 
     settings.init()
     filenames = settings.filenames
 
-    data_source = run_info['DataSource']
-    aggr_level = run_info['AggrLevel']
-    sample_size = run_info['SampleSize']
-    distr_dims = run_info['DistrDims']
-    legs = run_info['MaxLegs']
-    trips_thresh = run_info['TripsThresh']
-    distr_constr_enabled = run_info['DistrConstrEnabled']
-
-    outfolder = r'./outputs/{}/{}/{}/{}/'.format(data_source, distr_dims, aggr_level, sample_size)
-    outfolder += '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
-    create_folders([outfolder])
+    (run_info, od, trs_obs_descr, trs_obs_info,
+     trs_mdl_descr, trs_mdl_info, distr_grps,
+     optim_results, trs_comp, trs_descr_comp) = results
 
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
-    tcs.to_csv(os.path.join(outfolder, filenames['tours_mdl_descr']), index=True)
-    tcs_info.to_csv(os.path.join(outfolder, filenames['tours_mdl_info']), index=True)
+    trs_mdl_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
+    trs_mdl_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
+    trs_obs_descr.to_csv(os.path.join(outfolder, filenames['trs_obs_descr']), index=True)
+    trs_obs_info.to_csv(os.path.join(outfolder, filenames['trs_obs_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
-
-    results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
+    optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
+    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=True, header=True)
+    trs_descr_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), index=True, header=True)
+    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 
     with open(os.path.join(outfolder, filenames['metadata']), 'w') as f:
         print(run_info, file=f)
