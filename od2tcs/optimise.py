@@ -13,12 +13,12 @@ def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
     def init_chains_descr(_model):
         _od = _model.od
         _trs = _model.trs.reset_index()
-        _trs = pd.merge(_trs, _od['LegId'].to_frame(),
+        _trs = pd.merge(_trs, _od['Legid'].to_frame(),
                         left_on=_od.index.names, right_index=True,
                         how='left')
 
         # Can be slow
-        d_chains_descr = _trs.groupby('LegId')['Tourid'].apply(list).to_dict()
+        d_chains_descr = _trs.groupby('Legid')['Tourid'].apply(list).to_dict()
 
         return d_chains_descr
 
@@ -40,11 +40,11 @@ def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
 
-    model.LEG_IDS = Set(initialize=model.od.LegId.unique().tolist())
+    model.LEG_IDS = Set(initialize=model.od.Legid.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.trs_info.index.unique().values.tolist())
     model.GROUP_IDS = Set(initialize=model.distr_grps.index.unique().values.tolist())
 
-    d_leg_trips = model.od.reset_index().set_index('LegId')['DailyTrips'].to_dict()
+    d_leg_trips = model.od.reset_index().set_index('Legid')['Dailytrips'].to_dict()
     model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
 
@@ -104,7 +104,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['simplex display'] = 2
 
     if params['mip tolerances absmipgap']:
-        thresh = params['mip tolerances absmipgap'] * model.od['DailyTrips'].sum()
+        thresh = params['mip tolerances absmipgap'] * model.od['Dailytrips'].sum()
         opt.options['mip tolerances absmipgap'] = thresh
     elif params['mip tolerances mipgap']:
         opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']

@@ -26,8 +26,8 @@ def fetch_prepare_od(infilepath, trips_thresh):
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
     odg = odg.reset_index()
-    odg.index.name = 'LegId'
-    # Create a column called LegId / will be used to identify the OdPairs
+    odg.index.name = 'Legid'
+    # Create a column called Legid / will be used to identify the OdPairs
     odg = odg.reset_index()
     odg.set_index(idx_names, inplace=True)
 
@@ -35,7 +35,7 @@ def fetch_prepare_od(infilepath, trips_thresh):
     od_filtered = odg.xs('Motorised', level='Mode')
 
     # Reduce
-    od_filtered = od_filtered[od_filtered.DailyTrips >= trips_thresh]
+    od_filtered = od_filtered[od_filtered.Dailytrips >= trips_thresh]
     # Remove intrazonals
     mask = od_filtered.index.get_level_values('Source') != od_filtered.index.get_level_values('Target')
     od_filtered = od_filtered[mask]
@@ -54,11 +54,11 @@ def fetch_prepare_od(infilepath, trips_thresh):
     od_filtered.dropna(inplace=True)
 
     # Round
-    od_filtered.DailyTrips = od_filtered.DailyTrips.round()
-    od_filtered.DailyTrips = od_filtered.DailyTrips.astype(int)
+    od_filtered.Dailytrips = od_filtered.Dailytrips.round()
+    od_filtered.Dailytrips = od_filtered.Dailytrips.astype(int)
 
-    # Make sure LegId is int
-    od_filtered.LegId = od_filtered.LegId.astype(int)
+    # Make sure Legid is int
+    od_filtered.Legid = od_filtered.Legid.astype(int)
 
     return od_filtered
 
@@ -95,7 +95,7 @@ def export_results(results, outfolder):
     trs_obs_info.to_csv(os.path.join(outfolder, filenames['trs_obs_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
     optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
-    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=False, header=True)
+    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=True, header=True)
     trs_descr_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), index=True, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 

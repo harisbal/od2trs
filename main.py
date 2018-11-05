@@ -35,9 +35,11 @@ def main():
         filepaths['trs_obs_info'] = os.path.join(infolder, filenames['trs_obs_info'])
         filepaths['zones_info'] = os.path.join(infolder, filenames['zones_info'])
 
-        print('\nDistrDims: {} Aggr Level: {}, SampleSize: {}, Legs:{}, trips_thresh:{}'.format(distr_dims, aggr_level,
-                                                                                                sample_size, legs,
-                                                                                                trips_thresh))
+        print('\nDistrDims: {} Aggr Level: {}, SampleSize: {},'
+              'Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims, aggr_level, sample_size,
+                                                                    legs, trips_thresh,
+                                                                    params['distribution_percentage_remain']))
+
         print('Preparing Distributions from observed data...')
         trs_obs_info = distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
         trs_obs_descr = myio.get_observed_trs_descr(filepaths['trs_obs_descr'])
