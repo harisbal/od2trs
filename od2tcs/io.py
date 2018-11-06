@@ -1,7 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
-import networkx as nx
+
+import od2tcs.converters as converters
+
 import settings
 
 
@@ -11,7 +13,7 @@ def create_folders(folder_list):
             os.makedirs(folder)
 
 
-def get_observed_trs_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
+def get_observed_tours_descr(infilepath, idx_cols=['Tourid', 'Legidx']):
     return pd.read_csv(infilepath, index_col=idx_cols)
 
 
