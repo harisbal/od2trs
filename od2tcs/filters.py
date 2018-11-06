@@ -3,7 +3,6 @@ import pandas as pd
 import networkx as nx
 import settings
 
-
 def identify_possible_trs(trs):
     params = settings.parameters
     # TODO clean this part
