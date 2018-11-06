@@ -1,5 +1,6 @@
 import os
 import itertools
+import pandas as pd
 
 import od2tcs.converters as converters
 import od2tcs.distributions as distrs
@@ -7,6 +8,7 @@ import od2tcs.optimise as opt
 import od2tcs.io as myio
 import od2tcs.filters as filters
 import od2tcs.analysis as analysis
+import od2tcs.utilities as utils
 
 import settings
 
@@ -24,6 +26,9 @@ def main():
                                               params['max_legs'],
                                               params['trips_thresh']))
 
+    comp_descr_dims = params['comp_descr_dims']
+    dist_bins = params['distribution_dims']
+
     for data_source, aggr_level, sample_size, distr_dims, legs, trips_thresh in iteration_params:
 
         infolder = r'./inputs/{}/{}/{}'.format(data_source, aggr_level, sample_size)
@@ -35,24 +40,29 @@ def main():
         filepaths['trs_obs_info'] = os.path.join(infolder, filenames['trs_obs_info'])
         filepaths['zones_info'] = os.path.join(infolder, filenames['zones_info'])
 
+        distances = myio.read_distances(filepaths['distances'])
+        coords = myio.read_zones_info(filepaths['zones_info'])['Coords']
+
         print('\nDistrDims: {} Aggr Level: {}, SampleSize: {},'
               'Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims, aggr_level, sample_size,
                                                                     legs, trips_thresh,
                                                                     params['distribution_percentage_remain']))
 
         print('Preparing Distributions from observed data...')
-        trs_obs_info = distrs.get_observed_trs_info(filepaths['trs_obs_info'], legs)
-        trs_obs_descr = myio.get_observed_trs_descr(filepaths['trs_obs_descr'])
-        trs_obs_distr = trs_obs_info.pipe(distrs.prepare_distribution, distr_dims)
 
+        trs_obs_descr = myio.get_observed_tours_descr(filepaths['trs_obs_descr'])
+
+        # Some of the observed tours are duplicates. I collapse and return the times used
+        trs_obs_descr, times_used = utils.drop_duplicate_tours(trs_obs_descr, comp_descr_dims)
+
+        trs_obs_info = utils.create_tours_info(trs_obs_descr, distr_dims,
+                                               dist_bins, distances).join(times_used)
+
+        trs_obs_distr = trs_obs_info.pipe(distrs.prepare_distribution, distr_dims)
         trs_obs_info = distrs.assign_distribution_group(trs_obs_info, trs_obs_distr,
                                                         distr_dims, dropna=False)
 
         trs_obs_info['Inlowfreqgroup'] = trs_obs_info['Distrgroupid'].isna()
-        trs_obs_info['Timesused'] = 1
-
-        distances = myio.read_distances(filepaths['distances'])
-        coords = myio.read_zones_info(filepaths['zones_info'])['Coords']
 
         print('Creating TripChains...')
         od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
@@ -94,14 +104,12 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
-                                                        trs_mdl_descr, trs_mdl_info_run)
+                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
+                                                        trs_mdl_descr, comp_descr_dims)
 
                 attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose',
-                             'Direction', 'Timeperiod', 'Inboth']
-
+                             'Direction', 'Timeperiod', 'Inboth', 'Inlowfreqgroup']
                 types = ['obs', 'mdl']
-
                 trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
                                                                    trs_comp, coords, attr_cols)
 

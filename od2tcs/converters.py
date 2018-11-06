@@ -6,7 +6,7 @@ import itertools
 import pandas as pd
 import networkx as nx
 
-import od2tcs.utilities as util
+import od2tcs.utilities as utils
 import od2tcs.network_tools as nettools
 import od2tcs.distributions as distrs
 import od2tcs.filters as filters
@@ -57,7 +57,7 @@ def zones_seq_to_trs(zones_seq, G):
     legs_combs.append(avail_legs.copy())
 
     if len(zones_seq) >= 4: # A tc containing intermediate zones visits at least 4
-        for o, d in util.pairwise(zones_seq[1:-1]):
+        for o, d in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
             leg_attrs = prepare_leg_attrs(G, o, d, filter_direction_interm)
             for la in leg_attrs:
@@ -108,7 +108,7 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
         descr_df.index.names = ['Tourid', 'Legidx']
         descr_df.dropna(axis=1, inplace=True)
 
-        info_df = distrs.summarise_trs_df(descr_df, distr_dims, distances)
+        info_df = utils.create_tours_info(descr_df, distr_dims, params['distance_bins'], distances)
         info_df = (info_df.pipe(distrs.assign_distribution_group, trs_obs_distr,
                                 distr_dims, dropna=True)
                    .pipe(filters.trs_by_dict, params['filters']))
