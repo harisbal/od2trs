@@ -51,7 +51,7 @@ def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
     model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
 
-    model.thresh = params['mip tolerances absmipgap'] * model.od['Dailytrips'].sum()
+    model.cutoff = params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum() * (-1)
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
@@ -74,12 +74,6 @@ def run_model(model, distr_constr_enabled, send_to_neos):
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
-
-    def od_trips_tolernace(_model):
-        diff = sum(
-               (sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
-                if _model.chains_descr[leg_id] else 0) - _model.trips[leg_id] for leg_id in _model.LEG_IDS)
-        return diff <= _model.thresh
 
     def distr_rule_low(_model, g_id):
         if _model.chains_distr_groups[g_id]:
@@ -111,9 +105,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    if params['mip tolerances absmipgap']:
-        model.od_trips_thresh = Constraint(rule=od_trips_tolernace)
-        opt.options['mip tolerances absmipgap'] = model.thresh
+    if params['mip tolerances lowercutoff']:
+        opt.options['mip tolerances lowercutoff'] = model.cutoff
     elif params['mip tolerances mipgap']:
         opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
 
