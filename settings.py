@@ -14,7 +14,7 @@ def init():
 
     parameters['data_sources'] = ['mnd_TSC']
     parameters['aggr_levels'] = ['lsoa', 'msoa']
-    parameters['sample_sizes'] = ['sample_perc_01']
+    parameters['sample_sizes'] = ['sample_perc_10']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Timeperiodseq']]
