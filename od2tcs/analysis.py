@@ -3,10 +3,11 @@ import pandas as pd
 import od2tcs.converters as converters
 
 
-def compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
-                        trs_mdl_descr, descr_cols):
+def compare_obs_mdl_trs(trs_obs_info,
+                        trs_obs_descr, trs_mdl_descr,
+                        descr_cols):
 
-    def _create_mrg(left, right, descr_cols, inlowfreqgroup):
+    def _create_mrg(left, right, descr_cols, type, inlowfreqgroup):
 
         idx_cols = ['Tourid', 'Type']
 
@@ -21,11 +22,11 @@ def compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
 
         df['Inboth'] = np.where(df['Inboth'] == 'both', True, False)
         df = df.drop(columns=cols_to_drop)
-        df['Type'] = 'obs'
+        df['Type'] = type
         # TODO A bit ugly / I need to join on multilevel
         df = df.set_index(idx_cols[0])
         df['Inlowfreqgroup'] = inlowfreqgroup
-        df = df.set_index(idx_cols[1], append=True)
+        df = df.reset_index().set_index(idx_cols)
         return df
 
     obs = converters.collapse_tours_descr(trs_obs_descr, descr_cols)
@@ -33,11 +34,11 @@ def compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
 
     # First join for the obs tours
     inlowfreqgroup = trs_obs_info['Inlowfreqgroup']
-    mrg_obs = _create_mrg(obs, mdl, descr_cols, inlowfreqgroup)
+    mrg_obs = _create_mrg(obs, mdl, descr_cols, 'obs', inlowfreqgroup)
     # Then join for the mdl tours
     # Modelled tours are by definition not in low frequency group
     inlowfreqgroup = False
-    mrg_mdl = _create_mrg(mdl, obs, descr_cols, inlowfreqgroup)
+    mrg_mdl = _create_mrg(mdl, obs, descr_cols, 'mdl', inlowfreqgroup)
 
     return pd.concat([mrg_obs, mrg_mdl])
 
@@ -58,7 +59,7 @@ def prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
         dfs.append(trs_descr)
 
     trs_comp_tbl = pd.concat(dfs, sort=False)
-
+    # Ensure level order
     trs_comp_tbl = trs_comp_tbl.reset_index(level='Legidx').join(comp)
     trs_comp_tbl = trs_comp_tbl.reset_index()[['Source', 'Target'] + attr_cols]
     # if Inboth equals NaN then the mdl tour has not been used by the optimiser
