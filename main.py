@@ -104,15 +104,12 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_descr, trs_obs_info,
-                                                        trs_mdl_descr, trs_mdl_info_run,
-                                                        comp_descr_dims)
+                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
+                                                        trs_mdl_descr, comp_descr_dims)
 
                 attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose',
-                             'Direction', 'Timeperiod', 'Inboth']
-
+                             'Direction', 'Timeperiod', 'Inboth', 'Inlowfreqgroup']
                 types = ['obs', 'mdl']
-
                 trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
                                                                    trs_comp, coords, attr_cols)
 
