@@ -1,6 +1,5 @@
 import os
 import itertools
-import pandas as pd
 
 import od2tcs.converters as converters
 import od2tcs.distributions as distrs
@@ -66,6 +65,8 @@ def main():
 
         print('Creating TripChains...')
         od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
+        excluded_trips = utils.calculate_excluded_trips(trs_obs_info)
+
         trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
                                                            trs_obs_distr, distr_dims,
                                                            distances, coords)
@@ -82,13 +83,12 @@ def main():
                             'MaxLegs': legs, 'TripsThresh': trips_thresh,
                             'DistrConstrEnabled': distr_constr_enabled,
                             'DistrPercRemain': params['distribution_percentage_remain'],
-                            'OptimAbsGap': params['optimisation']['mip tolerances absmipgap'],
-                            'ObsDistrPercThresh': params['distribution_percentage_remain'],
+                            'PercCutoff': params['optimisation']['mip tolerances lowercutoff'],
                             'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance'],
                             'DistBins': params['distance_bins']}
 
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
+                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od, excluded_trips,
                                          trs_obs_distr, distr_constr_enabled,
                                          submit_to_neos=params['submit_to_neos'])
 

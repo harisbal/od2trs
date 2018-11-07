@@ -69,9 +69,7 @@ def create_tours_info(trs_descr, distr_dims,
 
 def drop_duplicate_tours(trs_descr, descr_dims):
 
-    trs_obs_collapsed = converters.collapse_tours_descr(trs_descr,
-                                                        descr_dims,
-                                                        drop_duplicates=False)
+    trs_obs_collapsed = converters.collapse_tours_descr(trs_descr, descr_dims)
 
     times_used = trs_obs_collapsed.groupby(descr_dims).size()
     times_used.name = 'Timesused'
@@ -86,3 +84,12 @@ def drop_duplicate_tours(trs_descr, descr_dims):
     trs_descr = trs_descr[mask]
 
     return trs_descr, times_used
+
+
+def calculate_excluded_trips(trs_info):
+    trs_info = trs_info[trs_info['Inlowfreqgroup']]
+    legs_distr = trs_info.groupby('Legs').size()
+    legs_distr.name = 'Size'
+    legs_distr = legs_distr.reset_index()
+    excluded_trips = legs_distr[['Legs', 'Size']].product(axis=1).sum()
+    return excluded_trips
