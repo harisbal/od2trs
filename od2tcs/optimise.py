@@ -8,7 +8,8 @@ from pyomo.util.timing import report_timing
 import settings
 
 
-def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
+def prepare_model(trs, trs_info, od, excluded_trips,
+                  distr_grps, distr_constr_enabled):
 
     def init_chains_descr(_model):
         _od = _model.od
@@ -51,7 +52,10 @@ def prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled):
     model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
 
-    model.cutoff = params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum() * (-1)
+    # The cutoff should take into account the excluded trips (in low frequency groups)
+    model.cutoff = (-excluded_trips -
+                    (params['mip tolerances lowercutoff'] *
+                    (model.od['Dailytrips'].sum() - excluded_trips)))
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
@@ -107,6 +111,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 
     if params['mip tolerances lowercutoff']:
         opt.options['mip tolerances lowercutoff'] = model.cutoff
+        opt.options['mip limits solutions'] = 1 # Will stop once the first feasible solution is achieved
     elif params['mip tolerances mipgap']:
         opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
 
@@ -124,10 +129,11 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(trs, trs_info, od, distr_grps,
+def main(trs, trs_info, od, excluded_trips, distr_grps,
          distr_constr_enabled, submit_to_neos=False):
 
     report_timing()
-    mymodel = prepare_model(trs, trs_info, od, distr_grps, distr_constr_enabled)
+    mymodel = prepare_model(trs, trs_info, od, excluded_trips,
+                            distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results
