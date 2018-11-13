@@ -87,6 +87,6 @@ def init():
     filenames['optimisation_results'] = 'results.json'
     filenames['trs_descr_comp'] = 'trs_descr_comp.csv'
     filenames['trs_comp'] = 'trs_comp.csv'
-    filenames['metadata'] = 'metadata.txt'
+    filenames['metadata'] = 'metadata.json'
 
 

@@ -51,7 +51,7 @@ def main():
 
         trs_obs_descr = myio.get_observed_tours_descr(filepaths['trs_obs_descr'])
 
-        # Some of the observed tours are duplicates. I collapse and return the times used
+        # Some of the observed tours are duplicated. I collapse and return the times used
         trs_obs_descr, times_used = utils.drop_duplicate_tours(trs_obs_descr, comp_descr_dims)
 
         trs_obs_info = utils.create_tours_info(trs_obs_descr, distr_dims,
