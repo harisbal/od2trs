@@ -1,8 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
-
-import od2tcs.converters as converters
+import json
 
 import settings
 
@@ -102,4 +101,4 @@ def export_results(results, outfolder):
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 
     with open(os.path.join(outfolder, filenames['metadata']), 'w') as f:
-        print(run_info, file=f)
+        json.dump(run_info, f)
