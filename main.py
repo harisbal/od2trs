@@ -107,10 +107,11 @@ def main():
                 trs_comp = analysis.compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
                                                         trs_mdl_descr, comp_descr_dims)
 
-                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose',
-                             'Direction', 'Timeperiod', 'Inboth', 'Inlowfreqgroup']
+                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction', 'Timeperiod',
+                             'Inboth', 'Inlowfreqgroup', 'Timesused']
                 types = ['obs', 'mdl']
-                trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
+                trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_info, trs_obs_descr,
+                                                                   trs_mdl_info_run, trs_mdl_descr,
                                                                    trs_comp, coords, attr_cols)
 
                 myio.create_folders([outfolder])

@@ -43,16 +43,20 @@ def compare_obs_mdl_trs(trs_obs_info,
     return pd.concat([mrg_obs, mrg_mdl])
 
 
-def prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
+def prepare_comparison_table(types,
+                             trs_obs_info, trs_obs_descr,
+                             trs_mdl_info, trs_mdl_descr,
                              comp, coords=None, attr_cols=None):
 
     dfs = list()
     for tp in types:
         if tp == 'obs':
             trs_descr = trs_obs_descr.copy()
+            trs_descr = trs_descr.join(trs_obs_info.Timesused)
             trs_descr['Type'] = tp
         else:
             trs_descr = trs_mdl_descr.copy()
+            trs_descr = trs_descr.join(trs_mdl_info.Timesused)
             trs_descr['Type'] = tp
 
         trs_descr.set_index('Type', append=True, inplace=True)
@@ -77,7 +81,5 @@ def prepare_comparison_table(types, trs_obs_descr, trs_mdl_descr,
         trs_comp_tbl[['TargetX', 'TargetY']] = pd.merge(trs_comp_tbl, coords,
                                                         left_on=['Target'],
                                                         right_index=True)[coords.columns]
-
-    #g = converters.df_to_graph(trs_descr, attr_cols)
 
     return trs_comp_tbl
