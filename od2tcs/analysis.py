@@ -29,6 +29,7 @@ def prepare_tourid_lookup(types,
 
     lookup_obs_to_mdl = dict((v, k) for k, v in lookup.items())
 
+    # TODO this loop is not required
     dfs = list()
     for tp in types:
         if tp == 'obs':
@@ -50,10 +51,17 @@ def prepare_tourid_lookup(types,
     trs_comp = trs_comp.reset_index()[['Source', 'Target'] + attr_cols]
     trs_comp = trs_comp.set_index(['Tourid', 'Type', 'Legidx'])
 
-    timesused = trs_comp['Timesused'].unstack('Type')
-    diff = timesused.mdl.sub(timesused.obs, fill_value=0)
+    timesused = trs_comp['Timesused'].unstack('Type').fillna(0)
+
+    trs_comp = trs_comp.xs('mdl', level='Type')
+    trs_comp['Timesused_mdl'] = timesused.mdl
+    trs_comp['Timesused_obs'] = timesused.obs
+
+    diff = timesused.mdl.sub(timesused.obs)
     diff.name = 'Diff'
-    trs_comp = trs_comp.xs('mdl', level='Type').join(diff)
+
+    trs_comp = trs_comp.join(diff)
+    trs_comp.drop(columns='Timesused', inplace=True)
 
     if coords is not None:
         # split in X, Y cols
