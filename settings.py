@@ -13,8 +13,8 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['msoa']
-    parameters['sample_sizes'] = ['sample_perc_10']
+    parameters['aggr_levels'] = ['lsoa']
+    parameters['sample_sizes'] = ['sample_perc_01']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Legs', 'Timeperiodseq']]
@@ -22,7 +22,7 @@ def init():
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.95 # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = None # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -41,7 +41,6 @@ def init():
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
     parameters['distance_bins'] = list(range(0, max_tc_distance, 900))
-    parameters['distance_bins'].append(float('inf'))
 
     # Optimisation parameters
     parameters['optimisation'] = dict()

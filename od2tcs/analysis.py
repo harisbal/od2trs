@@ -32,6 +32,14 @@ def compare_obs_mdl_trs(trs_obs_info,
     obs = converters.collapse_tours_descr(trs_obs_descr, descr_cols)
     mdl = converters.collapse_tours_descr(trs_mdl_descr, descr_cols)
 
+    tourid_cols = ['Tourid_obs', 'Tourid_mdl']
+    # Identify the mdl Tourid which represents the obs Tourid
+    mapping = pd.merge(obs.reset_index(), mdl.reset_index(),
+                       on=descr_cols, suffixes=('_obs', '_mdl'))[tourid_cols]
+
+    if mapping.Tourid_obs.isna().sum() > 0:
+        raise ValueError('Observed tour not matched to modelled')
+
     # First join for the obs tours
     inlowfreqgroup = trs_obs_info['Inlowfreqgroup']
     mrg_obs = _create_mrg(obs, mdl, descr_cols, 'obs', inlowfreqgroup)
