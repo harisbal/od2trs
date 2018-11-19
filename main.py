@@ -61,7 +61,7 @@ def main():
         trs_obs_info = distrs.assign_distribution_group(trs_obs_info, trs_obs_distr,
                                                         distr_dims, dropna=False)
 
-        trs_obs_info['Inlowfreqgroup'] = trs_obs_info['Distrgroupid'].isna()
+        trs_obs_info['Inlowfreqgrp'] = trs_obs_info['Distrgroupid'].isna()
 
         print('Creating TripChains...')
         od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
@@ -70,6 +70,7 @@ def main():
         trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
                                                            trs_obs_distr, distr_dims,
                                                            distances, coords)
+        trs_mdl_info['Inlowfreqgrp'] = False
 
         if trs_mdl_descr.empty:
             print('No tripchains discovered')
@@ -104,19 +105,19 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-                trs_comp = analysis.compare_obs_mdl_trs(trs_obs_info, trs_obs_descr,
-                                                        trs_mdl_descr, comp_descr_dims)
+                lookup_trsid_mdl_to_obs = analysis.prepare_lookup_tourid(trs_mdl_descr, trs_obs_descr, comp_descr_dims)
 
-                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction', 'Timeperiod',
-                             'Inboth', 'Inlowfreqgroup', 'Timesused']
+                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction',
+                             'Timeperiod', 'Timesused']
+
                 types = ['obs', 'mdl']
-                trs_descr_comp = analysis.prepare_comparison_table(types, trs_obs_info, trs_obs_descr,
-                                                                   trs_mdl_info_run, trs_mdl_descr,
-                                                                   trs_comp, coords, attr_cols)
+                trs_descr_comp = analysis.prepare_tourid_lookup(types, trs_obs_info, trs_obs_descr,
+                                                                trs_mdl_info_run, trs_mdl_descr,
+                                                                lookup_trsid_mdl_to_obs, coords, attr_cols)
 
                 myio.create_folders([outfolder])
                 results = [run_info, od, trs_obs_descr, trs_obs_info, trs_mdl_descr, trs_mdl_info_run,
-                           trs_obs_distr, optim_results, trs_comp, trs_descr_comp]
+                           trs_obs_distr, optim_results, lookup_trsid_mdl_to_obs, trs_descr_comp]
 
                 myio.export_results(results, outfolder)
 

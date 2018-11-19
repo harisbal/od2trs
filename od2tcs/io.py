@@ -87,7 +87,8 @@ def export_results(results, outfolder):
 
     (run_info, od, trs_obs_descr, trs_obs_info,
      trs_mdl_descr, trs_mdl_info, distr_grps,
-     optim_results, trs_comp, trs_descr_comp) = results
+     optim_results, lookup_tourid_mdl_to_obs,
+     trs_descr_comp) = results
 
     od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
     trs_mdl_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
@@ -96,9 +97,11 @@ def export_results(results, outfolder):
     trs_obs_info.to_csv(os.path.join(outfolder, filenames['trs_obs_info']), index=True)
     distr_grps.to_csv(os.path.join(outfolder, filenames['target_distribution']), index=True, header=True)
     optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
-    trs_comp.to_csv(os.path.join(outfolder, filenames['trs_comp']), index=True, header=True)
     trs_descr_comp.to_csv(os.path.join(outfolder, filenames['trs_descr_comp']), index=True, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
 
     with open(os.path.join(outfolder, filenames['metadata']), 'w') as f:
         json.dump(run_info, f)
+
+    with open(os.path.join(outfolder, filenames['lookup']), 'w') as f:
+        json.dump(lookup_tourid_mdl_to_obs, f)

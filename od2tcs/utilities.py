@@ -87,7 +87,7 @@ def drop_duplicate_tours(trs_descr, descr_dims):
 
 
 def calculate_excluded_trips(trs_info):
-    trs_info = trs_info[trs_info['Inlowfreqgroup']]
+    trs_info = trs_info[trs_info['Inlowfreqgrp']]
     legs_distr = trs_info.groupby('Legs').size()
     legs_distr.name = 'Size'
     legs_distr = legs_distr.reset_index()

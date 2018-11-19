@@ -85,7 +85,7 @@ def init():
     filenames['target_distribution'] = 'target_distribution.csv'
     filenames['optimisation_results'] = 'results.json'
     filenames['trs_descr_comp'] = 'trs_descr_comp.csv'
-    filenames['trs_comp'] = 'trs_comp.csv'
+    filenames['lookup'] = 'lookup_trsid_mdl_to_obs.json'
     filenames['metadata'] = 'metadata.json'
 
 
