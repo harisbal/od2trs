@@ -28,7 +28,8 @@ def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols
 def prepare_tourid_lookup(types,
                           trs_obs_info, trs_obs_descr,
                           trs_mdl_info, trs_mdl_descr,
-                          lookup, coords=None, attr_cols=None):
+                          lookup, coords=None, attr_cols=None,
+                          export_unused=False):
 
     # Invert the keys fo the lookup
     lookup = dict((v, k) for k, v in lookup.items())
@@ -69,6 +70,10 @@ def prepare_tourid_lookup(types,
 
     trs_comp = trs_comp.join(diff)
     trs_comp.drop(columns='Timesused', inplace=True)
+
+    if not export_unused:
+        used = (trs_comp['Timesused_mdl'] != 0) & (trs_comp['Timesused_obs'] != 0)
+        trs_comp = trs_comp[used]
 
     if coords is not None:
         # split in X, Y cols
