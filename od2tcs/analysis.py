@@ -34,6 +34,9 @@ def prepare_tourid_lookup(types,
     for tp in types:
         if tp == 'obs':
             trs_descr = trs_obs_descr.copy()
+            # filter out obs tours not in dictionary
+            # the missing tours are in low freq group
+            trs_descr = trs_descr.loc[list(lookup_obs_to_mdl.keys())]
             trs_descr = trs_descr.join(trs_obs_info.Timesused)
             # replace the obs tour ids with the corresponding mdl ones
             trs_descr.rename(index=lookup_obs_to_mdl, inplace=True)
