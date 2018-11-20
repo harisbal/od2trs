@@ -3,21 +3,24 @@ import pandas as pd
 import od2tcs.converters as converters
 
 
-def prepare_lookup_tourid(trs_mdl_descr, trs_obs_descr, descr_cols):
+def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols):
 
     obs = converters.collapse_tours_descr(trs_obs_descr, descr_cols)
     mdl = converters.collapse_tours_descr(trs_mdl_descr, descr_cols)
 
     tourid_cols = ['Tourid_obs', 'Tourid_mdl']
     # Identify the mdl Tourid which represents the obs Tourid
-    lookup = pd.merge(obs.reset_index(), mdl.reset_index(), how='left',
+    lookup = pd.merge(obs.reset_index(), mdl.reset_index(), how='inner',
                       on=descr_cols, suffixes=('_obs', '_mdl'))[tourid_cols]
 
     lookup.set_index('Tourid_mdl', inplace=True)
     lookup.name = 'Tourid'
 
-    if lookup.Tourid_obs.isna().sum() > 0:
-        raise ValueError('Observed tour not matched to modelled')
+    # check that all obs tours are there (excluding the low freq group)
+    trs_obs_info = trs_obs_info[~trs_obs_info.Inlowfreqgrp]
+
+    if lookup.shape[0] != trs_obs_info.shape[0]:
+        raise ValueError('Observed tour not matched to Modelled')
 
     return lookup.Tourid_obs.to_dict()
 
@@ -27,16 +30,20 @@ def prepare_tourid_lookup(types,
                           trs_mdl_info, trs_mdl_descr,
                           lookup, coords=None, attr_cols=None):
 
-    lookup_obs_to_mdl = dict((v, k) for k, v in lookup.items())
+    # Invert the keys fo the lookup
+    lookup = dict((v, k) for k, v in lookup.items())
 
     # TODO this loop is not required
     dfs = list()
     for tp in types:
         if tp == 'obs':
             trs_descr = trs_obs_descr.copy()
+            # filter out obs tours not in dictionary
+            # the missing tours are in low freq group
+            trs_descr = trs_descr.loc[list(lookup.keys())]
             trs_descr = trs_descr.join(trs_obs_info.Timesused)
             # replace the obs tour ids with the corresponding mdl ones
-            trs_descr.rename(index=lookup_obs_to_mdl, inplace=True)
+            trs_descr.rename(lookup, axis='index', level='Tourid', inplace=True)
             trs_descr['Type'] = tp
         else:
             trs_descr = trs_mdl_descr.copy()
@@ -49,17 +56,17 @@ def prepare_tourid_lookup(types,
     trs_comp = pd.concat(dfs, sort=False)
     # Ensure level order
     trs_comp = trs_comp.reset_index()[['Source', 'Target'] + attr_cols]
-    trs_comp = trs_comp.set_index(['Tourid', 'Type', 'Legidx'])
+    trs_comp = trs_comp.set_index(['Type', 'Tourid', 'Legidx'])
 
     timesused = trs_comp['Timesused'].unstack('Type').fillna(0)
 
-    trs_comp = trs_comp.xs('mdl', level='Type')
     trs_comp['Timesused_mdl'] = timesused.mdl
     trs_comp['Timesused_obs'] = timesused.obs
 
     diff = timesused.mdl.sub(timesused.obs)
     diff.name = 'Diff'
 
+    trs_comp = trs_comp.xs('mdl', level='Type')
     trs_comp = trs_comp.join(diff)
     trs_comp.drop(columns='Timesused', inplace=True)
 

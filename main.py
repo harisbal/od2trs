@@ -105,11 +105,10 @@ def main():
                 runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
                 outfolder = os.path.join(outfolder, runfolder)
 
-                lookup_trsid_mdl_to_obs = analysis.prepare_lookup_tourid(trs_mdl_descr, trs_obs_descr, comp_descr_dims)
+                lookup_trsid_mdl_to_obs = analysis.prepare_lookup_tourid(trs_mdl_descr, trs_obs_info,
+                                                                         trs_obs_descr, comp_descr_dims)
 
-                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction',
-                             'Timeperiod', 'Timesused']
-
+                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction', 'Timeperiod', 'Timesused']
                 types = ['obs', 'mdl']
                 trs_descr_comp = analysis.prepare_tourid_lookup(types, trs_obs_info, trs_obs_descr,
                                                                 trs_mdl_info_run, trs_mdl_descr,
