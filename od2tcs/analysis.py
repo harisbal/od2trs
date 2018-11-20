@@ -60,13 +60,13 @@ def prepare_tourid_lookup(types,
 
     timesused = trs_comp['Timesused'].unstack('Type').fillna(0)
 
+    trs_comp = trs_comp.xs('mdl', level='Type')
     trs_comp['Timesused_mdl'] = timesused.mdl
     trs_comp['Timesused_obs'] = timesused.obs
 
     diff = timesused.mdl.sub(timesused.obs)
     diff.name = 'Diff'
 
-    trs_comp = trs_comp.xs('mdl', level='Type')
     trs_comp = trs_comp.join(diff)
     trs_comp.drop(columns='Timesused', inplace=True)
 
