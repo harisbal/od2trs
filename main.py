@@ -110,9 +110,9 @@ def main():
 
                 attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction', 'Timeperiod', 'Timesused']
                 types = ['obs', 'mdl']
-                trs_descr_comp = analysis.prepare_tourid_lookup(types, trs_obs_info, trs_obs_descr,
-                                                                trs_mdl_info_run, trs_mdl_descr,
-                                                                lookup_trsid_mdl_to_obs, coords, attr_cols)
+                trs_descr_comp = analysis.prepare_comparison(types, trs_obs_info, trs_obs_descr,
+                                                             trs_mdl_info_run, trs_mdl_descr,
+                                                             lookup_trsid_mdl_to_obs, coords, attr_cols)
 
                 myio.create_folders([outfolder])
                 results = [run_info, od, trs_obs_descr, trs_obs_info, trs_mdl_descr, trs_mdl_info_run,

@@ -25,11 +25,11 @@ def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols
     return lookup.Tourid_obs.to_dict()
 
 
-def prepare_tourid_lookup(types,
-                          trs_obs_info, trs_obs_descr,
-                          trs_mdl_info, trs_mdl_descr,
-                          lookup, coords=None, attr_cols=None,
-                          export_unused=False):
+def prepare_comparison(types,
+                       trs_obs_info, trs_obs_descr,
+                       trs_mdl_info, trs_mdl_descr,
+                       lookup, coords=None, attr_cols=None,
+                       export_unused=False):
 
     # Invert the keys fo the lookup
     lookup = dict((v, k) for k, v in lookup.items())
