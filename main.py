@@ -49,10 +49,16 @@ def main():
 
         print('Preparing Distributions from observed data...')
 
-        trs_obs_descr = myio.get_observed_tours_descr(filepaths['trs_obs_descr'])
+        idx_cols = ['TourId', 'LegSeqIdx']
+        trs_obs_descr = myio.get_observed_tours_descr(filepaths['trs_obs_descr'],
+                                                      idx_cols=idx_cols)
 
-        # Some of the observed tours are duplicated. I collapse and return the times used
-        trs_obs_descr, times_used = utils.drop_duplicate_tours(trs_obs_descr, comp_descr_dims)
+        legs_filt = trs_obs_descr.reset_index().groupby('Tourid')['Legseqidx'].max() + 1
+        legs_filt = legs_filt <= legs
+        trs_obs_descr = trs_obs_descr.unstack('Legseqidx')[legs_filt].stack('Legseqidx')
+
+        times_used = trs_obs_descr.groupby(level='Tourid')['Timesused'].max()
+        times_used.name = 'Timesused'
 
         trs_obs_info = utils.create_tours_info(trs_obs_descr, distr_dims,
                                                dist_bins, distances).join(times_used)
@@ -64,7 +70,8 @@ def main():
         trs_obs_info['Inlowfreqgrp'] = trs_obs_info['Distrgroupid'].isna()
 
         print('Creating TripChains...')
-        od = myio.fetch_prepare_od(filepaths['od'], trips_thresh)
+        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'TimePeriod']
+        od = myio.prepare_od(trs_obs_descr, trips_thresh, idx_cols)
         excluded_trips = utils.calculate_excluded_trips(trs_obs_info)
 
         trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
@@ -108,7 +115,7 @@ def main():
                 lookup_trsid_mdl_to_obs = analysis.prepare_lookup_tourid(trs_mdl_descr, trs_obs_info,
                                                                          trs_obs_descr, comp_descr_dims)
 
-                attr_cols = ['Type', 'Tourid', 'Legidx', 'Purpose', 'Direction', 'Timeperiod', 'Timesused']
+                attr_cols = ['Type', 'Tourid', 'Legseqidx', 'Purpose', 'Direction', 'Timeperiod', 'Timesused']
                 types = ['obs', 'mdl']
                 trs_descr_comp = analysis.prepare_comparison(types, trs_obs_info, trs_obs_descr,
                                                              trs_mdl_info_run, trs_mdl_descr,

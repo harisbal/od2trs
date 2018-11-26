@@ -10,8 +10,7 @@ def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols
 
     tourid_cols = ['Tourid_obs', 'Tourid_mdl']
     # Identify the mdl Tourid which represents the obs Tourid
-    lookup = pd.merge(obs.reset_index(), mdl.reset_index(), how='inner',
-                      on=descr_cols, suffixes=('_obs', '_mdl'))[tourid_cols]
+    lookup = pd.merge(obs.reset_index(), mdl.reset_index(), how='inner', on=descr_cols, suffixes=('_obs', '_mdl'))[tourid_cols]
 
     lookup.set_index('Tourid_mdl', inplace=True)
     lookup.name = 'Tourid'
@@ -57,7 +56,7 @@ def prepare_comparison(types,
     trs_comp = pd.concat(dfs, sort=False)
     # Ensure level order
     trs_comp = trs_comp.reset_index()[['Source', 'Target'] + attr_cols]
-    trs_comp = trs_comp.set_index(['Type', 'Tourid', 'Legidx'])
+    trs_comp = trs_comp.set_index(['Type', 'Tourid', 'Legseqidx'])
 
     timesused = trs_comp['Timesused'].unstack('Type').fillna(0)
 

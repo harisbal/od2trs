@@ -7,14 +7,14 @@ def init():
     global filepaths
     global filenames
 
-    max_tc_distance = 10_800
+    max_tc_distance = 11_500
 
     parameters = dict()
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['msoa']
-    parameters['sample_sizes'] = ['sample_perc_01']
+    parameters['aggr_levels'] = ['lsoa']
+    parameters['sample_sizes'] = ['sample_perc_1']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
                                        ['Distancegroup', 'Legs', 'Timeperiodseq']]
@@ -26,9 +26,9 @@ def init():
 
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [5]
+    parameters['max_legs'] = [6]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['distribution_constraints_states'] = [False, True]
     # Maximum values for columns in the trs
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
@@ -51,7 +51,7 @@ def init():
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances lowercutoff'] = 0.025 # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances lowercutoff'] = None # Generally I'll use 0.025
     parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 25_000

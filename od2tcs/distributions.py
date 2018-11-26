@@ -4,7 +4,7 @@ import numpy as np
 import settings
 
 
-def prepare_distribution(observed_trs_info, distr_dims):
+def prepare_distribution(trs_obs_info, distr_dims):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the
@@ -21,7 +21,7 @@ def prepare_distribution(observed_trs_info, distr_dims):
         mask = s_cumsum >= 1-remain_perc
         return mask
 
-    sizes = observed_trs_info.groupby(distr_dims).size()
+    sizes = trs_obs_info.groupby(distr_dims)['Timesused'].sum()
     sizes.name = 'Size'
     percs = sizes.div(sizes.sum())
     percs.name = 'Percentage'

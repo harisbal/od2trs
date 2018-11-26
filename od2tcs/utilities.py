@@ -4,6 +4,7 @@ import pandas as pd
 from od2tcs import converters
 import settings
 
+
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
@@ -42,7 +43,7 @@ def create_tours_info(trs_descr, distr_dims,
 
     aggr_dimensions = list()
     if 'Legs' in distr_dims:
-        legs = trs_descr.reset_index(level='Legidx')['Legidx'].groupby(level='Tourid').max() + 1
+        legs = trs_descr.reset_index(level='Legseqidx')['Legseqidx'].groupby(level='Tourid').max() + 1
         legs.name = 'Legs'
         aggr_dimensions.append(legs)
 
@@ -67,29 +68,7 @@ def create_tours_info(trs_descr, distr_dims,
     return trs_info
 
 
-def drop_duplicate_tours(trs_descr, descr_dims):
-
-    trs_obs_collapsed = converters.collapse_tours_descr(trs_descr, descr_dims)
-
-    times_used = trs_obs_collapsed.groupby(descr_dims).size()
-    times_used.name = 'Timesused'
-
-    trs_obs_collapsed = trs_obs_collapsed.drop_duplicates()
-    trs_obs_collapsed = pd.merge(trs_obs_collapsed, times_used.to_frame(),
-                                 left_on=descr_dims, right_index=True)
-
-    times_used = trs_obs_collapsed['Timesused']
-
-    mask = trs_descr.index.get_level_values('Tourid').isin(list(trs_obs_collapsed.index))
-    trs_descr = trs_descr[mask]
-
-    return trs_descr, times_used
-
-
 def calculate_excluded_trips(trs_info):
     trs_info = trs_info[trs_info['Inlowfreqgrp']]
-    legs_distr = trs_info.groupby('Legs').size()
-    legs_distr.name = 'Size'
-    legs_distr = legs_distr.reset_index()
-    excluded_trips = legs_distr[['Legs', 'Size']].product(axis=1).sum()
+    excluded_trips = trs_info[['Legs', 'Timesused']].product(axis=1).sum()
     return excluded_trips

@@ -105,7 +105,7 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
     if trs_ds:
         descr_df = pd.DataFrame.from_dict(trs_ds, orient='index')
         descr_df.columns = descr_df.columns.str.capitalize()
-        descr_df.index.names = ['Tourid', 'Legidx']
+        descr_df.index.names = ['Tourid', 'Legseqidx']
         descr_df.dropna(axis=1, inplace=True)
 
         info_df = utils.create_tours_info(descr_df, distr_dims, params['distance_bins'], distances)

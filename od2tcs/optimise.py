@@ -49,18 +49,20 @@ def prepare_model(trs, trs_info, od, excluded_trips,
     model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=0)
+    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=1)
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
-    model.cutoff = (-excluded_trips -
-                    (params['mip tolerances lowercutoff'] *
-                    (model.od['Dailytrips'].sum() - excluded_trips)))
+    if params['mip tolerances lowercutoff']:
+        model.cutoff = (-excluded_trips -
+                        (params['mip tolerances lowercutoff'] *
+                        (model.od['Dailytrips'].sum() - excluded_trips)))
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
         model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs, default=0)
         model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps, default=None)
+
     return model
 
 
@@ -112,8 +114,6 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     if params['mip tolerances lowercutoff']:
         opt.options['mip tolerances lowercutoff'] = model.cutoff
         opt.options['mip limits solutions'] = 1 # Will stop once the first feasible solution is achieved
-    elif params['mip tolerances mipgap']:
-        opt.options['mip tolerances mipgap'] = params['mip tolerances mipgap']
 
     if params['timelimit']:
         opt.options['timelimit'] = params['timelimit']
