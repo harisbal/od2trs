@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import od2tcs.converters as converters
 
@@ -8,17 +7,19 @@ def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols
     obs = converters.collapse_tours_descr(trs_obs_descr, descr_cols)
     mdl = converters.collapse_tours_descr(trs_mdl_descr, descr_cols)
 
-    tourid_cols = ['Tourid_obs', 'Tourid_mdl']
+    tourid_cols = ['Tourid_mdl', 'Tourid_obs']
     # Identify the mdl Tourid which represents the obs Tourid
-    lookup = pd.merge(obs.reset_index(), mdl.reset_index(), how='inner', on=descr_cols, suffixes=('_obs', '_mdl'))[tourid_cols]
+    # The obs tours should be a subset of the modelled ones
+    lookup = pd.merge(mdl.reset_index(), obs.reset_index(),
+                      how='left', on=descr_cols,
+                      suffixes=('_mdl', '_obs'))[tourid_cols]
 
     lookup.set_index('Tourid_mdl', inplace=True)
     lookup.name = 'Tourid'
 
     # check that all obs tours are there (excluding the low freq group)
     trs_obs_info = trs_obs_info[~trs_obs_info.Inlowfreqgrp]
-
-    if lookup.shape[0] != trs_obs_info.shape[0]:
+    if lookup.dropna().shape[0] != trs_obs_info.shape[0]:
         raise ValueError('Observed tour not matched to Modelled')
 
     return lookup.Tourid_obs.to_dict()
@@ -30,7 +31,7 @@ def prepare_comparison(types,
                        lookup, coords=None, attr_cols=None,
                        export_unused=False):
 
-    # Invert the keys fo the lookup
+    # Invert the keys of the lookup
     lookup = dict((v, k) for k, v in lookup.items())
 
     # TODO this loop is not required
@@ -71,7 +72,7 @@ def prepare_comparison(types,
     trs_comp.drop(columns='Timesused', inplace=True)
 
     if not export_unused:
-        used = (trs_comp['Timesused_mdl'] != 0) & (trs_comp['Timesused_obs'] != 0)
+        used = ((trs_comp['Timesused_mdl'] != 0) | (trs_comp['Timesused_obs'] != 0))
         trs_comp = trs_comp[used]
 
     if coords is not None:

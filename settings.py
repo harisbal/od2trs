@@ -51,7 +51,7 @@ def init():
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances lowercutoff'] = None # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances lowercutoff'] = 0.025 # Generally I'll use 0.025
     parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 25_000

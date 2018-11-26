@@ -59,7 +59,6 @@ def main():
 
         times_used = trs_obs_descr.groupby(level='Tourid')['Timesused'].max()
         times_used.name = 'Timesused'
-
         trs_obs_info = utils.create_tours_info(trs_obs_descr, distr_dims,
                                                dist_bins, distances).join(times_used)
 
@@ -78,6 +77,7 @@ def main():
                                                            trs_obs_distr, distr_dims,
                                                            distances, coords)
         trs_mdl_info['Inlowfreqgrp'] = False
+        trs_obs_descr.drop(columns='Timesused', inplace=True)
 
         if trs_mdl_descr.empty:
             print('No tripchains discovered')
