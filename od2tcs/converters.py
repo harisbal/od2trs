@@ -92,18 +92,17 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
     if not zones_seqs:
         return None
 
-    trs_ds = dict()
+    trs_d = dict()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G)
         possible_trs = filters.identify_possible_trs(trs)
 
         for pt in possible_trs:
-            trs_ds.update(pt.to_dict())
+            trs_d.update(pt.to_dict())
 
-    descrs = list()
-    infos = list()
-    if trs_ds:
-        descr_df = pd.DataFrame.from_dict(trs_ds, orient='index')
+    if trs_d:
+        descr_df = pd.DataFrame.from_dict(trs_d, orient='index')
+        del trs_d
         descr_df.columns = descr_df.columns.str.capitalize()
         descr_df.index.names = ['Tourid', 'Legseqidx']
         descr_df.dropna(axis=1, inplace=True)
@@ -118,12 +117,7 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
         mask = descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
         descr_df = descr_df[mask]
 
-        descrs.append(descr_df)
-        infos.append(info_df)
-
-    if descrs and infos:
-        descr_df = pd.concat(descrs)
-        info_df = pd.concat(infos)
+    if not info_df.empty:
         trs_df = (descr_df, info_df)
         return trs_df
     else:

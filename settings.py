@@ -7,7 +7,7 @@ def init():
     global filepaths
     global filenames
 
-    max_tc_distance = 11_500
+    max_tc_distance = 10_000
 
     parameters = dict()
     parameters['run_optimisation'] = True
@@ -16,17 +16,16 @@ def init():
     parameters['aggr_levels'] = ['lsoa']
     parameters['sample_sizes'] = ['sample_perc_1']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
-                                       ['Distancegroup', 'Legs', 'Timeperiodseq']]
+    parameters['distribution_dims'] = [['Distancegroup', 'Legs']]#, ['Distancegroup', 'Legs', 'Timeperiodseq']]
 
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = None # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
-    parameters['max_legs'] = [6]
+    parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
     parameters['distribution_constraints_states'] = [False, True]
     # Maximum values for columns in the trs
