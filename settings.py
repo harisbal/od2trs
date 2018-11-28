@@ -13,7 +13,7 @@ def init():
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa', 'msoa']
+    parameters['aggr_levels'] = ['lsoa']
     parameters['sample_sizes'] = ['sample_perc_1']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
@@ -22,13 +22,13 @@ def init():
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = 0.8  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['distribution_constraints_states'] = [True]
     # Maximum values for columns in the trs
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa

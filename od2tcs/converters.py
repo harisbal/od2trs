@@ -24,7 +24,7 @@ def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
                                 attr_cols,
                                 nx.MultiDiGraph())
     if verbose:
-        print('Network desnity: {:.2%}'.format(str(nx.density(G))))
+        print('Network desnity: {:.2%}'.format(nx.density(G)))
 
     if coords is not None:
         d_coords = coords.to_dict()
