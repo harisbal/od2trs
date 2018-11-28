@@ -111,7 +111,6 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
         trs_ds = utils.dict_split(trs_d, chunk_size=500_000)
         # Free memory
         del trs_d
-
         for td in trs_ds:
             descr_df = pd.DataFrame.from_dict(td, orient='index')
             descr_df.columns = descr_df.columns.str.capitalize()
