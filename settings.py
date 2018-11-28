@@ -14,15 +14,14 @@ def init():
 
     parameters['data_sources'] = ['mnd_TSC']
     parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_1']
+    parameters['sample_sizes'] = ['sample_perc_50']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Legs'],
-                                       ['Distancegroup', 'Legs', 'Timeperiodseq']]
+    parameters['distribution_dims'] = [['Distancegroup', 'Legs', 'Timeperiodseq']]#,['Distancegroup', 'Legs']]
 
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = 0.8  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percentage_remain'] = 0.80  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['int_zone_str'] = 'E0'
 
@@ -36,7 +35,7 @@ def init():
     parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
-    parameters['cpus'] = None
+    parameters['cpus'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']

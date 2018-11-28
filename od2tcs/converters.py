@@ -103,24 +103,39 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
         for pt in possible_trs:
             trs_d.update(pt.to_dict())
 
+    infos = list()
+    descrs = list()
     if trs_d:
-        descr_df = pd.DataFrame.from_dict(trs_d, orient='index')
+        print(len(trs_d))
+        # Large dicts can cause memory issues
+        trs_ds = utils.dict_split(trs_d, chunk_size=500_000)
+        # Free memory
         del trs_d
-        descr_df.columns = descr_df.columns.str.capitalize()
-        descr_df.index.names = ['Tourid', 'Legseqidx']
-        descr_df.dropna(axis=1, inplace=True)
 
-        info_df = utils.create_tours_info(descr_df, distr_dims, params['distance_bins'], distances)
-        info_df = (info_df.pipe(distrs.assign_distribution_group, trs_obs_distr,
-                                distr_dims, dropna=True)
-                   .pipe(filters.trs_by_dict, params['filters']))
+        for td in trs_ds:
+            descr_df = pd.DataFrame.from_dict(td, orient='index')
+            descr_df.columns = descr_df.columns.str.capitalize()
+            descr_df.index.names = ['Tourid', 'Legseqidx']
+            descr_df.dropna(axis=1, inplace=True)
 
-        # Remove unused trs
-        filter_ids = info_df.index.unique().values
-        mask = descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
-        descr_df = descr_df[mask]
+            info_df = utils.create_tours_info(descr_df, distr_dims, params['distance_bins'], distances)
+            info_df = (info_df.pipe(distrs.assign_distribution_group, trs_obs_distr,
+                                    distr_dims, dropna=True)
+                       .pipe(filters.trs_by_dict, params['filters']))
 
-    if not info_df.empty:
+            # Remove unused trs
+            filter_ids = info_df.index.unique().values
+            mask = descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
+            descr_df = descr_df[mask]
+
+            infos.append(info_df)
+            descrs.append(descr_df)
+
+    del trs_ds
+
+    if infos:
+        info_df = pd.concat(infos)
+        descr_df = pd.concat(descrs)
         trs_df = (descr_df, info_df)
         return trs_df
     else:
@@ -149,7 +164,6 @@ def od_to_trs(od, max_legs, trs_obs_distr, distr_dims,
     attr_cols = ['Purpose', 'Direction', 'Timeperiod']
     G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols, coords=coords)
-
 
     # TODO Create a file with the zones definition
     # Very dirty quick solution
