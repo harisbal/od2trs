@@ -16,12 +16,15 @@ from od2tcs.tc import Leg, TripChain
 import settings
 
 
-def od_to_G(od, orig_col, dest_col, attr_cols, coords=None):
+def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
+            verbose=True):
 
     G = nx.from_pandas_edgelist(od.reset_index(),
                                 orig_col, dest_col,
                                 attr_cols,
                                 nx.MultiDiGraph())
+    if verbose:
+        print('Network desnity: {:.2%}'.format(str(nx.density(G))))
 
     if coords is not None:
         d_coords = coords.to_dict()
