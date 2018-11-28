@@ -29,6 +29,22 @@ def sequence_isunique(sequence):
         return False
 
 
+def dict_split(d, chunk_size=1):
+    results = []
+    items = list(d.items())
+    dict_size = len(items)
+
+    if chunk_size >= dict_size:
+        return [d]
+
+    for i in range(0, dict_size, chunk_size):
+        start = i
+        end = i + chunk_size
+        sub_d = dict(item for item in items[start:end])
+        results.append(sub_d)
+
+    return results
+
 def create_tours_info(trs_descr, distr_dims,
                       dist_bins=None, distances=None):
     """

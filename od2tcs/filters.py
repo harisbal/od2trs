@@ -3,22 +3,25 @@ import pandas as pd
 import networkx as nx
 import settings
 
+
 def identify_possible_trs(trs):
     params = settings.parameters
     # TODO clean this part
     possible_trs = list()
     for tc in trs:
-        tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
-                                               params['ordered_time_periods'])
-        tc.no_external_zones = tc.count_external_zones()
 
         if not tc.tour:
             continue
+
         if params['max_external_zones_in_tc']:
-            if not tc.no_external_zones <= params['max_external_zones_in_tc']:
+            if not tc.count_external_zones() <= params['max_external_zones_in_tc']:
                 continue
+
+        tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
+                                               params['ordered_time_periods'])
         if not tc.chron_ordered:
             continue
+
         possible_trs.append(tc)
 
     return possible_trs
