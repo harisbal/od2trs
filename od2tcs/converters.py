@@ -106,7 +106,6 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
     infos = list()
     descrs = list()
     if trs_d:
-        print(len(trs_d))
         # Large dicts can cause memory issues
         trs_ds = utils.dict_split(trs_d, chunk_size=500_000)
         # Free memory
