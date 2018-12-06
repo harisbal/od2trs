@@ -7,14 +7,14 @@ def init():
     global filepaths
     global filenames
 
-    max_tc_distance = 10_400
+    max_tc_distance = 11_000
 
     parameters = dict()
     parameters['run_optimisation'] = True
 
     parameters['data_sources'] = ['mnd_TSC']
     parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_10']
+    parameters['sample_sizes'] = ['sample_perc_1']
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = [['Distancegroup', 'Legs', 'Timeperiodseq'],
                                        ['Distancegroup', 'Legs']]

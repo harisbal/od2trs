@@ -70,8 +70,7 @@ def main():
 
         print('Creating TripChains...')
         idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'TimePeriod']
-        od = myio.prepare_od(trs_obs_descr, trips_thresh, idx_cols)
-        excluded_trips = utils.calculate_excluded_trips(trs_obs_info)
+        od = myio.prepare_od(trs_obs_info, trs_obs_descr, trips_thresh, idx_cols)
 
         trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
                                                            trs_obs_distr, distr_dims,
@@ -96,7 +95,7 @@ def main():
                             'DistBins': params['distance_bins']}
 
                 print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od, excluded_trips,
+                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
                                          trs_obs_distr, distr_constr_enabled,
                                          submit_to_neos=params['submit_to_neos'])
 

@@ -8,8 +8,8 @@ from pyomo.util.timing import report_timing
 import settings
 
 
-def prepare_model(trs, trs_info, od, excluded_trips,
-                  distr_grps, distr_constr_enabled):
+def prepare_model(trs, trs_info, od, distr_grps,
+                  distr_constr_enabled):
 
     def init_chains_descr(_model):
         _od = _model.od
@@ -54,9 +54,7 @@ def prepare_model(trs, trs_info, od, excluded_trips,
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if params['mip tolerances lowercutoff']:
-        model.cutoff = (-excluded_trips -
-                        (params['mip tolerances lowercutoff'] *
-                        (model.od['Dailytrips'].sum() - excluded_trips)))
+        model.cutoff = - params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
         d_distr_grp_percs = model.distr_grps['Percentage'].to_dict()
@@ -129,11 +127,11 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     return results
 
 
-def main(trs, trs_info, od, excluded_trips, distr_grps,
+def main(trs, trs_info, od, distr_grps,
          distr_constr_enabled, submit_to_neos=False):
 
     report_timing()
-    mymodel = prepare_model(trs, trs_info, od, excluded_trips,
+    mymodel = prepare_model(trs, trs_info, od,
                             distr_grps, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
     return results

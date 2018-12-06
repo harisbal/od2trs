@@ -68,8 +68,13 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     return od_filtered
 
 
-def prepare_od(trs_descr, trips_thresh, idx_cols):
+def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
     idx_cols = [str.capitalize(v) for v in idx_cols]
+
+    # Keep only the trs not in lowfreqgrp
+    trs_info = trs_info[~trs_info['Inlowfreqgrp']]
+    included_trs = trs_info.index.get_level_values('Tourid')
+    trs_descr = trs_descr.loc(axis=0)[included_trs]
 
     od = trs_descr.groupby(['Source', 'Target', 'Purpose',
                            'Direction', 'Timeperiod', 'Mode'])['Timesused'].sum()
