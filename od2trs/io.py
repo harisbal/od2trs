@@ -36,36 +36,33 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     odg = odg.reset_index()
     odg.set_index(idx_cols, inplace=True)
 
-    #Ad hoc filtering
-    od_filtered = odg.xs('Motorised', level='Mode')
-
     # Reduce
-    od_filtered = od_filtered[od_filtered.Dailytrips >= trips_thresh]
+    od = od[od.Dailytrips >= trips_thresh]
     # Remove intrazonals
-    mask = od_filtered.index.get_level_values('Source') != od_filtered.index.get_level_values('Target')
-    od_filtered = od_filtered[mask]
+    mask = od.index.get_level_values('Source') != od.index.get_level_values('Target')
+    od = od[mask]
 
     # Filter out HB_FromHome when origin is external (home location is external)
     # and HB_ToHome when destination is to external
     internal_zone_str = settings.parameters['int_zone_str']
-    mask_fh = (~od_filtered.index.get_level_values('Source').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['origin_directions'])))
+    mask_fh = (~od.index.get_level_values('Source').str.startswith(internal_zone_str) &
+               (od.index.get_level_values('Direction').isin(settings.parameters['origin_directions'])))
 
-    mask_th = (~od_filtered.index.get_level_values('Target').str.startswith(internal_zone_str) &
-               (od_filtered.index.get_level_values('Direction').isin(settings.parameters['destination_directions'])))
+    mask_th = (~od.index.get_level_values('Target').str.startswith(internal_zone_str) &
+               (od.index.get_level_values('Direction').isin(settings.parameters['destination_directions'])))
 
-    od_filtered.loc[mask_fh] = np.nan
-    od_filtered.loc[mask_th] = np.nan
-    od_filtered.dropna(inplace=True)
+    od.loc[mask_fh] = np.nan
+    od.loc[mask_th] = np.nan
+    od.dropna(inplace=True)
 
     # Round
-    od_filtered.Dailytrips = od_filtered.Dailytrips.round()
-    od_filtered.Dailytrips = od_filtered.Dailytrips.astype(int)
+    od.Dailytrips = od.Dailytrips.round()
+    od.Dailytrips = od.Dailytrips.astype(int)
 
     # Make sure Legid is int
-    od_filtered.Legid = od_filtered.Legid.astype(int)
+    od.Legid = od.Legid.astype(int)
 
-    return od_filtered
+    return od
 
 
 def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
