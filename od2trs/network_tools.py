@@ -1,5 +1,5 @@
 import networkx as nx
-import od2tcs.filters as filters
+import od2trs.filters as filters
 import settings
 
 

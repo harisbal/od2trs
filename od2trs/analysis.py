@@ -1,5 +1,5 @@
 import pandas as pd
-import od2tcs.converters as converters
+import od2trs.converters as converters
 
 
 def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols):

@@ -1,13 +1,13 @@
 import os
 import itertools
 
-import od2tcs.converters as converters
-import od2tcs.distributions as distrs
-import od2tcs.optimise as opt
-import od2tcs.io as myio
-import od2tcs.filters as filters
-import od2tcs.analysis as analysis
-import od2tcs.utilities as utils
+import od2trs.converters as converters
+import od2trs.distributions as distrs
+import od2trs.optimise as opt
+import od2trs.io as myio
+import od2trs.filters as filters
+import od2trs.analysis as analysis
+import od2trs.utilities as utils
 
 import settings
 

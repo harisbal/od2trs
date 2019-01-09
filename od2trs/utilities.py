@@ -1,7 +1,7 @@
 import itertools
 import pandas as pd
 
-from od2tcs import converters
+from od2trs import converters
 import settings
 
 

@@ -6,12 +6,12 @@ import itertools
 import pandas as pd
 import networkx as nx
 
-import od2tcs.utilities as utils
-import od2tcs.network_tools as nettools
-import od2tcs.distributions as distrs
-import od2tcs.filters as filters
+import od2trs.utilities as utils
+import od2trs.network_tools as nettools
+import od2trs.distributions as distrs
+import od2trs.filters as filters
 
-from od2tcs.tc import Leg, TripChain
+from od2trs.tc import Leg, TripChain
 
 import settings
 

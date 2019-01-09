@@ -1,6 +1,6 @@
 import pandas as pd
 
-import od2tcs.utilities as util
+import od2trs.utilities as util
 import settings
 
 
