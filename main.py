@@ -1,5 +1,4 @@
 import os
-import itertools
 
 import od2trs.converters as converters
 import od2trs.distributions as distrs
@@ -16,117 +15,53 @@ def main():
 
     settings.init()
     params = settings.parameters
-    filenames = settings.filenames
+    filepaths = settings.filepaths
+    outfolder = params['outfolder']
 
-    iteration_params = list(itertools.product(params['data_sources'],
-                                              params['aggr_levels'],
-                                              params['sample_sizes'],
-                                              params['distribution_dims'],
-                                              params['max_legs'],
-                                              params['trips_thresh']))
+    distr_dims = params['distribution_dims']
+    max_legs = params['max_legs']
+    trips_thresh = params['trips_thresh']
+    distr_perc_thresh = params['distribution_percent_thresh']
 
-    comp_descr_dims = params['comp_descr_dims']
-    dist_bins = params['distribution_dims']
+    print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
+                                                                                max_legs,
+                                                                                trips_thresh,
+                                                                                distr_perc_thresh))
 
-    for data_source, aggr_level, sample_size, distr_dims, legs, trips_thresh in iteration_params:
+    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'TimePeriod']
+    od = myio.fetch_prepare_od(filepaths['od'], trips_thresh, idx_cols)
+    distances = myio.read_distances(filepaths['distances'])
 
-        infolder = r'./inputs/{}/{}/{}'.format(data_source, aggr_level, sample_size)
+    target_distr = myio.fetch_target_distr(filepaths['target_distr'], distr_dims)
+    # Filter the low freq distr groups
+    target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
+    trs_mdl_descr, trs_mdl_info = converters.od2trs(od, max_legs, target_distr, distr_dims, distances)
 
-        filepaths = dict()
-        filepaths['od'] = os.path.join(infolder, filenames['od'])
-        filepaths['distances'] = os.path.join(infolder, filenames['distances'])
-        filepaths['trs_obs_descr'] = os.path.join(infolder, filenames['trs_obs_descr'])
-        filepaths['trs_obs_info'] = os.path.join(infolder, filenames['trs_obs_info'])
-        filepaths['zones_info'] = os.path.join(infolder, filenames['zones_info'])
+    if trs_mdl_descr.empty:
+        print('No tripchains discovered')
+        return None
 
-        distances = myio.read_distances(filepaths['distances'])
-        coords = myio.read_zones_info(filepaths['zones_info'])['Coords']
+    if params['run_optimisation']:
+        for distr_constr_enabled in params['distribution_constraints_states']:
 
-        print('\nDistrDims: {} Aggr Level: {}, SampleSize: {},'
-              'Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims, aggr_level, sample_size,
-                                                                    legs, trips_thresh,
-                                                                    params['distribution_percentage_remain']))
+            print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
+            optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
+                                     target_distr, distr_constr_enabled,
+                                     submit_to_neos=params['submit_to_neos'])
 
-        print('Preparing Distributions from observed data...')
+            solution_tour_times_used = filters.extract_tour_times_used(optim_results)
+            last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
+            trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
+            trs_mdl_info = trs_mdl_info.join(trs_mdl_times_used)
+            trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
+            trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
 
-        idx_cols = ['TourId', 'LegSeqIdx']
-        trs_obs_descr = myio.get_observed_tours_descr(filepaths['trs_obs_descr'],
-                                                      idx_cols=idx_cols)
+            myio.create_folders(outfolder)
+            results = [od, trs_mdl_descr, trs_mdl_info, target_distr, optim_results]
 
-        legs_filt = trs_obs_descr.reset_index().groupby('Tourid')['Legseqidx'].max() + 1
-        legs_filt = legs_filt <= legs
-        trs_obs_descr = trs_obs_descr.unstack('Legseqidx')[legs_filt].stack('Legseqidx')
+            myio.export_results(results, outfolder)
 
-        times_used = trs_obs_descr.groupby(level='Tourid')['Timesused'].max()
-        times_used.name = 'Timesused'
-        trs_obs_info = utils.create_tours_info(trs_obs_descr, distr_dims,
-                                               dist_bins, distances).join(times_used)
-
-        trs_obs_distr = trs_obs_info.pipe(distrs.prepare_distribution, distr_dims)
-        trs_obs_info = distrs.assign_distribution_group(trs_obs_info, trs_obs_distr,
-                                                        distr_dims, dropna=False)
-
-        trs_obs_info['Inlowfreqgrp'] = trs_obs_info['Distrgroupid'].isna()
-
-        print('Creating TripChains...')
-        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Mode', 'TimePeriod']
-        od = myio.prepare_od(trs_obs_info, trs_obs_descr, trips_thresh, idx_cols)
-
-        trs_mdl_descr, trs_mdl_info = converters.od_to_trs(od, legs,
-                                                           trs_obs_distr, distr_dims,
-                                                           distances, coords)
-        trs_mdl_info['Inlowfreqgrp'] = False
-        trs_obs_descr.drop(columns='Timesused', inplace=True)
-
-        if trs_mdl_descr.empty:
-            print('No tripchains discovered')
-            return None
-
-        if params['run_optimisation']:
-            for distr_constr_enabled in params['distribution_constraints_states']:
-
-                run_info = {'DataSource': data_source, 'AggrLevel': aggr_level,
-                            'SampleSize': sample_size, 'DistrDims': '-'.join(distr_dims),
-                            'MaxLegs': legs, 'TripsThresh': trips_thresh,
-                            'DistrConstrEnabled': distr_constr_enabled,
-                            'DistrPercRemain': params['distribution_percentage_remain'],
-                            'PercCutoff': params['optimisation']['mip tolerances lowercutoff'],
-                            'CompDistrPercTolerance': params['optimisation']['distribution_percentage_tolerance'],
-                            'DistBins': params['distance_bins']}
-
-                print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-                optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
-                                         trs_obs_distr, distr_constr_enabled,
-                                         submit_to_neos=params['submit_to_neos'])
-
-                solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-                last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
-                trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
-                trs_mdl_info_run = trs_mdl_info.join(trs_mdl_times_used)
-                trs_mdl_info_run.fillna({'Timesused': 0}, inplace=True)
-                trs_mdl_info_run['Timesused'] = trs_mdl_info_run['Timesused'].astype(int)
-
-                print('Exporting')
-                outfolder = r'./outputs/{}/{}/{}/{}/'.format(data_source, '-'.join(distr_dims), aggr_level, sample_size)
-                runfolder = '{}legs-over{}trips-distrConstr{}'.format(legs, trips_thresh, distr_constr_enabled)
-                outfolder = os.path.join(outfolder, runfolder)
-
-                lookup_trsid_mdl_to_obs = analysis.prepare_lookup_tourid(trs_mdl_descr, trs_obs_info,
-                                                                         trs_obs_descr, comp_descr_dims)
-
-                attr_cols = ['Type', 'Tourid', 'Legseqidx', 'Purpose', 'Direction', 'Timeperiod', 'Timesused']
-                types = ['obs', 'mdl']
-                trs_descr_comp = analysis.prepare_comparison(types, trs_obs_info, trs_obs_descr,
-                                                             trs_mdl_info_run, trs_mdl_descr,
-                                                             lookup_trsid_mdl_to_obs, coords, attr_cols)
-
-                myio.create_folders([outfolder])
-                results = [run_info, od, trs_obs_descr, trs_obs_info, trs_mdl_descr, trs_mdl_info_run,
-                           trs_obs_distr, optim_results, lookup_trsid_mdl_to_obs, trs_descr_comp]
-
-                myio.export_results(results, outfolder)
-
-                print('Complete!')
+            print('Complete!')
 
 
 if __name__ == '__main__':

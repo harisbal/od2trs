@@ -20,6 +20,12 @@ def get_observed_tours_descr(infilepath, idx_cols):
     return trs_descr
 
 
+def fetch_target_distr(infilepath, distr_cols, idx_col='Distrgroupid', percent_col='Percentage'):
+    trs_distr = pd.read_csv(infilepath, index_col=idx_col)
+    trs_distr = trs_distr.groupby(distr_cols)[percent_col].sum()
+    return trs_distr
+
+
 def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     idx_cols = [str.capitalize(v) for v in idx_cols]
     od = (pd.read_csv(infilepath)
@@ -27,6 +33,7 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
           .set_index(idx_cols)
           .squeeze())
 
+    # TODO this must become more generic
     grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None, None]
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
@@ -117,6 +124,7 @@ def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
     od_filtered.Legid = od_filtered.Legid.astype(int)
 
     return od_filtered
+
 
 def read_distances(infilepath):
     sr = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)

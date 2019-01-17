@@ -1,38 +1,31 @@
 # settings.py
-
+import os
 
 def init():
 
     global parameters
     global filepaths
-    global filenames
+    global filepaths
 
     max_tc_distance = 11_000
 
     parameters = dict()
+
     parameters['run_optimisation'] = True
 
-    parameters['data_sources'] = ['mnd_TSC']
-    parameters['aggr_levels'] = ['lsoa']
-    parameters['sample_sizes'] = ['sample_perc_1']
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = [['Distancegroup', 'Legs', 'Timeperiodseq'],
-                                       ['Distancegroup', 'Legs']]
-
+    parameters['distribution_dims'] = ['Distancegroup', 'Legs', 'Timeperiodseq']
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+
     # The percentage of remaining groups threshold
-    parameters['distribution_percentage_remain'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percent_thresh'] = None  # Check in analysis/summary_observed_trs.xlsx
 
-    parameters['int_zone_str'] = 'E0'
-
-    parameters['max_legs'] = [5]
-    parameters['trips_thresh'] = [1]
-    parameters['distribution_constraints_states'] = [True, False]
+    parameters['max_legs'] = 5
+    parameters['trips_thresh'] = 1
+    parameters['distribution_constraints_enabled'] = True
     # Maximum values for columns in the trs
     # In this case distance is travel time in seconds
     parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
-
-    parameters['max_external_zones_in_tc'] = None
 
     # parallel threads
     parameters['cpus'] = None
@@ -55,7 +48,7 @@ def init():
 
     parameters['optimisation']['work memory'] = 25_000
     parameters['optimisation']['mip strategy probe'] = 3
-    parameters['optimisation']['mip strategy file'] = 2 # write to disk
+    parameters['optimisation']['mip strategy file'] = 2  # write to disk
 
     # Dictionary to group purposes in OD
     parameters['d_grp_purposes'] = {'HBW': 'HB', 'HBO': 'HB',
@@ -72,19 +65,33 @@ def init():
                                        parameters['destination_directions'],
                                        parameters['intermediate_directions']]
 
-    filenames = dict()
-    filenames['od'] = 'od.csv'
+    filepaths = dict()
+
+    infolder = r'./inputs'
+    outfolder = r'./outputs'
+
+    filepaths['od'] = os.path.join(infolder, 'od.csv')
+    filepaths['target_distr'] = os.path.join(infolder, 'target_distr.csv')
+    filepaths['distances'] = os.path.join(infolder, 'distances.csv')
+
+    filepaths['trs_mdl_descr'] = os.path.join(outfolder, 'trs_mdl_descr.csv')
+    filepaths['trs_mdl_info'] = os.path.join(outfolder, 'trs_mdl_info.csv')
+    filepaths['trs_mdl_distr'] = os.path.join(outfolder, 'trs_mdl_distr.csv')
+    filepaths['optim_results'] = os.path.join(outfolder, 'optim_results.json')
+    filepaths['metadata'] = os.path.join(outfolder, 'metadata.json')
+
+    """
+    parameters['data_sources'] = ['mnd_TSC']
+    parameters['aggr_levels'] = ['lsoa']
+    parameters['sample_sizes'] = ['sample_perc_1']
+    parameters['int_zone_str'] = 'E0'
+    parameters['max_external_zones_in_tc'] = None
+
     filenames['od_filtered'] = 'od_filtered.csv'
     filenames['zones_info'] = 'zones_info.csv'
     filenames['distances'] = 'distances.csv'
-    filenames['trs_obs_info'] = 'trs_obs_info.csv'
     filenames['trs_obs_descr'] = 'trs_obs_descr.csv'
-    filenames['trs_mdl_descr'] = 'trs_mdl_descr.csv'
-    filenames['trs_mdl_info'] = 'trs_mdl_info.csv'
-    filenames['target_distribution'] = 'target_distribution.csv'
-    filenames['optimisation_results'] = 'results.json'
     filenames['trs_descr_comp'] = 'trs_descr_comp.csv'
     filenames['lookup'] = 'lookup_trsid_mdl_to_obs.json'
-    filenames['metadata'] = 'metadata.json'
-
-
+    
+    """

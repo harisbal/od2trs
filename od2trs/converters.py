@@ -34,8 +34,6 @@ def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
 
 def zones_seq_to_trs(zones_seq, G):
 
-    global tcid
-
     def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
         leg_attrs = [la for la in leg_attrs if la['Direction'] in filter_directions]
         return leg_attrs
@@ -80,25 +78,23 @@ def zones_seq_to_trs(zones_seq, G):
     legs_combs = list(itertools.product(*legs_combs))
 
     trs = list()
-    with counter_lock:
-        for lc in legs_combs:
-            tc = TripChain(legs=lc, id=tcid.value)
-            tcid.value += 1
-            trs.append(tc)
+    for lc in legs_combs:
+        tc = TripChain(legs=lc)
+        trs.append(tc)
     return trs
 
 
-def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
+def multiproc_wrapper(src_zone, target_distr, distr_dims, max_legs):
     params = settings.parameters
 
-    zones_seqs = nettools.identify_tour_zone_sequences(source_zone, max_legs, G)
+    zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G)
     if not zones_seqs:
         return None
 
     trs_d = dict()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G)
-        possible_trs = filters.identify_possible_trs(trs)
+        possible_trs = filters.filter_possible_trs(trs)
 
         for pt in possible_trs:
             trs_d.update(pt.to_dict())
@@ -111,84 +107,67 @@ def multiproc_wrapper(source_zone, trs_obs_distr, distr_dims, max_legs):
         # Free memory
         del trs_d
         for td in trs_ds:
-            descr_df = pd.DataFrame.from_dict(td, orient='index')
-            descr_df.columns = descr_df.columns.str.capitalize()
-            descr_df.index.names = ['Tourid', 'Legseqidx']
-            descr_df.dropna(axis=1, inplace=True)
+            trs_descr_df = pd.DataFrame.from_dict(td, orient='index')
+            trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
+            trs_descr_df.index.names = ['Tourid', 'Legseqidx']
+            trs_descr_df.dropna(axis=1, inplace=True)
 
-            info_df = utils.create_tours_info(descr_df, distr_dims, params['distance_bins'], distances)
-            info_df = (info_df.pipe(distrs.assign_distribution_group, trs_obs_distr,
-                                    distr_dims, dropna=True)
-                       .pipe(filters.trs_by_dict, params['filters']))
+            trs_info_df = utils.create_trs_info(trs_descr_df, distr_dims, params['distance_bins'], distances)
+            trs_info_df = (trs_info_df.pipe(distrs.assign_distribution_group, target_distr,
+                                            distr_dims, dropna=True).pipe(filters.filter_trs_by_dict, params['filters']))
 
             # Remove unused trs
-            filter_ids = info_df.index.unique().values
-            mask = descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
-            descr_df = descr_df[mask]
+            filter_ids = trs_info_df.index.unique().values
+            mask = trs_descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
+            trs_descr_df = trs_descr_df[mask]
 
-            infos.append(info_df)
-            descrs.append(descr_df)
+            infos.append(trs_info_df)
+            descrs.append(trs_descr_df)
 
     del trs_ds
 
     if infos:
-        info_df = pd.concat(infos)
-        descr_df = pd.concat(descrs)
-        trs_df = (descr_df, info_df)
+        trs_info_df = pd.concat(infos)
+        trs_descr_df = pd.concat(descrs)
+        trs_df = (trs_descr_df, trs_info_df)
         return trs_df
     else:
         return None
 
 
-def init_multiproc_wrapper(_G, _distances, _tcid, _lock):
+def init_multiproc_wrapper(_G, _distances):
     global G
     global distances
-    global tcid
-    global counter_lock
-
     settings.init()
-
     G = _G
     distances = _distances
-    tcid = _tcid
-    counter_lock = _lock
 
 
-def od_to_trs(od, max_legs, trs_obs_distr, distr_dims,
-              distances=None, coords=None):
-
-    params = settings.parameters
+def od2trs(od, max_legs, target_distr, distr_dims,
+           distances=None, coords=None):
 
     attr_cols = ['Purpose', 'Direction', 'Timeperiod']
     G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols, coords=coords)
 
-    # TODO Create a file with the zones definition
-    # Very dirty quick solution
-    # TODO the check for internal zones is very crude (check if zone begins with E0...
-    internal_zones = [n for n in G if n.startswith(params['int_zone_str'])]
-
-    #internal_zones = internal_zones[0:50]
+    zones = G.nodes
 
     if settings.parameters['cpus']:
         cpus = settings.parameters['cpus']
     else:
         cpus = cpu_count()-1
 
-    tcid = Value('i', 1)
-    tcid_lock = Lock()
-
     descrs = list()
     infos = list()
 
     with Pool(cpus, initializer=init_multiproc_wrapper,
-              initargs=[G, distances, tcid, tcid_lock]) as pool:
+              initargs=[G, distances]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
                         multiproc_wrapper,
-                        trs_obs_distr=trs_obs_distr,
+                        trs_obs_distr=target_distr,
                         distr_dims=distr_dims,
                         max_legs=max_legs),
-                        internal_zones), total=len(internal_zones)):
+                        zones), total=len(zones)):
             if trs:
                 trs_descr_df, trs_info_df = trs
                 descrs.append(trs_descr_df)
@@ -204,6 +183,9 @@ def od_to_trs(od, max_legs, trs_obs_distr, distr_dims,
         raise ValueError('No trs identified')
 
     print('Total trs after filtering: {:,}'.format(trs_descr_df.index.unique().size))
+
+    # All returned trs are by definition not in low freq group
+    trs_info_df['Inlowfreqgrp'] = False
 
     return trs_descr_df, trs_info_df
 

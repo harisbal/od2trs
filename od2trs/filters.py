@@ -4,7 +4,7 @@ import networkx as nx
 import settings
 
 
-def identify_possible_trs(trs):
+def filter_possible_trs(trs):
     params = settings.parameters
     # TODO clean this part
     possible_trs = list()
@@ -27,11 +27,36 @@ def identify_possible_trs(trs):
     return possible_trs
 
 
-def trs_by_dict(trs_info_df, d_filters):
+def filter_trs_by_dict(trs_info_df, d_filters):
     # Filter based dictionary
     for k, v in d_filters.items():
         trs_info_df = trs_info_df[trs_info_df[k] <= v]
     return trs_info_df
+
+
+def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
+
+    # TODO I can improve it so it picks the right combination to maintain the specified threshold
+    def _create_filter_mask(s):
+        """
+        filter out groups so that the remaining ones account for the remaining percentage (thresh)
+        """
+        s = s.sort_values()
+        s_cumsum = s.cumsum()
+        mask = s_cumsum >= 1 - thresh
+        return mask
+
+    # Assure that the remaining groups after filtering will be over the threshold
+    if thresh:
+        if not (0 < thresh <= 1):
+            raise ValueError('filter thresh should be between 0 and 1')
+
+        mask = _create_filter_mask(target_distr[percent_col])
+        # Re-calculate the percentage
+        target_distr = target_distr.loc[mask]
+        target_distr[percent_col] /= target_distr[percent_col].sum()
+
+    return target_distr
 
 
 def filter_graph_edges_by_direction(G, origin_source, filter_edge_directions_names):

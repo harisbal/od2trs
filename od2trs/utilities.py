@@ -45,8 +45,9 @@ def dict_split(d, chunk_size=1):
 
     return results
 
-def create_tours_info(trs_descr, distr_dims,
-                      dist_bins=None, distances=None):
+
+def create_trs_info(trs_descr, distr_dims,
+                    dist_bins=None, distances=None):
     """
     Function to return info for each chain
 
