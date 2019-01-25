@@ -1,7 +1,7 @@
 import itertools
+import re
 import pandas as pd
 
-from od2trs import converters
 import settings
 
 
@@ -29,60 +29,24 @@ def sequence_isunique(sequence):
         return False
 
 
-def dict_split(d, chunk_size=1):
-    results = []
-    items = list(d.items())
-    dict_size = len(items)
+def to_interval(x):
 
-    if chunk_size >= dict_size:
-        return [d]
+    def _interval_close_check(left, right):
+        if (left == '(') and (right == ']'):
+            return 'right'
+        elif (left == '[') and (right == ')'):
+            return 'left'
+        elif (left == '[') and (right == ']'):
+            return 'both'
+        elif (left == '(') and (right == ')'):
+            return 'neither'
+        else:
+            raise ValueError('Not acceptable left side limit')
 
-    for i in range(0, dict_size, chunk_size):
-        start = i
-        end = i + chunk_size
-        sub_d = dict(item for item in items[start:end])
-        results.append(sub_d)
-
-    return results
-
-
-def create_trs_info(trs_descr, distr_dims,
-                    dist_bins=None, distances=None):
-    """
-    Function to return info for each chain
-
-    :param trs_descr: df
-    :param distr_dims: list
-    :param dist_bins: list
-    :param distances: pd.Series
-    :return: Dataframe with the tripchains info (distance, Legs, etc)
-    """
-
-    aggr_dimensions = list()
-    if 'Legs' in distr_dims:
-        legs = trs_descr.reset_index(level='Legseqidx')['Legseqidx'].groupby(level='Tourid').max() + 1
-        legs.name = 'Legs'
-        aggr_dimensions.append(legs)
-
-    if 'Timeperiodseq' in distr_dims:
-        tpseq = trs_descr['Timeperiod'].groupby(level='Tourid').apply(tuple)
-        tpseq.name = 'Timeperiodseq'
-        aggr_dimensions.append(tpseq)
-
-    # Add the grouping information
-    if dist_bins:
-        # Join legs with distances
-        trs_descr = pd.merge(trs_descr, distances.to_frame(), left_on=['Source', 'Target'], right_index=True)
-        distances = trs_descr['Distance'].groupby(level='Tourid').sum()
-        aggr_dimensions.append(distances)
-
-        distance_grps = pd.cut(distances, bins=settings.parameters['distance_bins'])
-        distance_grps.name = 'Distancegroup'
-        aggr_dimensions.append(distance_grps)
-
-    trs_info = pd.concat(aggr_dimensions, axis=1)
-
-    return trs_info
+    left_side, left, right, right_side = re.match('([\[(])(\d+),\s*(\d+)([\])])', x).groups()
+    closed = _interval_close_check(left_side, right_side)
+    interval = pd.Interval(pd.to_numeric(left), pd.to_numeric(right), closed)
+    return interval
 
 
 def calculate_excluded_trips(trs_info):

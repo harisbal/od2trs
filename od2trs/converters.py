@@ -57,7 +57,7 @@ def zones_seq_to_trs(zones_seq, G):
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
-    if len(zones_seq) >= 4: # A tc containing intermediate zones visits at least 4
+    if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
         for o, d in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
             leg_attrs = prepare_leg_attrs(G, o, d, filter_direction_interm)
@@ -79,60 +79,91 @@ def zones_seq_to_trs(zones_seq, G):
 
     trs = list()
     for lc in legs_combs:
-        tc = TripChain(legs=lc)
-        trs.append(tc)
+        tr = TripChain(legs=lc)
+        trs.append(tr)
     return trs
 
 
-def multiproc_wrapper(src_zone, target_distr, distr_dims, max_legs):
+def trs_to_df(trs, target_distr=None):
+
     params = settings.parameters
+    dist_bins = params['distance_bins']
+    distr_dims = params['distribution_dims']
+
+    trs_info = list()
+    trs_decr = dict()
+
+    for tr in trs:
+        dist = tr.distance
+        if dist_bins is not None:
+            # TODO check if bottlenecks
+            dist_grp = pd.cut([dist], dist_bins)[0]
+        else:
+            dist_grp = None
+
+        no_legs = tr.no_legs
+        depart_times = tr.depart_times
+
+        trs_info.append([tr.id, no_legs, dist, dist_grp, depart_times])
+        trs_decr.update(tr.to_dict())
+
+    idx = 'Tourid'
+    cols = [idx, 'Legs', 'Distance', 'Distancegroup', 'Departtimes']
+
+    trs_info_df = pd.DataFrame(trs_info, columns=cols)
+    trs_info_df.set_index(idx, inplace=True)
+
+    if target_distr is not None:
+        trs_info_df = distrs.assign_distr_group(trs_info_df, target_distr, distr_dims)
+
+    trs_descr_df = pd.DataFrame.from_dict(trs_decr, orient='index')
+    trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
+    trs_descr_df.index.names = ['Tourid', 'Legseqidx']
+    trs_descr_df.dropna(axis=1, inplace=True)
+
+    return trs_descr_df, trs_info_df
+
+
+
+
+def df_to_graph(df, attr_cols=None):
+    g = nx.from_pandas_edgelist(df.reset_index(),
+                                'Source', 'Target',
+                                attr_cols, nx.MultiDiGraph())
+
+    return g
+
+
+def multiproc_wrapper(src_zone, target_distr):
+    params = settings.parameters
+    max_legs = params['max_legs']
+    max_dist = params['max_tc_distance']
 
     zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G)
+
     if not zones_seqs:
         return None
 
-    trs_d = dict()
+    filtered_trs = list()
+
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G)
-        possible_trs = filters.filter_possible_trs(trs)
+        trs = filters.filter_possible_trs(trs)
 
-        for pt in possible_trs:
-            trs_d.update(pt.to_dict())
+        # filter by maximum distance
+        if max_dist:
+            trs = filters.filetr_trs_by_max_dist(trs, max_dist)
 
-    infos = list()
-    descrs = list()
-    if trs_d:
-        # Large dicts can cause memory issues
-        trs_ds = utils.dict_split(trs_d, chunk_size=500_000)
-        # Free memory
-        del trs_d
-        for td in trs_ds:
-            trs_descr_df = pd.DataFrame.from_dict(td, orient='index')
-            trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
-            trs_descr_df.index.names = ['Tourid', 'Legseqidx']
-            trs_descr_df.dropna(axis=1, inplace=True)
+        if target_distr is not None:
+            trs = filters.filter_trs_by_target_distr(trs, target_distr)
 
-            trs_info_df = utils.create_trs_info(trs_descr_df, distr_dims, params['distance_bins'], distances)
-            trs_info_df = (trs_info_df.pipe(distrs.assign_distribution_group, target_distr,
-                                            distr_dims, dropna=True).pipe(filters.filter_trs_by_dict, params['filters']))
+        if trs:
+            filtered_trs.extend(trs)
 
-            # Remove unused trs
-            filter_ids = trs_info_df.index.unique().values
-            mask = trs_descr_df.index.get_level_values(level='Tourid').isin(filter_ids)
-            trs_descr_df = trs_descr_df[mask]
-
-            infos.append(trs_info_df)
-            descrs.append(trs_descr_df)
-
-    del trs_ds
-
-    if infos:
-        trs_info_df = pd.concat(infos)
-        trs_descr_df = pd.concat(descrs)
-        trs_df = (trs_descr_df, trs_info_df)
-        return trs_df
+    if filtered_trs:
+        return filtered_trs
     else:
-        return None
+        return
 
 
 def init_multiproc_wrapper(_G, _distances):
@@ -143,11 +174,11 @@ def init_multiproc_wrapper(_G, _distances):
     distances = _distances
 
 
-def od2trs(od, max_legs, target_distr, distr_dims,
+def od2trs(od, target_distr=None,
            distances=None, coords=None):
 
-    attr_cols = ['Purpose', 'Direction', 'Timeperiod']
-    G = od_to_G(od, orig_col='Source', dest_col='Target',
+    attr_cols = ['Purpose', 'Direction', 'Departtime', 'Distance']
+    G = od_to_G(od.join(distances), orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols, coords=coords)
 
     zones = G.nodes
@@ -160,16 +191,20 @@ def od2trs(od, max_legs, target_distr, distr_dims,
     descrs = list()
     infos = list()
 
+    tr_id = 1
+
     with Pool(cpus, initializer=init_multiproc_wrapper,
               initargs=[G, distances]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
                         multiproc_wrapper,
-                        trs_obs_distr=target_distr,
-                        distr_dims=distr_dims,
-                        max_legs=max_legs),
+                        target_distr=target_distr),
                         zones), total=len(zones)):
             if trs:
-                trs_descr_df, trs_info_df = trs
+                for tr in trs:
+                    tr.id = tr_id
+                    tr_id += 1
+
+                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 
@@ -184,24 +219,4 @@ def od2trs(od, max_legs, target_distr, distr_dims,
 
     print('Total trs after filtering: {:,}'.format(trs_descr_df.index.unique().size))
 
-    # All returned trs are by definition not in low freq group
-    trs_info_df['Inlowfreqgrp'] = False
-
     return trs_descr_df, trs_info_df
-
-
-def collapse_tours_descr(trs_descr, descr_cols, drop_duplicates=False):
-    trs_collapsed = trs_descr.groupby('Tourid')[descr_cols].agg(tuple)
-    if drop_duplicates:
-        trs_collapsed.drop_duplicates(inplace=True)
-
-    return trs_collapsed
-
-
-def df_to_graph(df, attr_cols=None):
-
-    g = nx.from_pandas_edgelist(df.reset_index(),
-                                'Source', 'Target',
-                                attr_cols, nx.MultiDiGraph())
-
-    return g

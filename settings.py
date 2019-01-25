@@ -7,15 +7,14 @@ def init():
     global filepaths
     global filepaths
 
-    max_tc_distance = 11_000
-
     parameters = dict()
 
     parameters['run_optimisation'] = True
 
+    parameters['max_tc_distance'] = 11_000
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = ['Distancegroup', 'Legs', 'Timeperiodseq']
-    parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+    parameters['distribution_dims'] = ['Distancegroup', 'Legs', 'Departtimes']
+    parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Departtime']
 
     # The percentage of remaining groups threshold
     parameters['distribution_percent_thresh'] = None  # Check in analysis/summary_observed_trs.xlsx
@@ -23,15 +22,14 @@ def init():
     parameters['max_legs'] = 5
     parameters['trips_thresh'] = 1
     parameters['distribution_constraints_enabled'] = True
-    # Maximum values for columns in the trs
-    # In this case distance is travel time in seconds
-    parameters['filters'] = {'Distance': max_tc_distance} # for lsoa
 
     # parallel threads
-    parameters['cpus'] = None
+    parameters['cpus'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
+
+    max_tc_distance = parameters['max_tc_distance']
     parameters['distance_bins'] = list(range(0, max_tc_distance, 900))
 
     # Optimisation parameters
@@ -43,7 +41,7 @@ def init():
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances lowercutoff'] = 0.025 # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances lowercutoff'] = None # Generally I'll use 0.025
     parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 25_000
@@ -68,7 +66,7 @@ def init():
     filepaths = dict()
 
     infolder = r'./inputs'
-    outfolder = r'./outputs'
+    outfolder = r'./outputs_tests'
 
     filepaths['od'] = os.path.join(infolder, 'od.csv')
     filepaths['target_distr'] = os.path.join(infolder, 'target_distr.csv')

@@ -1,4 +1,5 @@
 import re
+import math
 import pandas as pd
 import networkx as nx
 import settings
@@ -13,11 +14,7 @@ def filter_possible_trs(trs):
         if not tc.tour:
             continue
 
-        if params['max_external_zones_in_tc']:
-            if not tc.count_external_zones() <= params['max_external_zones_in_tc']:
-                continue
-
-        tc.chron_ordered = tc.is_chron_ordered(timeperiods_ordered=
+        tc.chron_ordered = tc.is_chron_ordered(departtimes_ordered=
                                                params['ordered_time_periods'])
         if not tc.chron_ordered:
             continue
@@ -27,11 +24,17 @@ def filter_possible_trs(trs):
     return possible_trs
 
 
-def filter_trs_by_dict(trs_info_df, d_filters):
-    # Filter based dictionary
-    for k, v in d_filters.items():
-        trs_info_df = trs_info_df[trs_info_df[k] <= v]
-    return trs_info_df
+def filetr_trs_by_max_dist(trs, max_dist):
+
+    filtered_trs = list()
+    for tr in trs:
+        dist = tr.distance
+        if dist > max_dist:
+            continue
+        else:
+            filtered_trs.append(tr)
+
+    return filtered_trs
 
 
 def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
@@ -46,17 +49,39 @@ def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
         mask = s_cumsum >= 1 - thresh
         return mask
 
-    # Assure that the remaining groups after filtering will be over the threshold
-    if thresh:
-        if not (0 < thresh <= 1):
-            raise ValueError('filter thresh should be between 0 and 1')
-
         mask = _create_filter_mask(target_distr[percent_col])
         # Re-calculate the percentage
         target_distr = target_distr.loc[mask]
         target_distr[percent_col] /= target_distr[percent_col].sum()
 
     return target_distr
+
+
+def filter_trs_by_target_distr(trs, target_distr):
+
+    filter_trs = list()
+
+    dist_bins = target_distr.index.unique('Distancegroup')
+
+    for tr in trs:
+        dist = tr.distance
+        # TODO check if bottlenecks
+        dist_grp = pd.cut([dist], dist_bins)[0]
+
+        no_legs = tr.no_legs
+        depart_times = tr.depart_times
+
+        mask = (dist_grp, no_legs, depart_times)
+
+        # TODO must change to .at (fails for some reason)
+        perc = target_distr['Percentage'].loc[mask]
+        if isinstance(perc, float):
+            filter_trs.append(tr)
+        else:
+            continue
+
+    if filter_trs:
+        return filter_trs
 
 
 def filter_graph_edges_by_direction(G, origin_source, filter_edge_directions_names):

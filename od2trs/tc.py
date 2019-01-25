@@ -9,14 +9,14 @@ class Leg:
     A leg is a trip between an Source and a Target
     """
     def __init__(self, source, target,
-                 purpose=None, timeperiod=None,
+                 purpose=None, departtime=None,
                  direction=None, distance=None, **kwargs):
 
         self.source = source
         self.target = target
         self.purpose = purpose
         self.direction = direction
-        self.timeperiod = timeperiod
+        self.departtime = departtime
         self.distance = distance
 
         for key in kwargs:
@@ -37,10 +37,13 @@ class TripChain:
             raise ValueError('Only one Leg found')
 
         self.id = id
+        self.no_legs = len(legs)
         self.tour = self.is_tour()
         self.chron_ordered = None
         self.no_external_zones = None
-        self.Distrgroup= None
+        self.distrgroupid= None
+        self.depart_times = self.create_depart_times_seq()
+        self.distance = self.calculate_distance()
 
     def is_tour(self):
         if self.legs[0].source == self.legs[-1].target:
@@ -48,22 +51,43 @@ class TripChain:
         else:
             return False
 
-    def is_chron_ordered(self, timeperiods_ordered):
-        if util.sequence_isunique(timeperiods_ordered):
+    def is_chron_ordered(self, departtimes_ordered):
+        if util.sequence_isunique(departtimes_ordered):
             pass
         else:
-            raise TypeError('timeperiod_sequence is not unique')
+            raise TypeError('departtimes_ordered is not unique')
 
         # list to store the timeperiods (as numbers) of each tc
-        tc_timeperiods_idxs = list()
+        tc_departtimes_idxs = list()
         for leg in self.legs:
-            tc_timeperiods_idxs.append(timeperiods_ordered.index(leg.timeperiod))
+            tc_departtimes_idxs.append(departtimes_ordered.index(leg.departtime))
             # list to store the time periods as indices e.g [AM, IP, IP] --> [1, 2, 2]
 
-        if util.is_ascending(tc_timeperiods_idxs):
+        if util.is_ascending(tc_departtimes_idxs):
             return True
         else:
             return False
+
+    def create_depart_times_seq(self):
+        tps = list()
+        for leg in self.legs:
+            if leg.departtime:
+                tps.append(leg.departtime)
+            else:
+                print('departtime missing from leg, return empty')
+                return None
+
+        return tuple(tps)
+
+    def calculate_distance(self):
+        distance = 0
+        for leg in self.legs:
+            if leg.distance:
+                distance += leg.distance
+            else:
+                print('leg distance not defined, returning 0')
+                return 0
+        return distance
 
     def count_external_zones(self):
         cnt = 0
