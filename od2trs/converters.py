@@ -13,8 +13,6 @@ import od2trs.filters as filters
 
 from od2trs.tc import Leg, TripChain
 
-import settings
-
 
 def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
             verbose=True):
@@ -32,7 +30,7 @@ def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
     return G
 
 
-def zones_seq_to_trs(zones_seq, G):
+def zones_seq_to_trs(zones_seq, G, filter_dirs):
 
     def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
         leg_attrs = [la for la in leg_attrs if la['Direction'] in filter_directions]
@@ -44,13 +42,15 @@ def zones_seq_to_trs(zones_seq, G):
 
         return leg_attrs
 
-    filter_direction_orig, filter_direction_dest, filter_direction_interm = settings.parameters['filter_directions']
+    filter_dir_orig = filter_dirs.from_home
+    filter_dir_dest = filter_dirs.to_home
+    filter_dir_interm = filter_dirs.non_home
 
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
     leg_attrs = prepare_leg_attrs(G, zones_seq[0], zones_seq[1],
-                                  filter_direction_orig)
+                                  filter_dir_orig)
     avail_legs = list()
     for la in leg_attrs:
         leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
@@ -60,7 +60,7 @@ def zones_seq_to_trs(zones_seq, G):
     if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
         for o, d in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(G, o, d, filter_direction_interm)
+            leg_attrs = prepare_leg_attrs(G, o, d, filter_dir_interm)
             for la in leg_attrs:
                 leg = Leg(source=o, target=d, **la)
                 avail_legs.append(leg)
@@ -68,7 +68,7 @@ def zones_seq_to_trs(zones_seq, G):
 
     # Last leg attrs
     leg_attrs = prepare_leg_attrs(G, zones_seq[-2], zones_seq[-1],
-                                  filter_direction_dest)
+                                  filter_dir_dest)
     avail_legs.clear()
     for la in leg_attrs:
         leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
@@ -84,11 +84,7 @@ def zones_seq_to_trs(zones_seq, G):
     return trs
 
 
-def trs_to_df(trs, target_distr=None):
-
-    params = settings.parameters
-    dist_bins = params['distance_bins']
-    distr_dims = params['distribution_dims']
+def trs_to_df(trs, target_distr, distr_dims, dist_bins):
 
     trs_info = list()
     trs_decr = dict()
@@ -124,8 +120,6 @@ def trs_to_df(trs, target_distr=None):
     return trs_descr_df, trs_info_df
 
 
-
-
 def df_to_graph(df, attr_cols=None):
     g = nx.from_pandas_edgelist(df.reset_index(),
                                 'Source', 'Target',
@@ -134,12 +128,11 @@ def df_to_graph(df, attr_cols=None):
     return g
 
 
-def multiproc_wrapper(src_zone, target_distr):
-    params = settings.parameters
-    max_legs = params['max_legs']
-    max_dist = params['max_tc_distance']
+def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
+                      filter_dirs, ordered_time_periods, target_distr,
+                      distr_dims):
 
-    zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G)
+    zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G, filter_dirs)
 
     if not zones_seqs:
         return None
@@ -147,15 +140,15 @@ def multiproc_wrapper(src_zone, target_distr):
     filtered_trs = list()
 
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G)
-        trs = filters.filter_possible_trs(trs)
+        trs = zones_seq_to_trs(zs, G, filter_dirs)
+        trs = filters.filter_possible_trs(trs, ordered_time_periods)
 
         # filter by maximum distance
-        if max_dist:
-            trs = filters.filetr_trs_by_max_dist(trs, max_dist)
+        if max_tr_dist:
+            trs = filters.filetr_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
-            trs = filters.filter_trs_by_target_distr(trs, target_distr)
+            trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims)
 
         if trs:
             filtered_trs.extend(trs)
@@ -166,16 +159,16 @@ def multiproc_wrapper(src_zone, target_distr):
         return
 
 
-def init_multiproc_wrapper(_G, _distances):
+def init_multiproc_wrapper(_G):
     global G
-    global distances
-    settings.init()
     G = _G
-    distances = _distances
 
 
-def od2trs(od, target_distr=None,
-           distances=None, coords=None):
+def od2trs(od, max_legs=None, filter_dirs=None,
+           ordered_time_periods=None,
+           target_distr=None, distr_dims=None, dist_bins=None,
+           distances=None, max_tr_dist=None,
+           coords=None, ncores=None):
 
     attr_cols = ['Purpose', 'Direction', 'Departtime', 'Distance']
     G = od_to_G(od.join(distances), orig_col='Source', dest_col='Target',
@@ -183,28 +176,31 @@ def od2trs(od, target_distr=None,
 
     zones = G.nodes
 
-    if settings.parameters['cpus']:
-        cpus = settings.parameters['cpus']
-    else:
-        cpus = cpu_count()-1
+    if not ncores:
+        ncores = cpu_count()-1
 
     descrs = list()
     infos = list()
 
     tr_id = 1
 
-    with Pool(cpus, initializer=init_multiproc_wrapper,
-              initargs=[G, distances]) as pool:
+    with Pool(ncores, initializer=init_multiproc_wrapper,
+              initargs=[G]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
                         multiproc_wrapper,
-                        target_distr=target_distr),
+                        max_legs=max_legs,
+                        max_tr_dist=max_tr_dist,
+                        filter_dirs=filter_dirs,
+                        ordered_time_periods=ordered_time_periods,
+                        target_distr=target_distr,
+                        distr_dims=distr_dims),
                         zones), total=len(zones)):
             if trs:
                 for tr in trs:
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr)
+                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 

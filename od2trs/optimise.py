@@ -3,8 +3,6 @@ import pandas as pd
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
-from pyomo.util.timing import report_timing
-
 import settings
 
 
@@ -44,7 +42,6 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     model.LEG_IDS = Set(initialize=model.od.Legid.unique().tolist())
     model.CHAIN_IDS = Set(initialize=model.trs_info.index.unique().values.tolist())
-    model.GROUP_IDS = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
 
     d_leg_trips = model.od.reset_index().set_index('Legid')['Dailytrips'].to_dict()
     model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
@@ -58,6 +55,7 @@ def prepare_model(trs, trs_info, od, target_distr,
         model.cutoff = - params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
+        model.GROUP_IDS = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
         target_distr.set_index('Distrgroupid', inplace=True)
         d_distr_grp_percs = model.target_distr['Percentage'].to_dict()
         model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs, default=0)
@@ -132,7 +130,6 @@ def run_model(model, distr_constr_enabled, send_to_neos):
 def main(trs, trs_info, od, target_distr,
          distr_constr_enabled, submit_to_neos=False):
 
-    report_timing()
     mymodel = prepare_model(trs, trs_info, od,
                             target_distr, distr_constr_enabled)
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos)

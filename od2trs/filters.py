@@ -5,17 +5,14 @@ import networkx as nx
 import settings
 
 
-def filter_possible_trs(trs):
-    params = settings.parameters
-    # TODO clean this part
+def filter_possible_trs(trs, ordered_time_periods):
     possible_trs = list()
     for tc in trs:
-
         if not tc.tour:
             continue
 
         tc.chron_ordered = tc.is_chron_ordered(departtimes_ordered=
-                                               params['ordered_time_periods'])
+                                               ordered_time_periods)
         if not tc.chron_ordered:
             continue
 
@@ -57,21 +54,34 @@ def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
     return target_distr
 
 
-def filter_trs_by_target_distr(trs, target_distr):
+def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
     filter_trs = list()
 
-    dist_bins = target_distr.index.unique('Distancegroup')
+    if 'Distancegroup' in distr_dims:
+        dist_bins = target_distr.index.unique('Distancegroup')
 
     for tr in trs:
-        dist = tr.distance
-        # TODO check if bottlenecks
-        dist_grp = pd.cut([dist], dist_bins)[0]
+        d_dims = dict()
 
         no_legs = tr.no_legs
-        depart_times = tr.depart_times
+        d_dims['Legs'] = no_legs
 
-        mask = (dist_grp, no_legs, depart_times)
+        if dist_bins is not None:
+            dist = tr.distance
+            # TODO check if bottlenecks
+            dist_grp = pd.cut([dist], dist_bins)[0]
+            d_dims['Distancegroup'] = dist_grp
+
+        if 'Departtimes' in distr_dims:
+            depart_times = tr.depart_times
+            d_dims['Departtimes'] = depart_times
+
+        mask = list()
+        for dd in distr_dims:
+            mask.append(d_dims[dd])
+
+        mask = tuple(mask)
 
         # TODO must change to .at (fails for some reason)
         perc = target_distr['Percentage'].loc[mask]
@@ -84,13 +94,15 @@ def filter_trs_by_target_distr(trs, target_distr):
         return filter_trs
 
 
-def filter_graph_edges_by_direction(G, origin_source, filter_edge_directions_names):
+def filter_graph_edges_by_direction(G, origin_source, filter_edge_dirs):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
     """
 
-    fh_names, th_names, nhb_names = filter_edge_directions_names
+    fh_names = filter_edge_dirs.from_home
+    th_names = filter_edge_dirs.to_home
+    nhb_names = filter_edge_dirs.non_home
 
     # Give better name
     # Creates a graph that origins edges from and to

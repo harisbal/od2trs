@@ -56,7 +56,7 @@ def create_trs_info(trs_descr, distr_dims,
         distances = trs_descr['Distance'].groupby(level='Tourid').sum()
         aggr_dimensions.append(distances)
 
-        distance_grps = pd.cut(distances, bins=settings.parameters['distance_bins'])
+        distance_grps = pd.cut(distances, bins=settings.parameters['dist_bins'])
         distance_grps.name = 'Distancegroup'
         aggr_dimensions.append(distance_grps)
 
@@ -76,7 +76,7 @@ def get_observed_trs_info(infilepath, max_legs, index_col='Tourid'):
     # To kms (dist_bins in kms)
     # observed_trs_info.Distance /= 1000
 
-    observed_trs_info['Distancegroup'] = pd.cut(observed_trs_info['Distance'], settings.parameters['distance_bins'])
+    observed_trs_info['Distancegroup'] = pd.cut(observed_trs_info['Distance'], settings.parameters['dist_bins'])
 
     # Convert the Timeperiod sequence to tuples
     observed_trs_info['Departtimes'] = observed_trs_info['Departtimes'].str.split(',')

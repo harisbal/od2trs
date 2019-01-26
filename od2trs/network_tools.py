@@ -47,7 +47,7 @@ def reduce_graph_limit_cycle_length(G, source, limit):
         return G
 
 
-def identify_tour_zone_sequences(source, max_legs, G):
+def identify_tour_zone_sequences(source, max_legs, G, filter_dirs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -59,8 +59,7 @@ def identify_tour_zone_sequences(source, max_legs, G):
     :return: potential_tripchains
     """
 
-    G_filt = filters.filter_graph_edges_by_direction(G, source,
-                                                     settings.parameters['filter_directions'])
+    G_filt = filters.filter_graph_edges_by_direction(G, source, filter_dirs)
 
     G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
 

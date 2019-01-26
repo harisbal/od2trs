@@ -5,13 +5,12 @@ def init():
 
     global parameters
     global filepaths
-    global filepaths
 
     parameters = dict()
 
     parameters['run_optimisation'] = True
 
-    parameters['max_tc_distance'] = 11_000
+    parameters['max_tr_dist'] = 11_000
     # Could include Activities but tcs not ready yet
     parameters['distribution_dims'] = ['Distancegroup', 'Legs', 'Departtimes']
     parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Departtime']
@@ -24,13 +23,13 @@ def init():
     parameters['distribution_constraints_enabled'] = True
 
     # parallel threads
-    parameters['cpus'] = 1
+    parameters['ncores'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
 
-    max_tc_distance = parameters['max_tc_distance']
-    parameters['distance_bins'] = list(range(0, max_tc_distance, 900))
+    max_tr_dist = parameters['max_tr_dist']
+    parameters['dist_bins'] = list(range(0, max_tr_dist, 900))
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
