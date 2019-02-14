@@ -26,10 +26,11 @@ def filetr_trs_by_max_dist(trs, max_dist):
     filtered_trs = list()
     for tr in trs:
         dist = tr.distance
-        if dist > max_dist:
-            continue
-        else:
-            filtered_trs.append(tr)
+        if dist:
+            if dist > max_dist:
+                continue
+
+        filtered_trs.append(tr)
 
     return filtered_trs
 

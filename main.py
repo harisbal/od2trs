@@ -14,6 +14,8 @@ def main(traj):
     filter_dirs = traj.par.trs.filter_dirs
     ordered_time_periods = traj.par.ordered_time_periods
     dist_bins = traj.par.trs.dist_bins
+    if not isinstance(dist_bins, list):
+        dist_bins = None
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
     distr_perc_thresh = traj.par.trs.distr_perc_thresh
@@ -28,8 +30,12 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.fetch_prepare_od(filepaths['od'], trips_thresh, idx_cols)
-    distances = myio.read_distances(filepaths['distances'])
+    od = myio.fetch_prepare_od(filepaths['od_in'], trips_thresh, idx_cols)
+
+    if 'Distancegroup' in distr_dims:
+        distances = myio.read_distances(filepaths['distances'])
+    else:
+        distances = None
 
     if distr_constr_enabled:
         # TODO inteval_cols is not very generic
@@ -61,10 +67,8 @@ def main(traj):
         trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
         trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
 
-        #myio.create_folders(outfolder)
         results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
 
-        #myio.export_results(results, params.outfolder)
         print('Complete!')
 
         return results

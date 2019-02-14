@@ -1,8 +1,5 @@
 import os
-import re
-import numpy as np
 import pandas as pd
-import json
 
 import settings
 import od2trs.utilities as utils
@@ -96,16 +93,18 @@ def read_zones_info(infilepath):
     return df
 
 
-def export_results(results, outfolder):
+def export_results(results):
 
     settings.init()
-    filenames = settings.filenames
+    filepaths = settings.filepaths
 
-    (od, trs_mdl_descr, trs_mdl_info, target_distr, optim_results) = results
+    (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    od.to_csv(os.path.join(outfolder, filenames['od_filtered']), index=True)
-    target_distr.to_csv(os.path.join(outfolder, filenames['target_distr']), index=True)
-    trs_mdl_descr.to_csv(os.path.join(outfolder, filenames['trs_mdl_descr']), index=True)
-    trs_mdl_info.to_csv(os.path.join(outfolder, filenames['trs_mdl_info']), index=True)
-    optim_results.write(filename=os.path.join(outfolder, filenames['optimisation_results']), format='json')
-    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filenames['trs_descr_comp_gml']))
+    od.to_csv(filepaths['od_out'], index=True)
+    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['trs_mdl_descr'], index=True)
+    trs_mdl_info.dropna(axis=1).to_csv(filepaths['trs_mdl_info'], index=True)
+
+    if target_distr is not None:
+        target_distr.to_csv(os.path.join(filepaths['target_distr']), index=True)
+
+    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))

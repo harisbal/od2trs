@@ -51,7 +51,7 @@ def prepare_model(trs, trs_info, od, target_distr,
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
-    if params['mip tolerances lowercutoff']:
+    if params['mip tolerances lowercutoff'] is not None:
         model.cutoff = - params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
@@ -109,7 +109,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     opt.options['mip strategy probe'] = params['mip strategy probe']
     opt.options['simplex display'] = 2
 
-    if params['mip tolerances lowercutoff']:
+    if params['mip tolerances lowercutoff'] is not None:
         opt.options['mip tolerances lowercutoff'] = model.cutoff
         opt.options['mip limits solutions'] = 1 # Will stop once the first feasible solution is achieved
 

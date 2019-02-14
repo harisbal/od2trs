@@ -85,8 +85,8 @@ class TripChain:
             if leg.distance:
                 distance += leg.distance
             else:
-                print('leg distance not defined, returning 0')
-                return 0
+                #print('leg distance not defined, returning None')
+                return None
         return distance
 
     def count_external_zones(self):
