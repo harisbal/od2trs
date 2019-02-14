@@ -22,7 +22,7 @@ def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
                                 attr_cols,
                                 nx.MultiDiGraph())
     if verbose:
-        print('Network desnity: {:.2%}'.format(nx.density(G)))
+        print('Network density: {:.2%}'.format(nx.density(G)))
 
     if coords is not None:
         d_coords = coords.to_dict()
@@ -132,6 +132,7 @@ def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
                       filter_dirs, ordered_time_periods, target_distr,
                       distr_dims):
 
+
     zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G, filter_dirs)
 
     if not zones_seqs:
@@ -170,8 +171,13 @@ def od2trs(od, max_legs=None, filter_dirs=None,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    attr_cols = ['Purpose', 'Direction', 'Departtime', 'Distance']
-    G = od_to_G(od.join(distances), orig_col='Source', dest_col='Target',
+    attr_cols = ['Purpose', 'Direction', 'Departtime']
+
+    if distances is not None:
+        attr_cols.append('Distance')
+        od = od.join(distances)
+
+    G = od_to_G(od, orig_col='Source', dest_col='Target',
                 attr_cols=attr_cols, coords=coords)
 
     zones = G.nodes
@@ -213,6 +219,6 @@ def od2trs(od, max_legs=None, filter_dirs=None,
     else:
         raise ValueError('No trs identified')
 
-    print('Total trs after filtering: {:,}'.format(trs_descr_df.index.unique().size))
+    print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
     return trs_descr_df, trs_info_df

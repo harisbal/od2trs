@@ -1,6 +1,7 @@
 # settings.py
 import os
 
+
 def init():
 
     global parameters
@@ -10,37 +11,40 @@ def init():
 
     parameters['run_optimisation'] = True
 
-    parameters['max_tr_dist'] = 11_000
+    # explore multiple scenarios or not
+    parameters['explore'] = False
+    # TODO at the moment if explore=True, export_flat overwrites results
+    parameters['export_flat'] = True
+
+    parameters['max_tr_dist'] = 11_700
     # Could include Activities but tcs not ready yet
-    parameters['distribution_dims'] = ['Distancegroup', 'Legs', 'Departtimes']
-    parameters['comp_descr_dims'] = ['Source', 'Target', 'Purpose', 'Direction', 'Departtime']
+    parameters['distr_dims'] = [['Distancegroup', 'Legs', 'Departtimes']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percent_thresh'] = None  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percent_thresh'] = [0.95]  # Check in analysis/summary_observed_trs.xlsx
 
-    parameters['max_legs'] = 5
-    parameters['trips_thresh'] = 1
-    parameters['distribution_constraints_enabled'] = True
+    parameters['max_legs'] = [5]
+    parameters['trips_thresh'] = [1]
+    parameters['distr_constr_enabled'] = [True]
 
     # parallel threads
-    parameters['ncores'] = 1
+    parameters['ncores'] = None
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
 
-    max_tr_dist = parameters['max_tr_dist']
-    parameters['dist_bins'] = list(range(0, max_tr_dist, 900))
+    parameters['dist_bins'] = list(range(0, parameters['max_tr_dist'], 900)) #[None]
 
     # Optimisation parameters
     parameters['optimisation'] = dict()
     # Maximum allowed deviation between observed and estimated distributions' percentage
-    parameters['optimisation']['distribution_percentage_tolerance'] = 0.01
+    parameters['optimisation']['distribution_percentage_tolerance'] = 0.025
     # MIP empasis
     # https://www.ibm.com/support/knowledgecenter/en/SS9UKU_12.4.0/com.ibm.cplex.zos.help/Parameters/topics/MIPEmphasis.html
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances lowercutoff'] = None # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances lowercutoff'] = 0.05 # Generally I'll use 0.025
     parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 25_000
@@ -65,12 +69,16 @@ def init():
     filepaths = dict()
 
     infolder = r'./inputs'
-    outfolder = r'./outputs_tests'
+    outfolder = r'./outputs/tests'
 
-    filepaths['od'] = os.path.join(infolder, 'od.csv')
+    filepaths['infolder'] = infolder
+    filepaths['outfolder'] = outfolder
+
+    filepaths['od_in'] = os.path.join(infolder, 'od.csv')
     filepaths['target_distr'] = os.path.join(infolder, 'target_distr.csv')
     filepaths['distances'] = os.path.join(infolder, 'distances.csv')
 
+    filepaths['od_out'] = os.path.join(outfolder, 'od.csv')
     filepaths['trs_mdl_descr'] = os.path.join(outfolder, 'trs_mdl_descr.csv')
     filepaths['trs_mdl_info'] = os.path.join(outfolder, 'trs_mdl_info.csv')
     filepaths['trs_mdl_distr'] = os.path.join(outfolder, 'trs_mdl_distr.csv')
