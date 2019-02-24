@@ -9,20 +9,21 @@ def main(traj):
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
 
-    distr_dims = traj.par.trs.distr_dims
     max_legs = traj.par.trs.max_legs
+    include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
     ordered_time_periods = traj.par.ordered_time_periods
+    max_tr_dist = traj.par.trs.max_tr_dist
+    trips_thresh = traj.par.trs.trips_thresh
+    distr_dims = traj.par.trs.distr_dims
+    distr_perc_thresh = traj.par.trs.distr_perc_thresh
+    distr_constr_enabled = traj.par.optim.distr_constr_enabled
+    run_optim = traj.par.optim.run_optim
+    submit_to_neos = traj.par.optim.submit_to_neos
+
     dist_bins = traj.par.trs.dist_bins
     if not isinstance(dist_bins, list):
         dist_bins = None
-    max_tr_dist = traj.par.trs.max_tr_dist
-    trips_thresh = traj.par.trs.trips_thresh
-    distr_perc_thresh = traj.par.trs.distr_perc_thresh
-    distr_constr_enabled = traj.par.optim.distr_constr_enabled
-
-    run_optim = traj.par.optim.run_optim
-    submit_to_neos = traj.par.optim.submit_to_neos
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -47,7 +48,8 @@ def main(traj):
     else:
         target_distr = None
 
-    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
+    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
+                                                    filter_dirs=filter_dirs,
                                                     ordered_time_periods=ordered_time_periods,
                                                     target_distr=target_distr,
                                                     distr_dims=distr_dims, dist_bins=dist_bins,

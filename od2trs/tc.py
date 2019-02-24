@@ -1,5 +1,5 @@
+import collections
 import pandas as pd
-
 import od2trs.utilities as util
 import settings
 
@@ -27,18 +27,25 @@ class TripChain:
     """
     A TripChain is a sequence of legs
     """
-    def __init__(self, legs, id=None):
+    def __init__(self, legs):
         """
         :param legs: list of Leg
         """
         if len(legs) >= 1:
             self.legs = legs
+
+            zones = list()
+            for leg in legs:
+                zones.append(leg.source)
+            self.zones = zones
+
         else:
             raise ValueError('Only one Leg found')
 
-        self.id = id
+        self.id = None
         self.no_legs = len(legs)
         self.tour = self.is_tour()
+        self.loops_cnt = self.count_loops()
         self.chron_ordered = None
         self.no_external_zones = None
         self.distrgroupid= None
@@ -50,6 +57,10 @@ class TripChain:
             return True
         else:
             return False
+
+    def count_loops(self):
+        loops_cnt = max(collections.Counter(self.zones).values())
+        return loops_cnt
 
     def is_chron_ordered(self, departtimes_ordered):
         if util.sequence_isunique(departtimes_ordered):

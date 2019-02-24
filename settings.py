@@ -16,19 +16,20 @@ def init():
     # TODO at the moment if explore=True, export_flat overwrites results
     parameters['export_flat'] = True
 
-    parameters['max_tr_dist'] = 11_700
+    parameters['max_tr_dist'] = 10_800
     # Could include Activities but tcs not ready yet
     parameters['distr_dims'] = [['Distancegroup', 'Legs', 'Departtimes']]
 
     # The percentage of remaining groups threshold
-    parameters['distribution_percent_thresh'] = [0.95]  # Check in analysis/summary_observed_trs.xlsx
+    parameters['distribution_percent_thresh'] = [None]  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['max_legs'] = [5]
     parameters['trips_thresh'] = [1]
-    parameters['distr_constr_enabled'] = [True]
+    parameters['include_loops'] = [True]
+    parameters['distr_constr_enabled'] = [False]
 
     # parallel threads
-    parameters['ncores'] = None
+    parameters['ncores'] = 1
     parameters['submit_to_neos'] = False
 
     parameters['ordered_time_periods'] = ['AM', 'IP', 'PM', 'OP']
@@ -44,7 +45,7 @@ def init():
     parameters['optimisation']['emphasis mip'] = 0
 
     # Optimisation stop threshold expressed as percentage of total OD trips
-    parameters['optimisation']['mip tolerances lowercutoff'] = 0.05 # Generally I'll use 0.025
+    parameters['optimisation']['mip tolerances lowercutoff'] = 0.0 # Generally I'll use 0.025
     parameters['optimisation']['timelimit'] = 6 * 3600  # in seconds
 
     parameters['optimisation']['work memory'] = 25_000
@@ -58,9 +59,9 @@ def init():
                                     'HB': 'HB',
                                     'NHB': 'NHB'}
 
-    parameters['origin_directions'] = ['FromHome']
-    parameters['destination_directions'] = ['ToHome']
-    parameters['intermediate_directions'] = ['NonHomeBased']
+    parameters['origin_directions'] = ['FromHome', 'FH']
+    parameters['destination_directions'] = ['ToHome', 'TH']
+    parameters['intermediate_directions'] = ['NonHomeBased', 'NHB']
 
     parameters['filter_directions'] = [parameters['origin_directions'],
                                        parameters['destination_directions'],

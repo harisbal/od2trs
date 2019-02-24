@@ -99,12 +99,12 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
 
         no_legs = tr.no_legs
         depart_times = tr.depart_times
-
-        trs_info.append([tr.id, no_legs, dist, dist_grp, depart_times])
+        loops_cnt = tr.loops_cnt
+        trs_info.append([tr.id, no_legs, loops_cnt, dist, dist_grp, depart_times])
         trs_decr.update(tr.to_dict())
 
     idx = 'Tourid'
-    cols = [idx, 'Legs', 'Distance', 'Distancegroup', 'Departtimes']
+    cols = [idx, 'Legs', 'Loopscnt', 'Distance', 'Distancegroup', 'Departtimes']
 
     trs_info_df = pd.DataFrame(trs_info, columns=cols)
     trs_info_df.set_index(idx, inplace=True)
@@ -128,17 +128,32 @@ def df_to_graph(df, attr_cols=None):
     return g
 
 
-def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
-                      filter_dirs, ordered_time_periods, target_distr,
-                      distr_dims):
+def identify_loops_wrapper(src, G, max_legs, filter_dirs):
+
+    search_type = 'loops'
+    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, filter_dirs, search_type)
+
+    if not zones_seqs:
+        return None, None
+
+    return src, zones_seqs
 
 
-    zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G, filter_dirs)
+def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
+                         filter_dirs, ordered_time_periods, target_distr,
+                         distr_dims):
+
+    search_type = 'tours'
+    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, filter_dirs, search_type)
 
     if not zones_seqs:
         return None
 
     filtered_trs = list()
+
+    # Complete the zones_seqs with the loops
+    if include_loops:
+        zones_seqs = nettools.include_loops(zones_seqs, loops, max_legs=max_legs)
 
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
@@ -160,12 +175,15 @@ def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
         return
 
 
-def init_multiproc_wrapper(_G):
+def init_identify_trs_wrapper(_G, _loops):
     global G
+    global loops
     G = _G
+    loops = _loops
 
 
-def od2trs(od, max_legs=None, filter_dirs=None,
+def od2trs(od, max_legs=None, include_loops=False,
+           filter_dirs=None,
            ordered_time_periods=None,
            target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, max_tr_dist=None,
@@ -190,12 +208,23 @@ def od2trs(od, max_legs=None, filter_dirs=None,
 
     tr_id = 1
 
-    with Pool(ncores, initializer=init_multiproc_wrapper,
-              initargs=[G]) as pool:
+    if include_loops:
+        with Pool(ncores) as pool:
+            loops = dict()
+            for z, lps in tqdm(pool.imap_unordered(partial(
+                                 identify_loops_wrapper,
+                                 G=G, max_legs=max_legs,
+                                 filter_dirs=filter_dirs),
+                                 zones), total=len(zones)):
+                if z:
+                    loops[z] = lps
+
+    with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G, loops]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
-                        multiproc_wrapper,
+                        identify_trs_wrapper,
                         max_legs=max_legs,
                         max_tr_dist=max_tr_dist,
+                        include_loops=include_loops,
                         filter_dirs=filter_dirs,
                         ordered_time_periods=ordered_time_periods,
                         target_distr=target_distr,

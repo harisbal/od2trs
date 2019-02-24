@@ -29,8 +29,8 @@ def filetr_trs_by_max_dist(trs, max_dist):
         if dist:
             if dist > max_dist:
                 continue
-        else:
-            filtered_trs.append(tr)
+
+        filtered_trs.append(tr)
 
     return filtered_trs
 
@@ -95,7 +95,7 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def filter_graph_edges_by_direction(G, origin_source, filter_edge_dirs):
+def filter_graph_edges_by_direction(G, origin_src, filter_edge_dirs, search_type):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
@@ -105,21 +105,28 @@ def filter_graph_edges_by_direction(G, origin_source, filter_edge_dirs):
     th_names = filter_edge_dirs.to_home
     nhb_names = filter_edge_dirs.non_home
 
-    # Give better name
-    # Creates a graph that origins edges from and to
-    filt_G = nx.MultiDiGraph()
-    for source, target, attrs in G.edges(data=True):
-        if attrs['Direction'] in nhb_names:
-            # NHB trips are added only when the source is not home
-            if not (source == origin_source or target == origin_source):
-                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
-        elif attrs['Direction'] in fh_names:
-            if source == origin_source:
-                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
-        elif attrs['Direction'] in th_names:
-            if target == origin_source:
-                filt_G.add_edge(source, target, Purpose=attrs['Direction'])
-    return filt_G
+    filt_G = nx.DiGraph()
+
+    if search_type == 'tours':
+        for src, trgt, attrs in G.edges(data=True):
+            if attrs['Direction'] in nhb_names:
+                # NHB trips are added only when the src is not home
+                if not (src == origin_src or trgt == origin_src):
+                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
+            elif attrs['Direction'] in fh_names:
+                if src == origin_src:
+                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
+            elif attrs['Direction'] in th_names:
+                if trgt == origin_src:
+                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
+        return filt_G
+    elif search_type == 'loops':
+        for src, trgt, attrs in G.edges(data=True):
+            if attrs['Direction'] in nhb_names:
+                filt_G.add_edge(src, trgt)
+        return filt_G
+    else:
+        raise ValueError('{} not in tours, inter_loops'.format(search_type))
 
 
 def extract_tour_times_used(optim_results):

@@ -90,6 +90,8 @@ def prepare_traj_params(traj):
 
     traj.par.trs.max_legs = Parameter('max_legs', params['max_legs'][0], comment='Maximum number of legs in trs')
 
+    traj.par.trs.include_loops = Parameter('include_loops', params['include_loops'][0], comment='Including loops or not')
+
     traj.par.trs.trips_thresh = Parameter('trips_thresh', params['trips_thresh'][0],
                                           comment='Minimum number of trips allowed in ODs')
 
