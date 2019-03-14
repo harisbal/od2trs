@@ -11,9 +11,9 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     # TODO for some reason it passes 2 args
     def init_chains_descr(_model, _):
-        _od = _model.od
+        _od = _model.od.reset_index('Legid')['Legid'].to_frame()
         _trs = _model.trs.reset_index()
-        _trs = pd.merge(_trs, _od['Legid'].to_frame(),
+        _trs = pd.merge(_trs, _od,
                         left_on=_od.index.names, right_index=True,
                         how='left')
 
@@ -40,7 +40,7 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
 
-    model.LEG_IDS = Set(initialize=model.od.Legid.unique().tolist())
+    model.LEG_IDS = Set(initialize=model.od.index.unique('Legid').tolist())
     model.CHAIN_IDS = Set(initialize=model.trs_info.index.unique().values.tolist())
 
     d_leg_trips = model.od.reset_index().set_index('Legid')['Dailytrips'].to_dict()
@@ -52,7 +52,7 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if params['mip tolerances lowercutoff'] is not None:
-        model.cutoff = - params['mip tolerances lowercutoff'] * model.od['Dailytrips'].sum()
+        model.cutoff = - params['mip tolerances lowercutoff'] * model.od.sum()
 
     if distr_constr_enabled:
         model.GROUP_IDS = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())

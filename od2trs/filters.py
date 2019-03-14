@@ -1,18 +1,15 @@
 import re
-import math
 import pandas as pd
-import networkx as nx
-import settings
 
 
-def filter_possible_trs(trs, ordered_time_periods):
+def filter_possible_trs(trs, ordered_departtimes):
     possible_trs = list()
     for tc in trs:
         if not tc.tour:
             continue
 
         tc.chron_ordered = tc.is_chron_ordered(departtimes_ordered=
-                                               ordered_time_periods)
+                                               ordered_departtimes)
         if not tc.chron_ordered:
             continue
 
@@ -21,7 +18,7 @@ def filter_possible_trs(trs, ordered_time_periods):
     return possible_trs
 
 
-def filetr_trs_by_max_dist(trs, max_dist):
+def filter_trs_by_max_dist(trs, max_dist):
 
     filtered_trs = list()
     for tr in trs:
@@ -95,38 +92,51 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def filter_graph_edges_by_direction(G, origin_src, filter_edge_dirs, search_type):
-    """
-    Reduces iteratively the network so that first and last edges of cycle are HB
-    and the rest are NHB
-    """
+def remove_links_by_direction(g, srcs, names, attr):
 
-    fh_names = filter_edge_dirs.from_home
-    th_names = filter_edge_dirs.to_home
-    nhb_names = filter_edge_dirs.non_home
+    if not isinstance(srcs, list):
+        srcs = [srcs]
 
-    filt_G = nx.DiGraph()
+    gfilt = g.copy()
+    if attr == 'from-home':
+        for s, t, attr in g.out_edges(srcs, data='Direction'):
+            if attr in names:
+                gfilt.remove_edge(s, t)
 
-    if search_type == 'tours':
-        for src, trgt, attrs in G.edges(data=True):
-            if attrs['Direction'] in nhb_names:
-                # NHB trips are added only when the src is not home
-                if not (src == origin_src or trgt == origin_src):
-                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
-            elif attrs['Direction'] in fh_names:
-                if src == origin_src:
-                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
-            elif attrs['Direction'] in th_names:
-                if trgt == origin_src:
-                    filt_G.add_edge(src, trgt)#, Purpose=attrs['Purpose'], Direction=attrs['Direction'])
-        return filt_G
-    elif search_type == 'loops':
-        for src, trgt, attrs in G.edges(data=True):
-            if attrs['Direction'] in nhb_names:
-                filt_G.add_edge(src, trgt)
-        return filt_G
+    elif attr == 'to-home':
+        for s, t, attr in g.in_edges(srcs, data='Direction'):
+            if attr in names:
+                gfilt.remove_edge(s, t)
+
+    elif attr == 'both':
+        for s, t, attr in g.edges(srcs, data='Direction'):
+            if attr in names:
+                gfilt.remove_edge(s, t)
+
     else:
-        raise ValueError('{} not in tours, inter_loops'.format(search_type))
+        raise KeyError('Value parameter "direction" not accepted,'
+                        'Accepted values: "from-home", "to-home", "both"')
+
+    return gfilt
+
+
+def remove_links_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
+    """
+    Only links between the src_dt and tgt_dt are required
+    """
+
+    gfilt = g.copy()
+
+    src_dt_idx = ordered_departtimes.index(src_dt)
+    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
+
+    for s, t, dt in g.edges(data='Departtime'):
+        if dt:
+            dt_idx = ordered_departtimes.index(dt)
+            if not src_dt_idx <= dt_idx <= tgt_dt_idx:
+                gfilt.remove_edge(s, t)
+
+    return gfilt
 
 
 def extract_tour_times_used(optim_results):

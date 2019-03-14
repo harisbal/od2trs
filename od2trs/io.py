@@ -72,7 +72,9 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od.Dailytrips = od.Dailytrips.astype(int)
 
     # Make sure Legid is int
-    od.Legid = od.Legid.astype(int)
+    od['Legid'] = od['Legid'].astype(int)
+    od.set_index('Legid', append=True, inplace=True)
+    od = od.squeeze()
 
     return od
 
@@ -100,7 +102,7 @@ def export_results(results):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    od.to_csv(filepaths['od_out'], index=True)
+    od.to_csv(filepaths['od_out'], header=True)
     trs_mdl_descr.dropna(axis=1).to_csv(filepaths['trs_mdl_descr'], index=True)
     trs_mdl_info.dropna(axis=1).to_csv(filepaths['trs_mdl_info'], index=True)
 

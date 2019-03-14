@@ -12,7 +12,7 @@ def main(traj):
     max_legs = traj.par.trs.max_legs
     include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
-    ordered_time_periods = traj.par.ordered_time_periods
+    ordered_departtimes = traj.par.ordered_departtimes
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
@@ -50,7 +50,7 @@ def main(traj):
 
     trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
                                                     filter_dirs=filter_dirs,
-                                                    ordered_time_periods=ordered_time_periods,
+                                                    ordered_departtimes=ordered_departtimes,
                                                     target_distr=target_distr,
                                                     distr_dims=distr_dims, dist_bins=dist_bins,
                                                     distances=distances, max_tr_dist=max_tr_dist,

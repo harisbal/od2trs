@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from multiprocessing import Pool, Value, Lock, cpu_count
+from multiprocessing import Pool, cpu_count
 from functools import partial
 
 import itertools
@@ -14,22 +14,93 @@ import od2trs.filters as filters
 from od2trs.tc import Leg, TripChain
 
 
-def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
-            verbose=True):
+def od_to_graph(od, attr_cols, ordered_departtimes=None,
+                coords=None, verbose=True):
 
-    G = nx.from_pandas_edgelist(od.reset_index(),
-                                orig_col, dest_col,
-                                attr_cols,
-                                nx.MultiDiGraph())
+    od = od.reset_index()
+
+    # Split the nodes of the networks in levels according to the time period of departure
+    if ordered_departtimes is not None:
+        od['Source'] = od['Source'] + '-' + od['Departtime']
+        od['Target'] = od['Target'] + '-' + od['Departtime']
+
+    g = nx.from_pandas_edgelist(od, 'Source',  'Target',
+                                attr_cols, nx.MultiDiGraph())
+
+    # add a filed to indicate whether the edge is a connector
+    nx.set_edge_attributes(g, False, 'Connector')
+
+    g = nettools.add_chron_connectors(g, ordered_departtimes)
+
     if verbose:
-        print('Network density: {:.2%}'.format(nx.density(G)))
+        print('Network density: {:.2%}'.format(nx.density(g)))
 
     if coords is not None:
         d_coords = coords.to_dict()
-        nx.set_node_attributes(G, d_coords, '(x,y)')
-    return G
+        nx.set_node_attributes(g, d_coords, '(x,y)')
+
+    return g
 
 
+def zones_seq_to_tr(zones_seq, g, filter_dirs):
+
+    def filter_leg_attrs_by_purpose(attrs, filter_directions):
+        attrs = [_la for _la in attrs if _la['Direction'] in filter_directions]
+        return attrs
+
+    def prepare_leg_attrs(_g, _src, _tgt, filter_directions):
+        # convert to list of dicts
+        attrs = [_la for k, _la in _g.get_edge_data(_src, _tgt).items()]
+        if attrs[0]['Connector']:
+            return []
+        else:
+            attrs = filter_leg_attrs_by_purpose(attrs, filter_directions)
+            return attrs
+
+    filter_dir_orig = filter_dirs.from_home
+    filter_dir_dest = filter_dirs.to_home
+    filter_dir_interm = filter_dirs.non_home
+
+    # List of lists with all the available alternatives for each leg
+    legs_combs = list()
+
+    leg_attrs = prepare_leg_attrs(g, zones_seq[0], zones_seq[1],
+                                  filter_dir_orig)
+    avail_legs = list()
+    for la in leg_attrs:
+        leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
+        avail_legs.append(leg)
+    legs_combs.append(avail_legs.copy())
+
+    if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
+        for src, tgt in utils.pairwise(zones_seq[1:-1]):
+            avail_legs.clear()
+            leg_attrs = prepare_leg_attrs(g, src, tgt, filter_dir_interm)
+            for la in leg_attrs:
+                leg = Leg(source=src, target=tgt, **la)
+                avail_legs.append(leg)
+            # Do not add connectors
+            if leg_attrs:
+                legs_combs.append(avail_legs.copy())
+
+    # Last leg attrs
+    leg_attrs = prepare_leg_attrs(g, zones_seq[-2], zones_seq[-1],
+                                  filter_dir_dest)
+    avail_legs.clear()
+    for la in leg_attrs:
+        leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
+        avail_legs.append(leg)
+    legs_combs.append(avail_legs.copy())
+
+    legs_combs = list(itertools.product(*legs_combs))
+
+    trs = list()
+    for lc in legs_combs:
+        tr = TripChain(legs=lc)
+        trs.append(tr)
+    return trs
+
+"""
 def zones_seq_to_trs(zones_seq, G, filter_dirs):
 
     def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
@@ -37,6 +108,9 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
         return leg_attrs
 
     def prepare_leg_attrs(G, source, target, filter_directions):
+        if G.get_edge_data(source, target) is None:
+            a=1
+
         leg_attrs = G.get_edge_data(source, target).values()
         leg_attrs = filter_leg_attrs_by_purpose(leg_attrs, filter_directions)
 
@@ -82,6 +156,7 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
         tr = TripChain(legs=lc)
         trs.append(tr)
     return trs
+"""
 
 
 def trs_to_df(trs, target_distr, distr_dims, dist_bins):
@@ -120,48 +195,27 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
     return trs_descr_df, trs_info_df
 
 
-def df_to_graph(df, attr_cols=None):
-    g = nx.from_pandas_edgelist(df.reset_index(),
-                                'Source', 'Target',
-                                attr_cols, nx.MultiDiGraph())
-
-    return g
-
-
-def identify_loops_wrapper(src, G, max_legs, filter_dirs):
-
-    search_type = 'loops'
-    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, filter_dirs, search_type)
-
-    if not zones_seqs:
-        return None, None
-
-    return src, zones_seqs
-
-
 def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
-                         filter_dirs, ordered_time_periods, target_distr,
+                         filter_dirs, ordered_departtimes, target_distr,
                          distr_dims):
 
-    search_type = 'tours'
-    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, filter_dirs, search_type)
+    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, include_loops,
+                                                   filter_dirs, ordered_departtimes)
 
     if not zones_seqs:
         return None
 
     filtered_trs = list()
 
-    # Complete the zones_seqs with the loops
-    if include_loops:
-        zones_seqs = nettools.include_loops(zones_seqs, loops, max_legs=max_legs)
-
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_possible_trs(trs, ordered_time_periods)
+        trs = zones_seq_to_tr(zs, G, filter_dirs)
+        #print('before filt:{}'.format(len(trs)))
+        trs = filters.filter_possible_trs(trs, ordered_departtimes)
+        #print('after filt:{}'.format(len(trs)))
 
         # filter by maximum distance
         if max_tr_dist:
-            trs = filters.filetr_trs_by_max_dist(trs, max_tr_dist)
+            trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
             trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims)
@@ -175,58 +229,47 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
         return
 
 
-def init_identify_trs_wrapper(_G, _loops):
+def init_identify_trs_wrapper(_G):
     global G
-    global loops
     G = _G
-    loops = _loops
 
 
 def od2trs(od, max_legs=None, include_loops=False,
            filter_dirs=None,
-           ordered_time_periods=None,
+           ordered_departtimes=None,
            target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    attr_cols = ['Purpose', 'Direction', 'Departtime']
+    attr_cols = ['Purpose', 'Direction', 'Departtime', 'Dailytrips']
+
+    od_g = od.copy()
 
     if distances is not None:
         attr_cols.append('Distance')
-        od = od.join(distances)
+        od_g = od_g.to_frame().join(distances)
 
-    G = od_to_G(od, orig_col='Source', dest_col='Target',
-                attr_cols=attr_cols, coords=coords)
+    G = od_to_graph(od_g, attr_cols=attr_cols,
+                    ordered_departtimes=ordered_departtimes,
+                    coords=coords)
 
     zones = G.nodes
 
     if not ncores:
         ncores = cpu_count()-1
 
-    descrs = list()
-    infos = list()
+    with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G]) as pool:
+        descrs = list()
+        infos = list()
+        tr_id = 1
 
-    tr_id = 1
-
-    if include_loops:
-        with Pool(ncores) as pool:
-            loops = dict()
-            for z, lps in tqdm(pool.imap_unordered(partial(
-                                 identify_loops_wrapper,
-                                 G=G, max_legs=max_legs,
-                                 filter_dirs=filter_dirs),
-                                 zones), total=len(zones)):
-                if z:
-                    loops[z] = lps
-
-    with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G, loops]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
                         identify_trs_wrapper,
                         max_legs=max_legs,
                         max_tr_dist=max_tr_dist,
                         include_loops=include_loops,
                         filter_dirs=filter_dirs,
-                        ordered_time_periods=ordered_time_periods,
+                        ordered_departtimes=ordered_departtimes,
                         target_distr=target_distr,
                         distr_dims=distr_dims),
                         zones), total=len(zones)):

@@ -181,6 +181,7 @@ def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
 
     return od_filtered
 
+
 def collapse_tours_descr(trs_descr, descr_cols, drop_duplicates=False):
     trs_collapsed = trs_descr.groupby('Tourid')[descr_cols].agg(tuple)
     if drop_duplicates:

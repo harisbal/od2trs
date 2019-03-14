@@ -97,8 +97,8 @@ def prepare_traj_params(traj):
 
     traj.par.trs.distr_dims = PickleParameter('distr_dims', params['distr_dims'][0], comment='Distribution Dimensions')
 
-    traj.par.trs.ordered_time_periods = Parameter('ordered_time_periods',
-                                                  params['ordered_time_periods'],
+    traj.par.trs.ordered_departtimes = Parameter('ordered_departtimes',
+                                                  params['ordered_departtimes'],
                                                   comment='Distribution Dimensions')
 
     traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh',

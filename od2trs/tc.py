@@ -12,8 +12,9 @@ class Leg:
                  purpose=None, departtime=None,
                  direction=None, distance=None, **kwargs):
 
-        self.source = source
-        self.target = target
+        # Tours deriving from multilevel graphs include the time level in the name
+        self.source = source.split('-')[0]
+        self.target = target.split('-')[0]
         self.purpose = purpose
         self.direction = direction
         self.departtime = departtime
@@ -53,13 +54,19 @@ class TripChain:
         self.distance = self.calculate_distance()
 
     def is_tour(self):
-        if self.legs[0].source == self.legs[-1].target:
+        # Tours deriving from multilevel graphs include the time level in the name
+        src = self.legs[0].source.split('-')[0]
+        tgt = self.legs[-1].target.split('-')[0]
+
+        if src == tgt:
             return True
         else:
             return False
 
     def count_loops(self):
-        loops_cnt = max(collections.Counter(self.zones).values())
+        # Tours deriving from multilevel graphs include the time level in the name
+        zns = [z.split('-')[0] for z in self.zones]
+        loops_cnt = max(collections.Counter(zns).values())
         return loops_cnt
 
     def is_chron_ordered(self, departtimes_ordered):
