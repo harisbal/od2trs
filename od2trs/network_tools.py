@@ -156,13 +156,20 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
     zones_seqs = list()
     for tgt in subsequent_zones:
         tgt_name, tgt_dt = tgt.split('-', 1)
+
         print('searching {}:{}'.format(src, tgt))
         gt = g_init.copy()
         zones = list(gt.nodes)
 
+        # Remove links outside the time levels as defined by the src and the tgt
+        gt = filters.remove_links_by_timelevel(gt, src_dt, tgt_dt, ordered_departtimes)
         # Remove nhbased from ends
         gt = filters.remove_links_by_direction(gt, src, nh_names, direction='both')
         gt = filters.remove_links_by_direction(gt, tgt, nh_names, direction='both')
+        # Remove th from src
+        gt = filters.remove_links_by_direction(gt, src, th_names, direction='to-home')
+        # Remove fh from tgt
+        gt = filters.remove_links_by_direction(gt, tgt, fh_names, direction='from-home')
 
         to_remove = set([src, tgt])
         for trmv in to_remove:
@@ -171,9 +178,6 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
 
         gt = filters.remove_links_by_direction(gt, zones, fh_names, direction='from-home')
         gt = filters.remove_links_by_direction(gt, zones, th_names, direction='to-home')
-
-        # Remove links outside the time levels as defined by the src and the tgt
-        gt = filters.remove_links_by_timelevel(gt, src_dt, tgt_dt, ordered_departtimes)
 
         if src == tgt:
             print('loops')

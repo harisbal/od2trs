@@ -99,19 +99,19 @@ def remove_links_by_direction(g, srcs, names, direction):
 
     gfilt = g.copy()
     if direction == 'from-home':
-        for s, t, attr in g.out_edges(srcs, data='Direction'):
-            if attr in names:
-                gfilt.remove_edge(s, t)
+        for s, t, k, val in g.out_edges(srcs, data='Direction', keys=True):
+            if val in names:
+                gfilt.remove_edge(s, t, k)
 
     elif direction == 'to-home':
-        for s, t, attr in g.in_edges(srcs, data='Direction'):
-            if attr in names:
-                gfilt.remove_edge(s, t)
+        for s, t, k, val in g.in_edges(srcs, data='Direction', keys=True):
+            if val in names:
+                gfilt.remove_edge(s, t, k)
 
     elif direction == 'both':
-        for s, t, attr in g.edges(srcs, data='Direction'):
-            if attr in names:
-                gfilt.remove_edge(s, t)
+        for s, t, k, val in g.edges(srcs, data='Direction', keys=True):
+            if val in names:
+                gfilt.remove_edge(s, t, k)
 
     else:
         raise KeyError('Value parameter "direction" not accepted,'
