@@ -9,12 +9,12 @@ def init():
 
     parameters = dict()
 
-    parameters['run_optimisation'] = True
+    parameters['run_optimisation'] = False
 
     # explore multiple scenarios or not
-    parameters['explore'] = False
+    parameters['explore'] = True
     # TODO at the moment if explore=True, export_flat overwrites results
-    parameters['export_flat'] = True
+    parameters['export_flat'] = False
 
     parameters['max_tr_dist'] = 11_000 #16_200
     # Could include Activities but tcs not ready yet
@@ -24,12 +24,12 @@ def init():
     parameters['distribution_percent_thresh'] = [None]  # Check in analysis/summary_observed_trs.xlsx
 
     parameters['max_legs'] = [5]
-    parameters['trips_thresh'] = [1]
+    parameters['trips_thresh'] = [50, 10, 5, 4, 3]
     parameters['include_loops'] = [False]
     parameters['distr_constr_enabled'] = [False]
 
     # parallel threads
-    parameters['ncores'] = 1
+    parameters['ncores'] = None
     parameters['submit_to_neos'] = False
 
     parameters['ordered_departtimes'] = ['AM', 'IP', 'PM', 'OP']

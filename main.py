@@ -69,11 +69,11 @@ def main(traj):
         trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
         trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
 
-        results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
-
         print('Complete!')
 
-        return results
+    results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
+
+    return results
 
 
 if __name__ == '__main__':

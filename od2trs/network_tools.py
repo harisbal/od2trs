@@ -132,7 +132,6 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
     :return zones_seqs: zones sequences
     """
 
-    print('zones seqs for {} begins'.format(src))
 
     fh_names = filter_dir_names.from_home
     th_names = filter_dir_names.to_home
@@ -157,7 +156,6 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
     for tgt in subsequent_zones:
         tgt_name, tgt_dt = tgt.split('-', 1)
 
-        print('searching {}:{}'.format(src, tgt))
         gt = g_init.copy()
         zones = list(gt.nodes)
 
@@ -180,11 +178,9 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
         gt = filters.remove_links_by_direction(gt, zones, th_names, direction='to-home')
 
         if src == tgt:
-            print('loops')
             zss = identify_cycles(gt, src, max_legs-2)
             zones_seqs.extend(zss)
         else:
-            print('simple paths')
             tgt_name, tgt_dt = tgt.split('-', 1)
             # jumping between time levels requires extra legs
             extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
@@ -209,7 +205,6 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
                         zs_loop = zs[:idx-1] + l + zs[idx+1:]
                         zones_seqs.append(zs_loop)
 
-    print('zones seqs for {} found'.format(src))
     return zones_seqs
 
 

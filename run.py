@@ -15,10 +15,10 @@ __author__ = 'Robert Meyer'
 import os
 import shutil
 import logging
+import time
 
 from pypet import Environment, cartesian_product, Parameter, PickleParameter
 
-# Lets import the stuff we already have:
 import main as mn
 from od2trs import io as myio
 
@@ -56,17 +56,19 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
         prepare_inputs(data_src, aggr_lvl, perc_sample_size)
 
     # Run simulation
+    start_time = time.time()
     results = mn.main(traj)
+    elapsed_time = time.time() - start_time
 
     if export_flat:
         myio.export_results(results)
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-
     traj.f_add_result('od', od, comment='od_')
     traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
+    traj.f_add_result('eplased_time', elapsed_time, comment='Elapsed time')
 
     if target_distr is not None:
         traj.f_add_result('target_distr', target_distr, comment='target_distr')
@@ -168,18 +170,23 @@ def prepare_traj_params(traj):
 
     if explore:
         # TODO read exploration space from file
+        """
         # Explore
         explore_d = {'data_source': ['tests'],
                      'aggr_level': ['aggrlvl'],
                      'perc_sample_size': [1.0],
                      'distr_dims': [['Legs', 'Distancegroup'], ['Legs', 'Distancegroup', 'Departtimes']],
-                     'max_legs': [6],
-                     'trips_thresh': [1],
+                     'max_legs': [5],
+                     'trips_thresh': [50, 10, 5, 4, 3],
                      'distr_constr_enabled': [False]}
 
         explore_order = ('data_source', 'aggr_level', 'max_legs',
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
+        """
+        explore_d = {'max_legs': [5], 'trips_thresh': [50, 10, 5, 4, 3]}
+
+        explore_order = ('max_legs', 'trips_thresh')
 
         explore_d = cartesian_product(explore_d, explore_order)
 

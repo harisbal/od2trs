@@ -66,7 +66,6 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     mask = od.index.get_level_values('Source') != od.index.get_level_values('Target')
     od = od[mask]
 
-    # test to exclude all nhb >1
     od.dropna(inplace=True)
 
     # Round
@@ -78,9 +77,10 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od.set_index('Legid', append=True, inplace=True)
     od = od.squeeze()
 
-    mask = (od.index.get_level_values('Purpose') == 'NHB') & (od > 1)
-    od.loc[mask] = None
-    od.dropna(inplace=True)
+    # test to exclude all nhb >1
+    #mask = (od.index.get_level_values('Purpose') == 'NHB') & (od > 10)
+    #od.loc[mask] = None
+    #od.dropna(inplace=True)
 
     return od
 
