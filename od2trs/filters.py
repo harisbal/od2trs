@@ -130,11 +130,11 @@ def remove_links_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
     src_dt_idx = ordered_departtimes.index(src_dt)
     tgt_dt_idx = ordered_departtimes.index(tgt_dt)
 
-    for s, t, dt in g.edges(data='Departtime'):
+    for s, t, k, dt in g.edges(data='Departtime', keys=True):
         if dt:
             dt_idx = ordered_departtimes.index(dt)
             if not src_dt_idx <= dt_idx <= tgt_dt_idx:
-                gfilt.remove_edge(s, t)
+                gfilt.remove_edge(s, t, k)
 
     return gfilt
 
