@@ -92,23 +92,23 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def remove_links_by_direction(g, srcs, names, attr):
+def remove_links_by_direction(g, srcs, names, direction):
 
     if not isinstance(srcs, list):
         srcs = [srcs]
 
     gfilt = g.copy()
-    if attr == 'from-home':
+    if direction == 'from-home':
         for s, t, attr in g.out_edges(srcs, data='Direction'):
             if attr in names:
                 gfilt.remove_edge(s, t)
 
-    elif attr == 'to-home':
+    elif direction == 'to-home':
         for s, t, attr in g.in_edges(srcs, data='Direction'):
             if attr in names:
                 gfilt.remove_edge(s, t)
 
-    elif attr == 'both':
+    elif direction == 'both':
         for s, t, attr in g.edges(srcs, data='Direction'):
             if attr in names:
                 gfilt.remove_edge(s, t)

@@ -161,16 +161,16 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
         zones = list(gt.nodes)
 
         # Remove nhbased from ends
-        gt = filters.remove_links_by_direction(gt, src, nh_names, attr='both')
-        gt = filters.remove_links_by_direction(gt, tgt, nh_names, attr='both')
+        gt = filters.remove_links_by_direction(gt, src, nh_names, direction='both')
+        gt = filters.remove_links_by_direction(gt, tgt, nh_names, direction='both')
 
         to_remove = set([src, tgt])
         for trmv in to_remove:
             if trmv in zones:
                 zones.remove(trmv)
 
-        gt = filters.remove_links_by_direction(gt, zones, fh_names, attr='from-home')
-        gt = filters.remove_links_by_direction(gt, zones, th_names, attr='to-home')
+        gt = filters.remove_links_by_direction(gt, zones, fh_names, direction='from-home')
+        gt = filters.remove_links_by_direction(gt, zones, th_names, direction='to-home')
 
         # Remove links outside the time levels as defined by the src and the tgt
         gt = filters.remove_links_by_timelevel(gt, src_dt, tgt_dt, ordered_departtimes)
