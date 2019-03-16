@@ -1,5 +1,48 @@
 import pandas as pd
 
+def exclude_unreachable_nodes(G, src, limit):
+    """
+    Exclude nodes from the graph which cannot be accessed form the src in less than max_legs/2 legs
+    Parameters
+    ----------
+    G : NetworkX DiGraph
+       A directed graph
+    src : node
+      the node where cycles will originate from
+    limit : int
+      an integer specifying the maximum allowed length of cycles
+    Returns
+    -------
+    G : NetworkX Graph
+       A directed graph where cycles starting from source
+       cannot be longer than the limit
+
+    """
+
+    subG = None
+    sccs = nx.strongly_connected_components(G)
+    for scc in sccs:
+        if src in scc:
+            subG = G.subgraph(scc)
+            break
+    if subG:
+        lens_from_source = nx.single_source_shortest_path_length(subG, source=src)
+        lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=src))
+
+        lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
+                          for k in set(lens_from_source)}
+
+        # if the cycle len is greater than the limit do not include nodes in the new G
+        nodes = set()
+        nodes.add(src)
+        for k, length in lens_min_cycle.items():
+            if length <= limit:
+                nodes.add(k)
+
+        return G.subgraph(nodes)
+    else:
+        return G
+
 
 def get_observed_tours_descr(infilepath, idx_cols):
     idx_cols = [str.capitalize(v) for v in idx_cols]

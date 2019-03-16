@@ -1,10 +1,11 @@
+import io
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from functools import partial
 
 import itertools
 import pandas as pd
-import networkx as nx
+import graph_tool as gt
 
 import od2trs.utilities as utils
 import od2trs.network_tools as nettools
@@ -18,26 +19,75 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
                 coords=None, verbose=True):
 
     od = od.reset_index()
+    od = od[['Source', 'Target'] + attr_cols]
+
+    od = od.fillna(0)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_departtimes is not None:
         od['Source'] = od['Source'] + '-' + od['Departtime']
         od['Target'] = od['Target'] + '-' + od['Departtime']
 
-    g = nx.from_pandas_edgelist(od, 'Source',  'Target',
-                                attr_cols, nx.MultiDiGraph())
+    d_dtypes = {'object': 'string',
+                'int32': 'int32_t',
+                'int64': 'int64_t',
+                'float32': 'double',
+                'float64': 'double'}
+
+
+    # text buffer
+    buf = io.StringIO()
+    # saving a data frame to a buffer (same as with a regular file):
+    od.to_csv(buf, index=False)
+    # position to beginning
+    buf.seek(0)
+
+    """
+    g = gt.load_graph_from_csv(buf, directed=True, hashed=True,
+                               eprop_types=eprop_types,
+                               eprop_names=od.columns.tolist(),
+                               skip_first=True)
+    """
+
+    eprop_types = od.dtypes.apply(str).replace(d_dtypes).tolist()[2:]
+    eprop_names = od.columns.tolist()[2:]
+
+    g = gt.load_graph_from_csv(buf, directed=True, skip_first=True,
+                               eprop_names=eprop_names, eprop_types=eprop_types)
+
+    # add the timeperiod PropertyMap to vertices
+    vertex_names = list(g.vp['name'])
+    zones, tps = zip(*(s.split("-") for s in vertex_names))
+    vprop_zones = g.new_vertex_property('string')
+    vprop_tps = g.new_vertex_property('string')
+    g.vp['Zone'] = vprop_zones
+    g.vp['Departtime'] = vprop_tps
+
+    for i, v in enumerate(g.get_vertices()):
+        g.vp['Zone'][v] = zones[i]
+        g.vp['Departtime'][v] = tps[i]
 
     # add a filed to indicate whether the edge is a connector
-    nx.set_edge_attributes(g, False, 'Connector')
+    eprop_connector = g.new_edge_property('bool', False)
+    g.edge_properties['Connector'] = eprop_connector
 
-    g = nettools.add_chron_connectors(g, ordered_departtimes)
+    if ordered_departtimes:
+        g = nettools.add_chron_connectors(g, ordered_departtimes)
+
+    cnt_edges = g.get_edges().size
+    cnt_vertices = g.get_vertices().size
+    density = 2 * cnt_edges / (cnt_vertices * (cnt_vertices-1))
+
+    if g.is_directed():
+        density /= 2
 
     if verbose:
-        print('Network density: {:.2%}'.format(nx.density(g)))
+        print('Network density: {:.2%}'.format(density))
 
     if coords is not None:
-        d_coords = coords.to_dict()
-        nx.set_node_attributes(g, d_coords, '(x,y)')
+        pass
+        #d_coords = coords.to_dict()
+        #nx.set_node_attributes(g, d_coords, '(x,y)')
 
     return g
 
@@ -100,64 +150,6 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
         trs.append(tr)
     return trs
 
-"""
-def zones_seq_to_trs(zones_seq, G, filter_dirs):
-
-    def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
-        leg_attrs = [la for la in leg_attrs if la['Direction'] in filter_directions]
-        return leg_attrs
-
-    def prepare_leg_attrs(G, source, target, filter_directions):
-        if G.get_edge_data(source, target) is None:
-            a=1
-
-        leg_attrs = G.get_edge_data(source, target).values()
-        leg_attrs = filter_leg_attrs_by_purpose(leg_attrs, filter_directions)
-
-        return leg_attrs
-
-    filter_dir_orig = filter_dirs.from_home
-    filter_dir_dest = filter_dirs.to_home
-    filter_dir_interm = filter_dirs.non_home
-
-    # List of lists with all the available alternatives for each leg
-    legs_combs = list()
-
-    leg_attrs = prepare_leg_attrs(G, zones_seq[0], zones_seq[1],
-                                  filter_dir_orig)
-    avail_legs = list()
-    for la in leg_attrs:
-        leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
-        avail_legs.append(leg)
-    legs_combs.append(avail_legs.copy())
-
-    if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
-        for o, d in utils.pairwise(zones_seq[1:-1]):
-            avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(G, o, d, filter_dir_interm)
-            for la in leg_attrs:
-                leg = Leg(source=o, target=d, **la)
-                avail_legs.append(leg)
-            legs_combs.append(avail_legs.copy())
-
-    # Last leg attrs
-    leg_attrs = prepare_leg_attrs(G, zones_seq[-2], zones_seq[-1],
-                                  filter_dir_dest)
-    avail_legs.clear()
-    for la in leg_attrs:
-        leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
-        avail_legs.append(leg)
-    legs_combs.append(avail_legs.copy())
-
-    legs_combs = list(itertools.product(*legs_combs))
-
-    trs = list()
-    for lc in legs_combs:
-        tr = TripChain(legs=lc)
-        trs.append(tr)
-    return trs
-"""
-
 
 def trs_to_df(trs, target_distr, distr_dims, dist_bins):
 
@@ -209,9 +201,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
 
     for zs in zones_seqs:
         trs = zones_seq_to_tr(zs, G, filter_dirs)
-        #print('before filt:{}'.format(len(trs)))
         trs = filters.filter_possible_trs(trs, ordered_departtimes)
-        #print('after filt:{}'.format(len(trs)))
 
         # filter by maximum distance
         if max_tr_dist:
@@ -243,17 +233,15 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     attr_cols = ['Purpose', 'Direction', 'Departtime', 'Dailytrips']
 
-    od_g = od.copy()
-
     if distances is not None:
         attr_cols.append('Distance')
-        od_g = od_g.to_frame().join(distances)
+        od_g = od.to_frame().join(distances)
 
     G = od_to_graph(od_g, attr_cols=attr_cols,
                     ordered_departtimes=ordered_departtimes,
                     coords=coords)
 
-    zones = G.nodes
+    zones = range(G.get_vertices().size)
 
     if not ncores:
         ncores = cpu_count()-1

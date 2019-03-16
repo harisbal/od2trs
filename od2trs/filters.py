@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import graph_tool as gt
 
 
 def filter_possible_trs(trs, ordered_departtimes):
@@ -92,51 +93,59 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def remove_links_by_direction(g, srcs, names, direction):
+def remove_edges_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
+    """
+    Only links between the src_dt and tgt_dt are required
+    """
+
+    src_dt_idx = ordered_departtimes.index(src_dt)
+    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
+
+    efilt = g.new_edge_property('bool', True)
+
+    for e in g.edges():
+        if not g.ep['Connector'][e]:
+            dt_idx = ordered_departtimes.index(g.ep['Departtime'][e])
+            if not src_dt_idx <= dt_idx <= tgt_dt_idx:
+                efilt[e] = False
+
+    gf = gt.Graph(gt.GraphView(g, efilt=efilt), prune=True)
+
+    return gf
+
+
+def remove_edges_by_direction(g, srcs, names, direction):
 
     if not isinstance(srcs, list):
         srcs = [srcs]
 
-    gfilt = g.copy()
+    efilt = g.new_edge_property('bool', True)
+
     if direction == 'from-home':
-        for s, t, k, val in g.out_edges(srcs, data='Direction', keys=True):
-            if val in names:
-                gfilt.remove_edge(s, t, k)
+        for src in srcs:
+            for e in src.out_edges():
+                if g.ep['Direction'][e] in names:
+                    efilt[e] = False
 
     elif direction == 'to-home':
-        for s, t, k, val in g.in_edges(srcs, data='Direction', keys=True):
-            if val in names:
-                gfilt.remove_edge(s, t, k)
+        for src in srcs:
+            for e in src.in_edges():
+                if g.ep['Direction'][e] in names:
+                    efilt[e] = False
 
     elif direction == 'both':
-        for s, t, k, val in g.edges(srcs, data='Direction', keys=True):
-            if val in names:
-                gfilt.remove_edge(s, t, k)
+        for src in srcs:
+            for e in src.all_edges():
+                if g.ep['Direction'][e] in names:
+                    efilt[e] = False
 
     else:
         raise KeyError('Value parameter "direction" not accepted,'
                         'Accepted values: "from-home", "to-home", "both"')
 
-    return gfilt
+    gf = gt.Graph(gt.GraphView(g, efilt=efilt), prune=True)
 
-
-def remove_links_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
-    """
-    Only links between the src_dt and tgt_dt are required
-    """
-
-    gfilt = g.copy()
-
-    src_dt_idx = ordered_departtimes.index(src_dt)
-    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
-
-    for s, t, k, dt in g.edges(data='Departtime', keys=True):
-        if dt:
-            dt_idx = ordered_departtimes.index(dt)
-            if not src_dt_idx <= dt_idx <= tgt_dt_idx:
-                gfilt.remove_edge(s, t, k)
-
-    return gfilt
+    return gf
 
 
 def extract_tour_times_used(optim_results):

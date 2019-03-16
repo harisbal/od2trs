@@ -1,6 +1,8 @@
 import itertools
-import networkx as nx
+import graph_tool as gt
 import od2trs.filters as filters
+
+from graph_tool.util import find_vertex
 
 
 def include_loops(zones_seqs, loops, max_legs=None):
@@ -25,9 +27,12 @@ def add_chron_connectors(g, ordered_departtimes):
     adding the connectors between nodes on different layer
     """
 
+    names = list(g.vp['name'])
+    d_vertex_names = dict(zip(names, range(len(names))))
+
     # dict with all the departtimes a trip begins from each node
     node_departtimes = dict()
-    for n in g.nodes:
+    for n in g.vp['name']:
         node, dt = n.split('-', 1)
         node_departtimes.setdefault(node, set()).update([dt])
 
@@ -38,87 +43,23 @@ def add_chron_connectors(g, ordered_departtimes):
         for i, dt_src in enumerate(dts):
             if i < len(dts):
                 for dt_tgt in dts[i+1:]:
-                    src = '{}-{}'.format(n, dt_src)
-                    tgt = '{}-{}'.format(n, dt_tgt)
 
-                    g.add_edge(src, tgt, Connector=True)
+                    src_name = '{}-{}'.format(n, dt_src)
+                    tgt_name = '{}-{}'.format(n, dt_tgt)
+
+                    src_idx = d_vertex_names[src_name]
+                    tgt_idx = d_vertex_names[tgt_name]
+
+                    e = g.add_edge(src_idx, tgt_idx)
+                    g.ep['Connector'][e] = True
 
     return g
 
 
-def reduce_od_density(od, filter_dirs):
-
-    """
-    The od can be potentially reduced by applying some logical filters
-    """
-
-    filter_dir_fh = filter_dirs.from_home
-    filter_dir_th = filter_dirs.to_home
-    filter_dir_nhb = filter_dirs.non_home
-
-    fh = od[od.index.get_level_values('Direction').isin(filter_dir_fh)]
-    th = od[od.index.get_level_values('Direction').isin(filter_dir_th)]
-
-    # he zones which produce fh trips to only one zone can be eliminated
-    cnt_targets = fh.groupby(level=['Source', 'Target']).count()
-    single_target = cnt_targets[cnt_targets == 1]
-
-    grpby_cols = ['Source', 'Target', 'Purpose', 'Direction']
-    fh = fh.groupby(grpby_cols).sum()
-    th = th.groupby(grpby_cols).sum()
-
-    # swap sources with targets
-    th_reversed = th.swaplevel('Target', 'Source')
-    th_reversed.index.names = fh.index.names
-
-    return od
 
 
-def exclude_unreachable_nodes(G, src, limit):
-    """
-    Exclude nodes from the graph which cannot be accessed form the src in less than max_legs/2 legs
-    Parameters
-    ----------
-    G : NetworkX DiGraph
-       A directed graph
-    src : node
-      the node where cycles will originate from
-    limit : int
-      an integer specifying the maximum allowed length of cycles
-    Returns
-    -------
-    G : NetworkX Graph
-       A directed graph where cycles starting from source
-       cannot be longer than the limit
 
-    """
-
-    subG = None
-    sccs = nx.strongly_connected_components(G)
-    for scc in sccs:
-        if src in scc:
-            subG = G.subgraph(scc)
-            break
-    if subG:
-        lens_from_source = nx.single_source_shortest_path_length(subG, source=src)
-        lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=src))
-
-        lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
-                          for k in set(lens_from_source)}
-
-        # if the cycle len is greater than the limit do not include nodes in the new G
-        nodes = set()
-        nodes.add(src)
-        for k, length in lens_min_cycle.items():
-            if length <= limit:
-                nodes.add(k)
-
-        return G.subgraph(nodes)
-    else:
-        return G
-
-
-def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, ordered_departtimes):
+def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_names, ordered_departtimes):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each osrc zone
@@ -132,60 +73,76 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
     :return zones_seqs: zones sequences
     """
 
+    #names = list(g.vp['name'])
+    #d_vertex_names = dict(zip(names, range(len(names))))
+    #src_name = d_vertex_names[src]
+
+    # Retrieve the vertex based on its index
+    src = g.vertex(src_idx)
 
     fh_names = filter_dir_names.from_home
     th_names = filter_dir_names.to_home
     nh_names = filter_dir_names.non_home
 
     # Create a list with all the src zones in different departtimes(dt)
-    src_name, src_dt = src.split('-', 1)
+    src_name = g.vp['Zone'][src]
+    src_dt = g.vp['Departtime'][src]
 
     subsequent_departtimes = [dt for dt in ordered_departtimes if
                               ordered_departtimes.index(dt) >= ordered_departtimes.index(src_dt)]
 
-    subsequent_zones = ['{}-{}'.format(src_name, dt) for dt in subsequent_departtimes]
 
-    g_init = g.copy()
+    # Get the the src zones accross all time levels
+    zones = find_vertex(g, g.vp['Zone'], src_name)
+    # filter for the subsequent ones
+    subsequent_zones = [z for z in zones if g.vp['Departtime'][z] in subsequent_departtimes]
+
     # Remove connectors between src zone departtime levels
-    for s, t, attr in g.edges(data='Connector'):
-        if attr:
-            if (s in subsequent_zones) and (t in subsequent_zones):
-                g_init.remove_edge(s, t)
+    efilt = g.new_edge_property('bool', True)
+
+    for e in src.out_edges():
+        if g.ep['Connector'][e]:
+            if g.vp['Zone'][e.source()] == g.vp['Zone'][src]:
+                efilt[e] = False
+
+    gv = gt.GraphView(g, efilt=efilt)
+    #g = gt.Graph(gt.GraphView(g, efilt=efilt), prune=True)
 
     zones_seqs = list()
     for tgt in subsequent_zones:
-        tgt_name, tgt_dt = tgt.split('-', 1)
+        tgt_name = g.vp['Zone'][tgt]
+        tgt_dt = g.vp['Departtime'][tgt]
 
-        gt = g_init.copy()
-        zones = list(gt.nodes)
+        #gl = gv.copy()
+        #zones = list(gl.nodes)
 
         # Remove links outside the time levels as defined by the src and the tgt
-        gt = filters.remove_links_by_timelevel(gt, src_dt, tgt_dt, ordered_departtimes)
+        gv = filters.remove_edges_by_timelevel(gv, src_dt, tgt_dt, ordered_departtimes)
         # Remove nhbased from ends
-        gt = filters.remove_links_by_direction(gt, src, nh_names, direction='both')
-        gt = filters.remove_links_by_direction(gt, tgt, nh_names, direction='both')
+        gl = filters.remove_edges_by_direction(gv, src, nh_names, direction='both')
+        gl = filters.remove_edges_by_direction(gl, tgt, nh_names, direction='both')
         # Remove th from src
-        gt = filters.remove_links_by_direction(gt, src, th_names, direction='to-home')
+        gl = filters.remove_edges_by_direction(gl, src, th_names, direction='to-home')
         # Remove fh from tgt
-        gt = filters.remove_links_by_direction(gt, tgt, fh_names, direction='from-home')
+        gl = filters.remove_edges_by_direction(gl, tgt, fh_names, direction='from-home')
 
         to_remove = set([src, tgt])
         for trmv in to_remove:
             if trmv in zones:
                 zones.remove(trmv)
 
-        gt = filters.remove_links_by_direction(gt, zones, fh_names, direction='from-home')
-        gt = filters.remove_links_by_direction(gt, zones, th_names, direction='to-home')
+        gl = filters.remove_edges_by_direction(gl, zones, fh_names, direction='from-home')
+        gl = filters.remove_edges_by_direction(gl, zones, th_names, direction='to-home')
 
         if src == tgt:
-            zss = identify_cycles(gt, src, max_legs-2)
+            zss = identify_cycles(gl, src, max_legs-2)
             zones_seqs.extend(zss)
         else:
             tgt_name, tgt_dt = tgt.split('-', 1)
             # jumping between time levels requires extra legs
             extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
             max_legs_extra = max_legs + extra_legs
-            zss = nx.all_simple_paths(gt, src, tgt, max_legs_extra)
+            zss = nx.all_simple_paths(gl, src, tgt, max_legs_extra)
             zones_seqs.extend(zss)
 
         # TODO has not been tested
@@ -195,7 +152,7 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
                     idx = zs.index(interm_zone)
                     max_legs_loop = max_legs - len(zs) - 1
 
-                    g_loops = gt.copy()
+                    g_loops = gl.copy()
                     g_loops = filters.remove_fromhome(g_loops, interm_zone, fh_names)
                     g_loops = filters.remove_tohome(g_loops, interm_zone, th_names)
 
@@ -210,9 +167,10 @@ def identify_zones_sequences(g, src, max_legs, include_loops, filter_dir_names, 
 
 def identify_cycles(g, src, max_legs):
 
-    out_nodes = g.successors(src)
-    in_nodes = g.predecessors(src)
+    out_nodes = src.out_neighbors
+    in_nodes = g.in_neighbors
 
+    #TODO stoped here!
     # So that src cannot be used to connect out_nodes with in_nodes
     g.remove_node(src)
 
