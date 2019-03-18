@@ -21,6 +21,7 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
     od = od.reset_index()
     od = od[['Source', 'Target'] + attr_cols]
 
+    # TODO may cause issues
     od = od.fillna(0)
 
     # Split the nodes of the networks in levels according to the time period of departure
@@ -41,13 +42,6 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
     od.to_csv(buf, index=False)
     # position to beginning
     buf.seek(0)
-
-    """
-    g = gt.load_graph_from_csv(buf, directed=True, hashed=True,
-                               eprop_types=eprop_types,
-                               eprop_names=od.columns.tolist(),
-                               skip_first=True)
-    """
 
     eprop_types = od.dtypes.apply(str).replace(d_dtypes).tolist()[2:]
     eprop_names = od.columns.tolist()[2:]
@@ -74,8 +68,8 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
     if ordered_departtimes:
         g = nettools.add_chron_connectors(g, ordered_departtimes)
 
-    cnt_edges = g.get_edges().size
-    cnt_vertices = g.get_vertices().size
+    cnt_edges = g.num_edges()
+    cnt_vertices = g.num_vertices()
     density = 2 * cnt_edges / (cnt_vertices * (cnt_vertices-1))
 
     if g.is_directed():
@@ -94,18 +88,25 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
 
 def zones_seq_to_tr(zones_seq, g, filter_dirs):
 
-    def filter_leg_attrs_by_purpose(attrs, filter_directions):
-        attrs = [_la for _la in attrs if _la['Direction'] in filter_directions]
+    def filter_leg_by_direction(g, edge, filter_directions):
+
+        attrs = list()
+        for e in edge:
+            if g.ep['Connector'][e]:
+                continue
+            else:
+                if g.ep['Direction'][e] in filter_directions:
+                    d = dict()
+                    for k, attr in g.ep.items():
+                        d[k] = attr[e]
+                    attrs.append(d)
         return attrs
 
-    def prepare_leg_attrs(_g, _src, _tgt, filter_directions):
-        # convert to list of dicts
-        attrs = [_la for k, _la in _g.get_edge_data(_src, _tgt).items()]
-        if attrs[0]['Connector']:
-            return []
-        else:
-            attrs = filter_leg_attrs_by_purpose(attrs, filter_directions)
-            return attrs
+    # Get the names from the integers sequence
+    zones_seq_names = dict()
+    for k in zones_seq:
+        v = g.vp['name'][k]
+        zones_seq_names[k] = v
 
     filter_dir_orig = filter_dirs.from_home
     filter_dir_dest = filter_dirs.to_home
@@ -114,34 +115,54 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
-    leg_attrs = prepare_leg_attrs(g, zones_seq[0], zones_seq[1],
-                                  filter_dir_orig)
-    avail_legs = list()
-    for la in leg_attrs:
-        leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
-        avail_legs.append(leg)
-    legs_combs.append(avail_legs.copy())
+    edges = g.edge(zones_seq[0], zones_seq[1], all_edges=True)
 
-    if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
-        for src, tgt in utils.pairwise(zones_seq[1:-1]):
-            avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(g, src, tgt, filter_dir_interm)
-            for la in leg_attrs:
-                leg = Leg(source=src, target=tgt, **la)
-                avail_legs.append(leg)
-            # Do not add connectors
-            if leg_attrs:
-                legs_combs.append(avail_legs.copy())
+    # get the attrs of all the (parallel) edges connecting src and tgt
+    all_edge_attrs = filter_leg_by_direction(g, edges, filter_dir_orig)
+
+    avail_legs = list()
+    for attrs in all_edge_attrs:
+        leg = Leg(source=zones_seq_names[zones_seq[0]],
+                  target=zones_seq_names[zones_seq[1]], **attrs)
+        avail_legs.append(leg)
+
+    # case of connectors (should not actually happen)
+    if avail_legs:
+        legs_combs.append(avail_legs.copy())
+
+    if not avail_legs:
+        a = 1
+
+    for src, tgt in utils.pairwise(zones_seq[1:-1]):
+        edges = g.edge(src, tgt, all_edges=True)
+        avail_legs.clear()
+        all_edge_attrs = filter_leg_by_direction(g, edges, filter_dir_interm)
+
+        for attrs in all_edge_attrs:
+            leg = Leg(source=zones_seq_names[src],
+                      target=zones_seq_names[tgt], **attrs)
+            avail_legs.append(leg)
+
+        # case of connectors
+        if avail_legs:
+            legs_combs.append(avail_legs.copy())
 
     # Last leg attrs
-    leg_attrs = prepare_leg_attrs(g, zones_seq[-2], zones_seq[-1],
-                                  filter_dir_dest)
-    avail_legs.clear()
-    for la in leg_attrs:
-        leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
-        avail_legs.append(leg)
-    legs_combs.append(avail_legs.copy())
+    edges = g.edge(zones_seq[-2], zones_seq[-1], all_edges=True)
+    all_edge_attrs = filter_leg_by_direction(g, edges, filter_dir_dest)
 
+    avail_legs.clear()
+
+    for attrs in all_edge_attrs:
+        leg = Leg(source=zones_seq_names[zones_seq[-2]],
+                  target=zones_seq_names[zones_seq[-1]], **attrs)
+        avail_legs.append(leg)
+
+    # case of connectors (should not actually happen)
+    if avail_legs:
+        legs_combs.append(avail_legs.copy())
+
+    # create all the combinations
     legs_combs = list(itertools.product(*legs_combs))
 
     trs = list()
@@ -201,6 +222,9 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
 
     for zs in zones_seqs:
         trs = zones_seq_to_tr(zs, G, filter_dirs)
+        if not trs:
+            continue
+
         trs = filters.filter_possible_trs(trs, ordered_departtimes)
 
         # filter by maximum distance
@@ -216,7 +240,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
     if filtered_trs:
         return filtered_trs
     else:
-        return
+        return None
 
 
 def init_identify_trs_wrapper(_G):

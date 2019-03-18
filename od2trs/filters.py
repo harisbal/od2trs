@@ -1,4 +1,5 @@
 import re
+from collections.abc import Iterable
 import pandas as pd
 import graph_tool as gt
 
@@ -93,7 +94,7 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def remove_edges_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
+def filter_edges_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
     """
     Only links between the src_dt and tgt_dt are required
     """
@@ -101,51 +102,76 @@ def remove_edges_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
     src_dt_idx = ordered_departtimes.index(src_dt)
     tgt_dt_idx = ordered_departtimes.index(tgt_dt)
 
-    efilt = g.new_edge_property('bool', True)
-
     for e in g.edges():
         if not g.ep['Connector'][e]:
             dt_idx = ordered_departtimes.index(g.ep['Departtime'][e])
             if not src_dt_idx <= dt_idx <= tgt_dt_idx:
-                efilt[e] = False
+                g.ep['Filter'][e] = False
 
-    gf = gt.Graph(gt.GraphView(g, efilt=efilt), prune=True)
-
-    return gf
+    return g
 
 
-def remove_edges_by_direction(g, srcs, names, direction):
+def filter_edges_by_direction(g, src, direction, direction_names,
+                              property_name='Filter', enable=True,
+                              include_connectors=False):
 
-    if not isinstance(srcs, list):
+    if direction == 'from-home':
+        edges = src.out_edges()
+    elif direction == 'to-home':
+        edges = src.in_edges()
+    elif direction == 'non-home':
+        edges = src.all_edges()
+    else:
+        raise KeyError('Value parameter "direction" not accepted,'
+                       'Accepted values: "from-home", "to-home", non-home"')
+
+    for e in edges:
+        if (include_connectors == g.ep['Connector'][e]):
+            if g.ep['Direction'][e] in direction_names:
+                g.ep[property_name][e] = enable
+    return g
+
+
+def filter_edges_by_direction2(g, srcs, names, direction):
+
+    if not isinstance(srcs, Iterable):
         srcs = [srcs]
-
-    efilt = g.new_edge_property('bool', True)
 
     if direction == 'from-home':
         for src in srcs:
             for e in src.out_edges():
-                if g.ep['Direction'][e] in names:
-                    efilt[e] = False
+                if not g.ep['Connector'][e]:
+                    if g.ep['Direction'][e] in names:
+                        g.ep['Filter'][e] = True
+                    else:
+                        # these are non-home trips
+                        g.ep['Filter'][e] = False
 
     elif direction == 'to-home':
         for src in srcs:
             for e in src.in_edges():
-                if g.ep['Direction'][e] in names:
-                    efilt[e] = False
+                if not g.ep['Connector'][e]:
+                    if g.ep['Direction'][e] in names:
+                        g.ep['Filter'][e] = True
+                    else:
+                        # these are non-home trips
+                        g.ep['Filter'][e] = False
 
-    elif direction == 'both':
+    elif direction == 'non-home':
         for src in srcs:
             for e in src.all_edges():
-                if g.ep['Direction'][e] in names:
-                    efilt[e] = False
+                if not g.ep['Connector'][e]:
+                    if g.ep['Direction'][e] in names:
+                        g.ep['Filter'][e] = True
 
     else:
         raise KeyError('Value parameter "direction" not accepted,'
                         'Accepted values: "from-home", "to-home", "both"')
 
-    gf = gt.Graph(gt.GraphView(g, efilt=efilt), prune=True)
+    # Create the filtered graph view
+    g = gt.GraphView(g, efilt=g.ep['Filter'])
 
-    return gf
+    return g
 
 
 def extract_tour_times_used(optim_results):
@@ -165,4 +191,3 @@ def extract_tour_times_used(optim_results):
     sr.index.names = ['Solutionno', 'Tourid']
     sr.name = 'Timesused'
     return sr
-

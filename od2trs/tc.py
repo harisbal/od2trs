@@ -13,8 +13,8 @@ class Leg:
                  direction=None, distance=None, **kwargs):
 
         # Tours deriving from multilevel graphs include the time level in the name
-        self.source = source.split('-')[0]
-        self.target = target.split('-')[0]
+        self.source = source
+        self.target = target
         self.purpose = purpose
         self.direction = direction
         self.departtime = departtime
