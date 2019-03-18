@@ -188,8 +188,8 @@ def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
     odg = od.groupby(grp_keys, level=od.index.names).sum()
 
     odg = odg.reset_index()
-    odg.index.name = 'Legid'
-    # Create a column called Legid / will be used to identify the OdPairs
+    odg.index.name = 'Odpairid'
+    # Create a column called Odpairid / will be used to identify the OdPairs
     odg = odg.reset_index()
     odg.set_index(idx_cols, inplace=True)
 
@@ -219,8 +219,8 @@ def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
     od_filtered.Dailytrips = od_filtered.Dailytrips.round()
     od_filtered.Dailytrips = od_filtered.Dailytrips.astype(int)
 
-    # Make sure Legid is int
-    od_filtered.Legid = od_filtered.Legid.astype(int)
+    # Make sure Odpairid is int
+    od_filtered.Odpairid = od_filtered.Odpairid.astype(int)
 
     return od_filtered
 

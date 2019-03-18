@@ -11,14 +11,9 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     # TODO for some reason it passes 2 args
     def init_chains_descr(_model, _):
-        _od = _model.od.reset_index('Legid')['Legid'].to_frame()
-        _trs = _model.trs.reset_index()
-        _trs = pd.merge(_trs, _od,
-                        left_on=_od.index.names, right_index=True,
-                        how='left')
-
         # Can be slow
-        d_chains_descr = _trs.groupby('Legid')['Tourid'].apply(list).to_dict()
+        trs = _model.trs.reset_index()
+        d_chains_descr = trs.groupby('Odpairid')['Tourid'].apply(list).to_dict()
 
         return d_chains_descr
 
@@ -40,26 +35,26 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     model.distr_perc_tolerance = params['distribution_percentage_tolerance']
 
-    model.LEG_IDS = Set(initialize=model.od.index.unique('Legid').tolist())
-    model.CHAIN_IDS = Set(initialize=model.trs_info.index.unique().values.tolist())
+    model.OdPairIds = Set(initialize=model.od.index.unique('Odpairid').tolist())
+    model.ChainIds = Set(initialize=model.trs_info.index.unique().values.tolist())
 
-    d_leg_trips = model.od.reset_index().set_index('Legid')['Dailytrips'].to_dict()
-    model.trips = Param(model.LEG_IDS, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.chains_descr = Param(model.LEG_IDS, initialize=init_chains_descr, default=None)
+    d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
+    model.trips = Param(model.OdPairIds, initialize=d_leg_trips, within=NonNegativeIntegers)
+    model.chains_descr = Param(model.OdPairIds, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.CHAIN_IDS, within=NonNegativeIntegers, initialize=1)
-    model.total_chains = sum(model.nchains[tc_id] for tc_id in model.CHAIN_IDS)
+    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=1)
+    model.total_chains = sum(model.nchains[tc_id] for tc_id in model.ChainIds)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if params['mip tolerances lowercutoff'] is not None:
         model.cutoff = - params['mip tolerances lowercutoff'] * model.od.sum()
 
     if distr_constr_enabled:
-        model.GROUP_IDS = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
+        model.GrpIds = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
         target_distr.set_index('Distrgroupid', inplace=True)
         d_distr_grp_percs = model.target_distr['Percentage'].to_dict()
-        model.distr_group_percs = Param(model.GROUP_IDS, initialize=d_distr_grp_percs, default=0)
-        model.chains_distr_groups = Param(model.GROUP_IDS, initialize=init_chain_distr_grps, default=None)
+        model.distr_group_percs = Param(model.GrpIds, initialize=d_distr_grp_percs, default=0)
+        model.chains_distr_groups = Param(model.GrpIds, initialize=init_chain_distr_grps, default=None)
 
     return model
 
@@ -68,7 +63,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
     def maximise_used_trips(_model):
         return sum(
                (sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
-               if _model.chains_descr[leg_id] else 0) - _model.trips[leg_id] for leg_id in _model.LEG_IDS)
+               if _model.chains_descr[leg_id] else 0) - _model.trips[leg_id] for leg_id in _model.OdPairIds)
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(_model, leg_id):
@@ -77,7 +72,7 @@ def run_model(model, distr_constr_enabled, send_to_neos):
             return (0, expr, model.trips[leg_id])
         else:
             return Constraint.Skip
-    model.od_trips_rule = Constraint(model.LEG_IDS, rule=trips_rule)
+    model.od_trips_rule = Constraint(model.OdPairIds, rule=trips_rule)
 
     def distr_rule_low(_model, g_id):
         if _model.chains_distr_groups[g_id]:
@@ -98,8 +93,8 @@ def run_model(model, distr_constr_enabled, send_to_neos):
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.GROUP_IDS, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.GROUP_IDS, rule=distr_rule_high)
+        model.distr_rule_low = Constraint(model.GrpIds, rule=distr_rule_low)
+        model.distr_rule_high = Constraint(model.GrpIds, rule=distr_rule_high)
 
     params = settings.parameters['optimisation']
 

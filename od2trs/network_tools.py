@@ -192,5 +192,4 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
                         # the loop includes the interm_node already
                         zs_loop = zs[:idx-1] + l + zs[idx+1:]
                         zones_seqs.append(zs_loop)
-    print(zones_seqs)
     return zones_seqs

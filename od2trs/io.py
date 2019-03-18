@@ -55,8 +55,8 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od = od.groupby(grp_keys, level=od.index.names).sum()
 
     od = od.reset_index()
-    od.index.name = 'Legid'
-    # Create a column called Legid / will be used to identify the OdPairs
+    od.index.name = 'Odpairid'
+    # Create a column called Odpairid / will be used to identify the OdPairs
     od = od.reset_index()
     od.set_index(idx_cols, inplace=True)
 
@@ -72,9 +72,9 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od.Dailytrips = od.Dailytrips.round()
     od.Dailytrips = od.Dailytrips.astype(int)
 
-    # Make sure Legid is int
-    od['Legid'] = od['Legid'].astype(int)
-    od.set_index('Legid', append=True, inplace=True)
+    # Make sure Odpairid is int
+    od['Odpairid'] = od['Odpairid'].astype(int)
+    od.set_index('Odpairid', append=True, inplace=True)
     od = od.squeeze()
 
     # test to exclude all nhb >1

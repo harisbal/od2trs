@@ -184,7 +184,7 @@ def prepare_traj_params(traj):
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
         """
-        explore_d = {'max_legs': [5], 'trips_thresh': [1]}
+        explore_d = {'max_legs': [5], 'trips_thresh': [5]}
 
         explore_order = ('max_legs', 'trips_thresh')
 

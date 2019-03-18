@@ -14,7 +14,7 @@ def init():
     # explore multiple scenarios or not
     parameters['explore'] = True
     # TODO at the moment if explore=True, export_flat overwrites results
-    parameters['export_flat'] = False
+    parameters['export_flat'] = True
 
     parameters['max_tr_dist'] = 11_000 #16_200
     # Could include Activities but tcs not ready yet
@@ -29,7 +29,7 @@ def init():
     parameters['distr_constr_enabled'] = [False]
 
     # parallel threads
-    parameters['ncores'] = 1
+    parameters['ncores'] = None
     parameters['submit_to_neos'] = False
 
     parameters['ordered_departtimes'] = ['AM', 'IP', 'PM', 'OP']

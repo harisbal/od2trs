@@ -18,11 +18,10 @@ from od2trs.tc import Leg, TripChain
 def od_to_graph(od, attr_cols, ordered_departtimes=None,
                 coords=None, verbose=True):
 
-    od = od.reset_index()
     od = od[['Source', 'Target'] + attr_cols]
 
-    # TODO may cause issues
-    od = od.fillna(0)
+    od.dropna(axis=1, inplace=True)
+    #od = od.fillna(0)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_departtimes is not None:
@@ -90,6 +89,8 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
 
     def filter_leg_by_direction(g, edge, filter_directions):
 
+        excl_attr_names = ['Connector', 'Filter', 'Dailytrips']
+
         attrs = list()
         for e in edge:
             if g.ep['Connector'][e]:
@@ -98,7 +99,8 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
                 if g.ep['Direction'][e] in filter_directions:
                     d = dict()
                     for k, attr in g.ep.items():
-                        d[k] = attr[e]
+                        if k not in excl_attr_names:
+                            d[k] = attr[e]
                     attrs.append(d)
         return attrs
 
@@ -255,11 +257,12 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    attr_cols = ['Purpose', 'Direction', 'Departtime', 'Dailytrips']
-
+    od_g = od.copy()
     if distances is not None:
-        attr_cols.append('Distance')
         od_g = od.to_frame().join(distances)
+
+    od_g = od_g.reset_index()
+    attr_cols = [c for c in od_g.columns.tolist() if c not in ['Source', 'Target']]
 
     G = od_to_graph(od_g, attr_cols=attr_cols,
                     ordered_departtimes=ordered_departtimes,
