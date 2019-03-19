@@ -9,12 +9,12 @@ def init():
 
     parameters = dict()
 
-    parameters['run_optimisation'] = True
+    parameters['run_optimisation'] = False
 
     # explore multiple scenarios or not
     parameters['explore'] = True
     # TODO at the moment if explore=True, export_flat overwrites results
-    parameters['export_flat'] = True
+    parameters['export_flat'] = False
 
     parameters['max_tr_dist'] = 11_000 #16_200
     # Could include Activities but tcs not ready yet
@@ -29,7 +29,7 @@ def init():
     parameters['distr_constr_enabled'] = [False]
 
     # parallel threads
-    parameters['ncores'] = None
+    parameters['ncores'] = -1 # use -1 for all cores
     parameters['submit_to_neos'] = False
 
     parameters['ordered_departtimes'] = ['AM', 'IP', 'PM', 'OP']
