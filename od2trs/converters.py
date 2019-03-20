@@ -272,6 +272,8 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     if not ncores:
         ncores = cpu_count()-1
+    elif ncores == -1:
+        ncores = cpu_count() - 1
 
     with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G]) as pool:
         descrs = list()
