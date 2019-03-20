@@ -176,7 +176,7 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
             zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
             zones_seqs.extend(list(zss))
 
-        # TODO has not been tested
+        # TODO is not working
         if include_loops:
             for zs in zss:
                 for interm_zone in zs[1:-1]:
