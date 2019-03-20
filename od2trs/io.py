@@ -61,11 +61,15 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od.set_index(idx_cols, inplace=True)
 
     # Reduce
+    sum_bef = od['Dailytrips'].sum()
+    print('before trips thresh filtering: {}'.format(sum_bef))
     od = od[od.Dailytrips >= trips_thresh]
     # Remove intrazonals
     mask = od.index.get_level_values('Source') != od.index.get_level_values('Target')
     od = od[mask]
-
+    sum_aft = od['Dailytrips'].sum()
+    print('after trips thresh filtering: {}'.format(sum_aft))
+    print(sum_aft/sum_bef)
     od.dropna(inplace=True)
 
     # Round
