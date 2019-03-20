@@ -94,23 +94,6 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         return filter_trs
 
 
-def filter_edges_by_timelevel(g, src_dt, tgt_dt, ordered_departtimes):
-    """
-    Only links between the src_dt and tgt_dt are required
-    """
-
-    src_dt_idx = ordered_departtimes.index(src_dt)
-    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
-
-    for e in g.edges():
-        if not g.ep['Connector'][e]:
-            dt_idx = ordered_departtimes.index(g.ep['Departtime'][e])
-            if not src_dt_idx <= dt_idx <= tgt_dt_idx:
-                g.ep['Filter'][e] = False
-
-    return g
-
-
 def filter_edges_by_direction(g, src, direction, direction_names,
                               property_name='Filter', enable=True,
                               include_connectors=False):

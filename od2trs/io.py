@@ -78,7 +78,7 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
     od = od.squeeze()
 
     # test to exclude all nhb >1
-    #mask = (od.index.get_level_values('Purpose') == 'NHB') & (od > 10)
+    #ask = (od.index.get_level_values('Purpose') == 'NHB') & (od != 1)
     #od.loc[mask] = None
     #od.dropna(inplace=True)
 
