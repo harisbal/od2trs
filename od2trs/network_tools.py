@@ -53,6 +53,9 @@ def add_chron_connectors(g, ordered_departtimes):
                     e = g.add_edge(src_idx, tgt_idx)
                     g.ep['Connector'][e] = True
 
+                    g.vp['Connector'][src_idx] = True
+                    g.vp['Connector'][tgt_idx] = True
+
     return g
 
 
@@ -65,6 +68,7 @@ def identify_cycles(g, src, max_legs):
 
     # Prevent src out_nodes to connected with in_nodes
     vfilt = g.new_vertex_property('bool', True)
+    vfilt[src] = False
     gf = gt.GraphView(g, vfilt=vfilt)
 
     cycles = list()
@@ -82,7 +86,8 @@ def identify_cycles(g, src, max_legs):
     return cycles
 
 
-def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_names, ordered_departtimes):
+def identify_zones_sequences(g, src_idx, max_legs, max_dist,
+                             include_loops, filter_dir_names, ordered_departtimes):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each osrc zone
@@ -95,6 +100,10 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
     :param ordered_departtimes: the departtimes in order
     :return zones_seqs: zones sequences
     """
+
+    def _sort_zones_by_departtime(zone):
+        zone_dt = g.vp['Departtime'][zone]
+        return ordered_departtimes.index(zone_dt)
 
     def _get_other_vertices(g, vertices):
         others = list(g.vertices())
@@ -120,9 +129,10 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
 
     # Get the the src zones accross all time levels
     src_zones = find_vertex(g, g.vp['Zone'], src_zone)
+    src_zones.sort(key=_sort_zones_by_departtime)
     # filter for the subsequent ones
     subsequent_zones = [z for z in src_zones if g.vp['Departtime'][z] in subsequent_departtimes]
-
+    print([g.vp['Departtime'][dt] for dt in subsequent_zones])
     # begin with everything filtered out and
     efilt_src_zone_connectors = g.new_edge_property('bool', False)
 
@@ -134,15 +144,22 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
 
     g.edge_properties['Filter'] = efilt_src_zone_connectors
 
+    # Filter for vertices
+    g.vertex_properties['Filter'] = g.new_vertex_property('bool', True)
+
     zones_seqs = list()
+
     for tgt in subsequent_zones:
 
+        # TODO The vertices filter should be propagated between iterations
         gv = gt.Graph(g)
+
         tgt_name = g.vp['name'][tgt]
         tgt_dt = g.vp['Departtime'][tgt]
+        print('from:{} to :{}'.format(src_name, tgt_name))
 
         # Enable all nh for other zones
-        other_zones = _get_other_vertices(g, [src, tgt])
+        other_zones = _get_other_vertices(g, [src, *subsequent_zones])
         k = 'non-home'
         for z in other_zones:
             gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True)
@@ -155,12 +172,21 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
         k = 'to-home'
         gv = filters.filter_edges_by_direction(gv, tgt, k, direction_names[k], enable=True)
 
-        # Disable nhb trips for src and tgt
+        # Disable nhb trips for src and subsequent zones
         k = 'non-home'
-        for z in [src, tgt]:
+        for z in [src, *subsequent_zones]:
             gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
 
-        gv = gt.GraphView(gv, efilt=gv.ep['Filter'])
+        if src_dt != tgt_dt:
+            extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
+            gv = filters.filter_timelevel_passages(gv, src, tgt,
+                                                   max_legs+extra_legs,
+                                                   subsequent_departtimes)
+
+            # TODO check if helps
+            #g = filters.filter_distant_vertices(g, src, tgt, max_dist, g.ep['Distance'])
+
+        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         # get the src and tgt after the filtering
         upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
@@ -168,13 +194,14 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
 
         if upd_src == upd_tgt:
             zss = identify_cycles(gv, upd_src, max_legs-2)
-            zones_seqs.extend(list(zss))
+            for zs in zss:
+                yield zs
         else:
             # jumping between time levels requires extra legs
-            extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
             max_legs_extra = max_legs + extra_legs
             zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
-            zones_seqs.extend(list(zss))
+            for zs in zss:
+                yield zs
 
         # TODO is not working
         if include_loops:
@@ -192,4 +219,3 @@ def identify_zones_sequences(g, src_idx, max_legs, include_loops, filter_dir_nam
                         # the loop includes the interm_node already
                         zs_loop = zs[:idx-1] + l + zs[idx+1:]
                         zones_seqs.append(zs_loop)
-    return zones_seqs

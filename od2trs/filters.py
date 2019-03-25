@@ -3,6 +3,10 @@ from collections.abc import Iterable
 import pandas as pd
 import graph_tool as gt
 
+from graph_tool.topology import shortest_distance
+from graph_tool.search import dijkstra_search
+from graph_tool.util import find_vertex
+
 
 def filter_possible_trs(trs, ordered_departtimes):
     possible_trs = list()
@@ -109,50 +113,79 @@ def filter_edges_by_direction(g, src, direction, direction_names,
                        'Accepted values: "from-home", "to-home", non-home"')
 
     for e in edges:
-        if (include_connectors == g.ep['Connector'][e]):
+        if include_connectors == g.ep['Connector'][e]:
             if g.ep['Direction'][e] in direction_names:
                 g.ep[property_name][e] = enable
     return g
 
 
-def filter_edges_by_direction2(g, srcs, names, direction):
+def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
+    """
+    :param g:
+    :param src:
+    :param max_legs:
+    :param tgt_dt:
+    :return g: filtered g
+    """
 
-    if not isinstance(srcs, Iterable):
-        srcs = [srcs]
+    src_dt = g.vp['Departtime'][src]
+    tgt_dt = g.vp['Departtime'][tgt]
 
-    if direction == 'from-home':
-        for src in srcs:
-            for e in src.out_edges():
-                if not g.ep['Connector'][e]:
-                    if g.ep['Direction'][e] in names:
-                        g.ep['Filter'][e] = True
-                    else:
-                        # these are non-home trips
-                        g.ep['Filter'][e] = False
+    src_dt_idx = subsequent_departtimes.index(src_dt)
+    tgt_dt_idx = subsequent_departtimes.index(tgt_dt)
 
-    elif direction == 'to-home':
-        for src in srcs:
-            for e in src.in_edges():
-                if not g.ep['Connector'][e]:
-                    if g.ep['Direction'][e] in names:
-                        g.ep['Filter'][e] = True
-                    else:
-                        # these are non-home trips
-                        g.ep['Filter'][e] = False
+    cnt = 0
+    for dt in subsequent_departtimes[src_dt_idx:tgt_dt_idx+1]:
 
-    elif direction == 'non-home':
-        for src in srcs:
-            for e in src.all_edges():
-                if not g.ep['Connector'][e]:
-                    if g.ep['Direction'][e] in names:
-                        g.ep['Filter'][e] = True
+        dt_vertices = find_vertex(g, g.vp['Departtime'], dt)
 
-    else:
-        raise KeyError('Value parameter "direction" not accepted,'
-                        'Accepted values: "from-home", "to-home", "both"')
+        # All paths connecting different departtimes (time-levels) should cross connector nodes
+        # if the distance from and to the connector node is > than the max then the node can be eliminated
+        for v in dt_vertices:
+            if v != src != tgt:
+                if g.vp['Connector'][v]:
+                    dist_src_v = shortest_distance(g, src, v, max_dist=max_dist)
+                    dist_v_tgt = shortest_distance(g, v, tgt, max_dist=max_dist)
 
-    # Create the filtered graph view
-    g = gt.GraphView(g, efilt=g.ep['Filter'])
+                    dist = dist_src_v + dist_v_tgt
+
+                    # if no path between vertices or dist too long
+                    if (dist < 0) or (dist > max_dist):
+                        g.vp['Connector'][v] = False
+                        cnt += 1
+
+    print('excl nodes:{}'.format(cnt))
+
+    return g
+
+
+def filter_distant_vertices(g, src, tgt, max_dist, weights):
+    """
+    :param g:
+    :param src:
+    :param max_legs:
+    :param tgt_dt:
+    :return g: filtered g
+    """
+
+    src_dt = g.vp['Departtime'][src]
+    src_dt_vertices = find_vertex(g, g.vp['Departtime'], src_dt)
+
+    # All paths connecting different departtimes (time-levels) should cross connector nodes
+    # if the distance from and to the connector node is > than the max then the node can be eliminated
+    cnt = 0
+    for v in src_dt_vertices:
+        if g.vp['Connector'][v]:
+
+            dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
+            dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
+
+            dist = dist_src_v + dist_v_tgt
+            # if no path between vertices or dist too long
+            if (dist < 0) or (dist > max_dist):
+                g.vp['Connector'][v] = False
+
+    print('excl nodes - distance:{}'.format(cnt))
 
     return g
 

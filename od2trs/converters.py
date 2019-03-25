@@ -64,6 +64,10 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
     eprop_connector = g.new_edge_property('bool', False)
     g.edge_properties['Connector'] = eprop_connector
 
+    # add a filed to indicate whether a connector edge goes through the vertex
+    vprop_connector = g.new_vertex_property('bool', False)
+    g.vertex_properties['Connector'] = vprop_connector
+
     if ordered_departtimes:
         g = nettools.add_chron_connectors(g, ordered_departtimes)
 
@@ -214,20 +218,19 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
                          filter_dirs, ordered_departtimes, target_distr,
                          distr_dims):
 
-    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, include_loops,
-                                                   filter_dirs, ordered_departtimes)
-
-    if not zones_seqs:
-        return None
+    zones_seqs = nettools.identify_zones_sequences(G, src, max_legs, max_tr_dist,
+                                                   include_loops, filter_dirs,
+                                                   ordered_departtimes)
 
     filtered_trs = list()
 
     for zs in zones_seqs:
+
         trs = zones_seq_to_tr(zs, G, filter_dirs)
         if not trs:
             continue
 
-        trs = filters.filter_possible_trs(trs, ordered_departtimes)
+        #trs = filters.filter_possible_trs(trs, ordered_departtimes)
 
         # filter by maximum distance
         if max_tr_dist:
@@ -240,6 +243,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
+        print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
         return None
@@ -295,9 +299,12 @@ def od2trs(od, max_legs=None, include_loops=False,
                     tr.id = tr_id
                     tr_id += 1
 
+                # Check for memory issues
+                """
                 trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
+                """
 
     if descrs:
         trs_descr_df = pd.concat(descrs)
