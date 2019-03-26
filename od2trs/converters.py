@@ -299,12 +299,10 @@ def od2trs(od, max_legs=None, include_loops=False,
                     tr.id = tr_id
                     tr_id += 1
 
-                # Check for memory issues
-                """
+
                 trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
-                """
 
     if descrs:
         trs_descr_df = pd.concat(descrs)

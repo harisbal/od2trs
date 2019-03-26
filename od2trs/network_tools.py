@@ -2,7 +2,7 @@ import itertools
 import graph_tool as gt
 import od2trs.filters as filters
 
-from graph_tool.topology import all_paths
+from graph_tool.topology import all_paths, shortest_distance
 from graph_tool.util import find_vertex
 
 
@@ -113,6 +113,15 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
                 others.remove(trmv)
         return others
 
+    def _shortest_path_exists(g, src, tgt, max_dist):
+        dist = shortest_distance(g, src, tgt, max_dist=max_dist)
+
+        # if no path between vertices or dist too long
+        if (dist < 0) or (dist > max_dist):
+            return False
+        else:
+            return True
+
     direction_names = {'from-home': filter_dir_names.from_home,
                        'to-home': filter_dir_names.to_home,
                        'non-home': filter_dir_names.non_home}
@@ -132,7 +141,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     src_zones.sort(key=_sort_zones_by_departtime)
     # filter for the subsequent ones
     subsequent_zones = [z for z in src_zones if g.vp['Departtime'][z] in subsequent_departtimes]
-    print([g.vp['Departtime'][dt] for dt in subsequent_zones])
+    # print([g.vp['Departtime'][dt] for dt in subsequent_zones])
     # begin with everything filtered out and
     efilt_src_zone_connectors = g.new_edge_property('bool', False)
 
@@ -150,6 +159,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     zones_seqs = list()
 
     for tgt in subsequent_zones:
+        # print('sub zone: {}'.format(g.vp['name'][tgt]))
 
         # TODO The vertices filter should be propagated between iterations
         gv = gt.Graph(g)
@@ -183,8 +193,10 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
                                                    max_legs+extra_legs,
                                                    subsequent_departtimes)
 
+            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
             # TODO check if helps
-            #g = filters.filter_distant_vertices(g, src, tgt, max_dist, g.ep['Distance'])
+            gv = filters.filter_distant_vertices(gv, src, tgt, max_dist, gv.ep['Distance'])
+            gv = gt.GraphView(g, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
@@ -199,6 +211,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
         else:
             # jumping between time levels requires extra legs
             max_legs_extra = max_legs + extra_legs
+            # if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
             zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
             for zs in zss:
                 yield zs
