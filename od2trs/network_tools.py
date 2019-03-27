@@ -133,9 +133,6 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     src_zone = g.vp['Zone'][src]
     src_dt = g.vp['Departtime'][src]
 
-    #if src_name != 'E01014396-AM':
-    #    return []
-
     subsequent_departtimes = [dt for dt in ordered_departtimes if
                               ordered_departtimes.index(dt) >= ordered_departtimes.index(src_dt)]
 
@@ -159,6 +156,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     # Filter for vertices
     g.vertex_properties['Filter'] = g.new_vertex_property('bool', True)
 
+    zones_seqs = list()
+
     for tgt in subsequent_zones:
         # print('sub zone: {}'.format(g.vp['name'][tgt]))
 
@@ -168,9 +167,6 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
         tgt_name = g.vp['name'][tgt]
         tgt_dt = g.vp['Departtime'][tgt]
         print('from:{} to :{}'.format(src_name, tgt_name))
-
-        #if tgt_name == 'E01014396-AM':
-        #    continue
 
         # Enable all nh for other zones
         other_zones = _get_other_vertices(g, [src, *subsequent_zones])
@@ -202,6 +198,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
             gv = filters.filter_distant_vertices(gv, src, tgt, max_dist, gv.ep['Distance'])
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+        else:
+            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         # get the src and tgt after the filtering
         upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
@@ -209,31 +207,31 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
 
         if upd_src == upd_tgt:
             zss = identify_cycles(gv, upd_src, max_legs-2)
-            for zs in zss:
-                yield zs
+            zones_seqs.extend(zss)
         else:
             # jumping between time levels requires extra legs
             max_legs_extra = max_legs + extra_legs
             #if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
             zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
-            for zs in zss:
-                yield zs
+            zones_seqs.extend(zss)
 
-        """
-        # TODO is not working
-        if include_loops:
-            for zs in zss:
-                for interm_zone in zs[1:-1]:
-                    idx = zs.index(interm_zone)
-                    max_legs_loop = max_legs - len(zs) - 1
+    return zones_seqs
 
-                    g_loops = gv.copy()
-                    g_loops = filters.remove_fromhome(g_loops, interm_zone, fh_names)
-                    g_loops = filters.remove_tohome(g_loops, interm_zone, th_names)
+    """
+    # TODO is not working
+    if include_loops:
+        for zs in zss:
+            for interm_zone in zs[1:-1]:
+                idx = zs.index(interm_zone)
+                max_legs_loop = max_legs - len(zs) - 1
 
-                    loops = identify_cycles(g_loops, interm_zone, max_legs_loop)
-                    for l in loops:
-                        # the loop includes the interm_node already
-                        zs_loop = zs[:idx-1] + l + zs[idx+1:]
-                        zones_seqs.append(zs_loop)
-        """
+                g_loops = gv.copy()
+                g_loops = filters.remove_fromhome(g_loops, interm_zone, fh_names)
+                g_loops = filters.remove_tohome(g_loops, interm_zone, th_names)
+
+                loops = identify_cycles(g_loops, interm_zone, max_legs_loop)
+                for l in loops:
+                    # the loop includes the interm_node already
+                    zs_loop = zs[:idx-1] + l + zs[idx+1:]
+                    zones_seqs.append(zs_loop)
+    """

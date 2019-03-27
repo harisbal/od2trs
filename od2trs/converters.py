@@ -223,7 +223,6 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
                                                    ordered_departtimes)
 
     filtered_trs = list()
-
     for zs in zones_seqs:
 
         trs = zones_seq_to_tr(zs, G, filter_dirs)

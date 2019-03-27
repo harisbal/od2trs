@@ -158,7 +158,7 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
                         cnt += 1
 
     if cnt > 0:
-        print('excl nodes - distance:{}'.format(cnt))
+        print('excl nodes - timelevel:{}'.format(cnt))
 
     return g
 
