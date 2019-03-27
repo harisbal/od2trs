@@ -140,8 +140,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     src_zones = find_vertex(g, g.vp['Zone'], src_zone)
     src_zones.sort(key=_sort_zones_by_departtime)
     # filter for the subsequent ones
-    subsequent_zones = [z for z in src_zones if g.vp['Departtime'][z] in subsequent_departtimes]
-    # print([g.vp['Departtime'][dt] for dt in subsequent_zones])
+    tgts = [z for z in src_zones if g.vp['Departtime'][z] in subsequent_departtimes]
+    # print([g.vp['Departtime'][dt] for dt in tgts])
     # begin with everything filtered out and
     efilt_src_zone_connectors = g.new_edge_property('bool', False)
 
@@ -158,7 +158,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
 
     zones_seqs = list()
 
-    for tgt in subsequent_zones:
+    for tgt in tgts:
         # print('sub zone: {}'.format(g.vp['name'][tgt]))
 
         # TODO The vertices filter should be propagated between iterations
@@ -169,7 +169,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
         print('from:{} to :{}'.format(src_name, tgt_name))
 
         # Enable all nh for other zones
-        other_zones = _get_other_vertices(g, [src, *subsequent_zones])
+        other_zones = _get_other_vertices(g, [src, *tgts])
         k = 'non-home'
         for z in other_zones:
             gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True)
@@ -184,22 +184,27 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
 
         # Disable nhb trips for src and subsequent zones
         k = 'non-home'
-        for z in [src, *subsequent_zones]:
+        for z in [src, *tgts]:
             gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
 
         gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         if src_dt != tgt_dt:
             extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
-            gv = filters.filter_timelevel_passages(gv, src, tgt,
-                                                   max_legs+extra_legs,
-                                                   subsequent_departtimes)
 
-            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
-            gv = filters.filter_distant_vertices(gv, src, tgt, max_dist, gv.ep['Distance'])
-            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
-        else:
-            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+            # filter first the time-passages and then by distance
+            weights = [None, gv.ep['Distance']]
+
+            for w in weights:
+                gv = filters.filter_distant_vertices(gv, src, tgt,
+                                                     subsequent_departtimes,
+                                                     max_dist=max_legs+extra_legs,
+                                                     weights=w)
+
+                gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+
+
+        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         # get the src and tgt after the filtering
         upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]

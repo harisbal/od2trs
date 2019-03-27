@@ -29,7 +29,7 @@ def init():
     parameters['distr_constr_enabled'] = [False]
 
     # parallel threads
-    parameters['ncores'] = 1 # use -1 for all cores
+    parameters['ncores'] = None # use -1 for all cores
     parameters['submit_to_neos'] = False
 
     parameters['ordered_departtimes'] = ['AM', 'IP', 'PM', 'OP']

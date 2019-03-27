@@ -120,7 +120,7 @@ def filter_edges_by_direction(g, src, direction, direction_names,
     return g
 
 
-def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
+def filter_distant_vertices(g, src, tgt, subsequent_departtimes, max_dist, weights):
     """
     :param g:
     :param src:
@@ -145,10 +145,10 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
         # All paths connecting different departtimes (time-levels) should cross connector nodes
         # if the distance from and to the connector node is > than the max then the node can be eliminated
         for v in dt_vertices:
-            if v != src != tgt:
+            if (v != src) and (v != tgt):
                 if g.vp['Connector'][v]:
-                    dist_src_v = shortest_distance(g, src, v, max_dist=max_dist)
-                    dist_v_tgt = shortest_distance(g, v, tgt, max_dist=max_dist)
+                    dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
+                    dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
 
                     dist = dist_src_v + dist_v_tgt
 
@@ -163,7 +163,7 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
     return g
 
 
-def filter_distant_vertices(g, src, tgt, max_dist, weights):
+def filter_distant_vertices2(g, src, tgt, max_dist, weights):
     """
     :param g:
     :param src:
@@ -180,7 +180,7 @@ def filter_distant_vertices(g, src, tgt, max_dist, weights):
     # if the distance from and to the connector node is > than the max then the node can be eliminated
     cnt = 0
     for v in src_dt_vertices:
-        if v != src != tgt:
+        if (v != src) and (v != tgt):
             if g.vp['Connector'][v]:
 
                 dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
