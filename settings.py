@@ -57,9 +57,9 @@ def init():
                                     'HB': 'HB',
                                     'NHB': 'NHB'}
 
-    parameters['origin_directions'] = ['FH']
-    parameters['destination_directions'] = ['TH']
-    parameters['intermediate_directions'] = ['NHB']
+    parameters['origin_directions'] = ['FH', 'FromHome']
+    parameters['destination_directions'] = ['TH', 'ToHome']
+    parameters['intermediate_directions'] = ['NHB', 'NonHomeBased']
 
     parameters['filter_directions'] = [parameters['origin_directions'],
                                        parameters['destination_directions'],

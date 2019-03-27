@@ -166,18 +166,23 @@ def prepare_traj_params(traj):
 
     if explore:
         # TODO read exploration space from file
+        """
         # Explore
         explore_d = {'data_source': ['tests'],
                      'aggr_level': ['aggrlvl'],
                      'perc_sample_size': [1.0],
                      'distr_dims': [['Legs', 'Distancegroup'], ['Legs', 'Distancegroup', 'Departtimes']],
-                     'max_legs': [6],
-                     'trips_thresh': [1],
+                     'max_legs': [5],
+                     'trips_thresh': [50, 10, 5, 4, 3],
                      'distr_constr_enabled': [False]}
 
         explore_order = ('data_source', 'aggr_level', 'max_legs',
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
+        """
+        explore_d = {'max_legs': [5], 'trips_thresh': [1]}
+
+        explore_order = ('max_legs', 'trips_thresh')
 
         explore_d = cartesian_product(explore_d, explore_order)
 
