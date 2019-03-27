@@ -243,7 +243,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        print('Filtered trs: {}'.format(len(filtered_trs)))
+        #print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
         return None
@@ -261,9 +261,10 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    od_g = od.copy()
+    od_g = od.to_frame()
     if distances is not None:
-        od_g = od.to_frame().join(distances)
+        od_g = od_g.join(distances)
+        od_g = od_g.fillna(0)
 
     od_g = od_g.reset_index()
     attr_cols = [c for c in od_g.columns.tolist() if c not in ['Source', 'Target']]

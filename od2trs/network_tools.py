@@ -166,7 +166,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
 
         tgt_name = g.vp['name'][tgt]
         tgt_dt = g.vp['Departtime'][tgt]
-        print('from:{} to :{}'.format(src_name, tgt_name))
+        #print('from:{} to :{}'.format(src_name, tgt_name))
 
         # Enable all nh for other zones
         other_zones = _get_other_vertices(g, [src, *subsequent_zones])
@@ -194,9 +194,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
                                                    subsequent_departtimes)
 
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
-            # TODO check if helps
             gv = filters.filter_distant_vertices(gv, src, tgt, max_dist, gv.ep['Distance'])
-            gv = gt.GraphView(g, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
@@ -211,7 +210,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
         else:
             # jumping between time levels requires extra legs
             max_legs_extra = max_legs + extra_legs
-            # if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
+            #if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
             zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
             for zs in zss:
                 yield zs

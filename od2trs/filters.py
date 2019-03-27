@@ -120,13 +120,13 @@ def filter_edges_by_direction(g, src, direction, direction_names,
     return g
 
 
-def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes,
-                              apply_filter=True):
+def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
     """
     :param g:
     :param src:
-    :param max_legs:
-    :param tgt_dt:
+    :param tgt:
+    :param max_dist:
+    :param subsequent_departtimes:
     :return g: filtered g
     """
 
@@ -137,6 +137,7 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes,
     tgt_dt_idx = subsequent_departtimes.index(tgt_dt)
 
     cnt = 0
+    # iterate only between the required dts
     for dt in subsequent_departtimes[src_dt_idx:tgt_dt_idx+1]:
 
         dt_vertices = find_vertex(g, g.vp['Departtime'], dt)
@@ -156,16 +157,10 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes,
                         g.vp['Connector'][v] = False
                         cnt += 1
 
-    if cnt > 0:
-        print('excl nodes - legsno:{}'.format(cnt))
-
-    if apply_filter:
-        g = gt.GraphView(g, vfilt=g.vp['Filter'], efilt=g.ep['Filter'])
-
     return g
 
 
-def filter_distant_vertices(g, src, tgt, max_dist, weights, apply_filter=True):
+def filter_distant_vertices(g, src, tgt, max_dist, weights):
     """
     :param g:
     :param src:
@@ -182,23 +177,21 @@ def filter_distant_vertices(g, src, tgt, max_dist, weights, apply_filter=True):
     # if the distance from and to the connector node is > than the max then the node can be eliminated
     cnt = 0
     for v in src_dt_vertices:
-        if g.vp['Connector'][v]:
+        if v != src != tgt:
+            if g.vp['Connector'][v]:
 
-            dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
-            dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
+                dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
+                dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
 
-            dist = dist_src_v + dist_v_tgt
+                dist = dist_src_v + dist_v_tgt
 
-            # if no path between vertices or dist too long
-            if (dist < 0) or (dist > max_dist):
-                g.vp['Connector'][v] = False
-                cnt += 1
+                # if no path between vertices or dist too long
+                if (dist < 0) or (dist > max_dist):
+                    g.vp['Connector'][v] = False
+                    cnt += 1
 
-    if cnt > 0:
-        print('excl nodes - distance:{}'.format(cnt))
-
-    if apply_filter:
-        g = gt.GraphView(g, vfilt=g.vp['Filter'], efilt=g.ep['Filter'])
+    #if cnt > 0:
+    #print('excl nodes - distance:{}'.format(cnt))
 
     return g
 
