@@ -8,7 +8,7 @@ def init():
 
     parameters = dict()
 
-    parameters['run_optimisation'] = True
+    parameters['run_optimisation'] = False
 
     # explore multiple scenarios or not
     parameters['explore'] = False
