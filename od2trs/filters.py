@@ -154,8 +154,11 @@ def filter_timelevel_passages(g, src, tgt, max_dist, subsequent_departtimes):
 
                     # if no path between vertices or dist too long
                     if (dist < 0) or (dist > max_dist):
-                        g.vp['Connector'][v] = False
+                        g.vp['Filter'][v] = False
                         cnt += 1
+
+    if cnt > 0:
+        print('excl nodes - distance:{}'.format(cnt))
 
     return g
 
@@ -187,11 +190,11 @@ def filter_distant_vertices(g, src, tgt, max_dist, weights):
 
                 # if no path between vertices or dist too long
                 if (dist < 0) or (dist > max_dist):
-                    g.vp['Connector'][v] = False
+                    g.vp['Filter'][v] = False
                     cnt += 1
 
-    #if cnt > 0:
-    #print('excl nodes - distance:{}'.format(cnt))
+    if cnt > 0:
+        print('excl nodes - distance:{}'.format(cnt))
 
     return g
 

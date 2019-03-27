@@ -133,6 +133,9 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     src_zone = g.vp['Zone'][src]
     src_dt = g.vp['Departtime'][src]
 
+    #if src_name != 'E01014396-AM':
+    #    return []
+
     subsequent_departtimes = [dt for dt in ordered_departtimes if
                               ordered_departtimes.index(dt) >= ordered_departtimes.index(src_dt)]
 
@@ -156,17 +159,18 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
     # Filter for vertices
     g.vertex_properties['Filter'] = g.new_vertex_property('bool', True)
 
-    zones_seqs = list()
-
     for tgt in subsequent_zones:
         # print('sub zone: {}'.format(g.vp['name'][tgt]))
 
         # TODO The vertices filter should be propagated between iterations
-        gv = gt.Graph(g)
+        gv = gt.Graph(g, directed=True)
 
         tgt_name = g.vp['name'][tgt]
         tgt_dt = g.vp['Departtime'][tgt]
-        #print('from:{} to :{}'.format(src_name, tgt_name))
+        print('from:{} to :{}'.format(src_name, tgt_name))
+
+        #if tgt_name == 'E01014396-AM':
+        #    continue
 
         # Enable all nh for other zones
         other_zones = _get_other_vertices(g, [src, *subsequent_zones])
@@ -187,6 +191,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
         for z in [src, *subsequent_zones]:
             gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
 
+        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+
         if src_dt != tgt_dt:
             extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
             gv = filters.filter_timelevel_passages(gv, src, tgt,
@@ -196,8 +202,6 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
             gv = filters.filter_distant_vertices(gv, src, tgt, max_dist, gv.ep['Distance'])
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
-
-        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         # get the src and tgt after the filtering
         upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
@@ -215,6 +219,7 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
             for zs in zss:
                 yield zs
 
+        """
         # TODO is not working
         if include_loops:
             for zs in zss:
@@ -231,3 +236,4 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
                         # the loop includes the interm_node already
                         zs_loop = zs[:idx-1] + l + zs[idx+1:]
                         zones_seqs.append(zs_loop)
+        """
