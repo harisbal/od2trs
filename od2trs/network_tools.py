@@ -86,7 +86,7 @@ def identify_cycles(g, src, max_legs):
     return cycles
 
 
-def identify_zones_sequences(g, src_idx, max_legs, max_dist,
+def identify_zones_sequences(g, src_idx, max_legs, max_tr_dist,
                              include_loops, filter_dir_names, ordered_departtimes):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
@@ -112,15 +112,6 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
             if trmv in others:
                 others.remove(trmv)
         return others
-
-    def _shortest_path_exists(g, src, tgt, max_dist):
-        dist = shortest_distance(g, src, tgt, max_dist=max_dist)
-
-        # if no path between vertices or dist too long
-        if (dist < 0) or (dist > max_dist):
-            return False
-        else:
-            return True
 
     direction_names = {'from-home': filter_dir_names.from_home,
                        'to-home': filter_dir_names.to_home,
@@ -196,15 +187,19 @@ def identify_zones_sequences(g, src_idx, max_legs, max_dist,
             weights = [None, gv.ep['Distance']]
 
             for w in weights:
+                if w is None:
+                    max_dist = max_legs + extra_legs
+                else:
+                    max_dist = max_tr_dist
+
                 gv = filters.filter_distant_vertices(gv, src, tgt,
                                                      subsequent_departtimes,
-                                                     max_dist=max_legs+extra_legs,
+                                                     max_dist=max_dist,
                                                      weights=w)
 
                 gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
-
-        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+        # gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
         # get the src and tgt after the filtering
         upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]

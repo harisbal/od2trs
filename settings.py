@@ -16,7 +16,7 @@ def init():
     # TODO at the moment if explore=True, export_flat overwrites results
     parameters['export_flat'] = True
 
-    parameters['max_tr_dist'] = 6_000 #16_200
+    parameters['max_tr_dist'] = 11_000 #16_200
     # Could include Activities but tcs not ready yet
     parameters['distr_dims'] = [['Distancegroup', 'Legs', 'Departtimes']]
 

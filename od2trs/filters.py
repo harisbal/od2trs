@@ -158,7 +158,7 @@ def filter_distant_vertices(g, src, tgt, subsequent_departtimes, max_dist, weigh
                         cnt += 1
 
     if cnt > 0:
-        print('excl nodes - timelevel:{}'.format(cnt))
+        print('excl nodes - {}:{}'.format(weights, cnt))
 
     return g
 

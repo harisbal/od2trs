@@ -242,7 +242,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        #print('Filtered trs: {}'.format(len(filtered_trs)))
+        print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
         return None
