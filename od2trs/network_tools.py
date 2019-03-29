@@ -2,10 +2,10 @@ import itertools
 import numpy as np
 import graph_tool as gt
 import od2trs.filters as filters
+import od2trs.utilities as utils
 
 from graph_tool.topology import all_paths
 from graph_tool.util import find_vertex
-from graph_tool import openmp_get_num_threads
 
 def include_loops(zones_seqs, loops, max_legs=None):
     for zs in zones_seqs:
@@ -26,7 +26,7 @@ def add_chron_connectors(g, ordered_departtimes):
     """
     Convert a multigraph to a graph where only chronologically ordered paths are allowed
     We achieve so by creating multiple layers of nodes and by
-    adding the connectors between nodes on different layer
+    adding the connectors between nodes on different layers
     """
 
     names = list(g.vp['name'])
@@ -42,20 +42,18 @@ def add_chron_connectors(g, ordered_departtimes):
         # Sort the departtimes
         dts = sorted(node_departtimes[n], key=lambda tp: ordered_departtimes.index(tp))
         # create the connections for all the subsequent departtimes
-        for i, dt_src in enumerate(dts):
-            if i < len(dts):
-                for dt_tgt in dts[i+1:]:
-                    src_name = '{}-{}'.format(n, dt_src)
-                    tgt_name = '{}-{}'.format(n, dt_tgt)
+        for dt_src, dt_tgt in utils.pairwise(dts):
+            src_name = '{}-{}'.format(n, dt_src)
+            tgt_name = '{}-{}'.format(n, dt_tgt)
 
-                    src_idx = d_vertex_names[src_name]
-                    tgt_idx = d_vertex_names[tgt_name]
+            src_idx = d_vertex_names[src_name]
+            tgt_idx = d_vertex_names[tgt_name]
 
-                    e = g.add_edge(src_idx, tgt_idx)
-                    g.ep['Connector'][e] = True
+            e = g.add_edge(src_idx, tgt_idx)
+            g.ep['Connector'][e] = True
 
-                    g.vp['Connector'][src_idx] = True
-                    g.vp['Connector'][tgt_idx] = True
+            g.vp['Connector'][src_idx] = True
+            g.vp['Connector'][tgt_idx] = True
 
     return g
 
@@ -139,7 +137,7 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
     src_zones.sort(key=_sort_nodes_by_departtime)
     """
     # filter for the subsequent ones
-    tgts = srcs.copy()
+    tgts = srcs
     # print([g.vp['Departtime'][dt] for dt in tgts])
     # begin with everything filtered out and
     efilt = g.new_edge_property('bool', False)
@@ -167,7 +165,7 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             if j < i:
                 continue
 
-            gv = gt.Graph(g, directed=True)
+            gv = gt.Graph(g)
 
             tgt_name = g.vp['name'][tgt]
             tgt_dt = g.vp['Departtime'][tgt]
@@ -207,12 +205,12 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                     else:
                         max_dist = max_tr_dist
 
-                    gv = filters.filter_distant_vertices(gv, src, tgt,
-                                                         ordered_departtimes,
-                                                         max_dist=max_dist,
-                                                         weights=w)
+                    #gv = filters.filter_distant_vertices(gv, src, tgt,
+                    #                                     ordered_departtimes,
+                    #                                     max_dist=max_dist,
+                    #                                     weights=w)
 
-                    gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+                    #gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
             # Filtering the graph removes references to src and tgt
             upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]

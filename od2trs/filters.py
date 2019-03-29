@@ -145,55 +145,20 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights)
             if (v != src) and (v != tgt):
                 if g.vp['Connector'][v]:
                     dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
-                    dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
+                    if dist_src_v < 0:
+                        print(dist_src_v)
+                    if dist_src_v < max_dist:
+                        dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
+                        dist = dist_src_v + dist_v_tgt
 
-                    dist = dist_src_v + dist_v_tgt
-
-                    # if no path between vertices or dist too long
-                    if (dist < 0) or (dist > max_dist):
-                        g.vp['Filter'][v] = False
-                        cnt += 1
+                        # if no path between vertices or dist too long
+                        if (dist < 0) or (dist > max_dist):
+                            g.vp['Filter'][v] = False
+                            cnt += 1
 
     if cnt > 0:
         pass
         #print('excl nodes - {}:{}'.format(weights, cnt))
-
-    return g
-
-
-def filter_distant_vertices2(g, src, tgt, max_dist, weights):
-    """
-    :param g:
-    :param src:
-    :param max_legs:
-    :param tgt_dt:
-    :param apply_filter:
-    :return g: filtered g
-    """
-
-    src_dt = g.vp['Departtime'][src]
-    src_dt_vertices = find_vertex(g, g.vp['Departtime'], src_dt)
-
-    # All paths connecting different departtimes (time-levels) should cross connector nodes
-    # if the distance from and to the connector node is > than the max then the node can be eliminated
-    cnt = 0
-    for v in src_dt_vertices:
-        if (v != src) and (v != tgt):
-            if g.vp['Connector'][v]:
-
-                dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
-                dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
-
-                dist = dist_src_v + dist_v_tgt
-
-                # if no path between vertices or dist too long
-                if (dist < 0) or (dist > max_dist):
-                    g.vp['Filter'][v] = False
-                    cnt += 1
-
-    if cnt > 0:
-        pass
-        #print('excl nodes - distance:{}'.format(cnt))
 
     return g
 

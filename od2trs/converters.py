@@ -210,7 +210,7 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
     return trs_descr_df, trs_info_df
 
 
-def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
+def identify_trs_wrapper(src, G, max_legs, include_loops, max_tr_dist,
                          filter_dirs, ordered_departtimes, target_distr,
                          distr_dims):
 
@@ -256,7 +256,7 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    openmp_set_num_threads(1)
+    # openmp_set_num_threads(1)
 
     od_g = od.to_frame()
     if distances is not None:
@@ -270,48 +270,20 @@ def od2trs(od, max_legs=None, include_loops=False,
                     ordered_departtimes=ordered_departtimes,
                     coords=coords)
 
-    zones = list(set(G.vp['Zone']))[0:20]
+    zones = list(set(G.vp['Zone']))[0:10]
 
     if not ncores:
         ncores = cpu_count() - 1
     elif ncores == -1:
         ncores = cpu_count()
 
-    with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G]) as pool:
-        descrs = list()
-        infos = list()
-        tr_id = 1
-
-        for trs in tqdm(pool.imap_unordered(partial(
-                        identify_trs_wrapper,
-                        max_legs=max_legs,
-                        max_tr_dist=max_tr_dist,
-                        include_loops=include_loops,
-                        filter_dirs=filter_dirs,
-                        ordered_departtimes=ordered_departtimes,
-                        target_distr=target_distr,
-                        distr_dims=distr_dims),
-                        zones), total=len(zones)):
-            """
-            if trs:
-                for tr in trs:
-                    tr.id = tr_id
-                    tr_id += 1
-
-                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
-                descrs.append(trs_descr_df)
-                infos.append(trs_info_df)
-            """
-
-    if descrs:
-        trs_descr_df = pd.concat(descrs)
-        trs_info_df = pd.concat(infos)
-        if not trs_info_df.index.is_unique:
-            raise ValueError('Returned index is duplicated')
-
-    else:
-        raise ValueError('No trs identified')
-
-    print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
-
-    return trs_descr_df, trs_info_df
+    for z in tqdm(zones, total=len(zones)):
+        trs = identify_trs_wrapper(z,
+                                   G=G,
+                                   max_legs=max_legs,
+                                   max_tr_dist=max_tr_dist,
+                                   include_loops=include_loops,
+                                   filter_dirs=filter_dirs,
+                                   ordered_departtimes=ordered_departtimes,
+                                   target_distr=target_distr,
+                                   distr_dims=distr_dims)
