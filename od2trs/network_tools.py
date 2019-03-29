@@ -205,12 +205,12 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                     else:
                         max_dist = max_tr_dist
 
-                    #gv = filters.filter_distant_vertices(gv, src, tgt,
-                    #                                     ordered_departtimes,
-                    #                                     max_dist=max_dist,
-                    #                                     weights=w)
+                    gv = filters.filter_distant_vertices(gv, src, tgt,
+                                                         ordered_departtimes,
+                                                         max_dist=max_dist,
+                                                         weights=w)
 
-                    #gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+                    gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
             # Filtering the graph removes references to src and tgt
             upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
