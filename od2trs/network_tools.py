@@ -7,7 +7,6 @@ import od2trs.utilities as utils
 from graph_tool.topology import all_paths
 from graph_tool.util import find_vertex
 
-
 def include_loops(zones_seqs, loops, max_legs=None):
     for zs in zones_seqs:
         for i, z in enumerate(zs[1:-1]):
@@ -27,7 +26,7 @@ def add_chron_connectors(g, ordered_departtimes):
     """
     Convert a multigraph to a graph where only chronologically ordered paths are allowed
     We achieve so by creating multiple layers of nodes and by
-    adding the connectors between nodes on different layer
+    adding the connectors between nodes on different layers
     """
 
     names = list(g.vp['name'])
@@ -138,7 +137,7 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
     src_zones.sort(key=_sort_nodes_by_departtime)
     """
     # filter for the subsequent ones
-    tgts = srcs.copy()
+    tgts = srcs
     # print([g.vp['Departtime'][dt] for dt in tgts])
     # begin with everything filtered out and
     efilt = g.new_edge_property('bool', False)
@@ -161,12 +160,17 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
         src_name = g.vp['name'][src]
         src_dt = g.vp['Departtime'][src]
 
+        # store edges for faster access
+        all_edges = src.all_edges()
+        in_edges = src.in_edges()
+        out_edges = src.out_edges()
+
         for j, tgt in enumerate(tgts):
             # do not check for cases where the tgt is earlier than src
             if j < i:
                 continue
 
-            gv = gt.Graph(g, directed=True)
+            gv = gt.Graph(g)
 
             tgt_name = g.vp['name'][tgt]
             tgt_dt = g.vp['Departtime'][tgt]
@@ -177,20 +181,20 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             other_zones = _get_other_vertices(g, [*srcs])
             k = 'non-home'
             for z in other_zones:
-                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True)
+                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True, all_edges=all_edges)
 
             # Enable fh from src
             k = 'from-home'
-            gv = filters.filter_edges_by_direction(gv, src, k, direction_names[k], enable=True)
+            gv = filters.filter_edges_by_direction(gv, src, k, direction_names[k], enable=True, out_edges=out_edges)
 
             # Enable th from tgt
             k = 'to-home'
-            gv = filters.filter_edges_by_direction(gv, tgt, k, direction_names[k], enable=True)
+            gv = filters.filter_edges_by_direction(gv, tgt, k, direction_names[k], enable=True, in_edges=in_edges)
 
             # Disable nhb trips ending at srcs
             k = 'non-home'
             for z in srcs:
-                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
+                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False, all_edges=all_edges)
 
             gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 

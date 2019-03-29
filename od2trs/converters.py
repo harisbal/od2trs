@@ -292,7 +292,7 @@ def od2trs(od, max_legs=None, include_loops=False,
                         target_distr=target_distr,
                         distr_dims=distr_dims),
                         zones), total=len(zones)):
-            """
+
             if trs:
                 for tr in trs:
                     tr.id = tr_id
@@ -301,7 +301,6 @@ def od2trs(od, max_legs=None, include_loops=False,
                 trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
-            """
 
     if descrs:
         trs_descr_df = pd.concat(descrs)

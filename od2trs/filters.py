@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 
+import graph_tool as gt
 from graph_tool.topology import shortest_distance
 from graph_tool.util import find_vertex
 
@@ -97,14 +98,25 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
 def filter_edges_by_direction(g, src, direction, direction_names,
                               property_name='Filter', enable=True,
-                              include_connectors=False):
+                              include_connectors=False,
+                              in_edges=None, out_edges=None,
+                              all_edges=None):
 
     if direction == 'from-home':
-        edges = src.out_edges()
+        if out_edges is None:
+            edges = src.out_edges()
+        else:
+            edges = out_edges
     elif direction == 'to-home':
-        edges = src.in_edges()
+        if in_edges is None:
+            edges = src.in_edges()
+        else:
+            edges = in_edges
     elif direction == 'non-home':
-        edges = src.all_edges()
+        if all_edges is None:
+            edges = src.all_edges()
+        else:
+            edges = all_edges
     else:
         raise KeyError('Value parameter "direction" not accepted,'
                        'Accepted values: "from-home", "to-home", non-home"')
@@ -137,63 +149,35 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights)
     # iterate only between the required dts
     for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx + 1]:
 
-        dt_vertices = find_vertex(g, g.vp['Departtime'], dt)
+        vs_dts = set(find_vertex(g, g.vp['Departtime'], dt))
+        vs_connectors = set(find_vertex(g, g.vp['Connector'], True))
+
+        vertices = list(vs_dts & vs_connectors)
+
+        dists_from_src = shortest_distance(g, src, vertices, weights=weights, max_dist=max_dist)
+
+        # we need to reverse temporarily
+        g.set_reversed(True)
+        dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights, max_dist=max_dist)
+        g.set_reversed(False)
 
         # All paths connecting different departtimes (time-levels) should cross connector nodes
         # if the distance from and to the connector node is > than the max then the node can be eliminated
-        for v in dt_vertices:
+        for idx, v in enumerate(vertices):
             if (v != src) and (v != tgt):
-                if g.vp['Connector'][v]:
-                    dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
-                    dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
-
+                dist_src_v = dists_from_src[idx]
+                if dist_src_v < max_dist:
+                    dist_v_tgt = dists_to_tgt[idx]
                     dist = dist_src_v + dist_v_tgt
 
                     # if no path between vertices or dist too long
-                    if (dist < 0) or (dist > max_dist):
+                    if dist > max_dist:
                         g.vp['Filter'][v] = False
                         cnt += 1
 
     if cnt > 0:
         pass
         #print('excl nodes - {}:{}'.format(weights, cnt))
-
-    return g
-
-
-def filter_distant_vertices2(g, src, tgt, max_dist, weights):
-    """
-    :param g:
-    :param src:
-    :param max_legs:
-    :param tgt_dt:
-    :param apply_filter:
-    :return g: filtered g
-    """
-
-    src_dt = g.vp['Departtime'][src]
-    src_dt_vertices = find_vertex(g, g.vp['Departtime'], src_dt)
-
-    # All paths connecting different departtimes (time-levels) should cross connector nodes
-    # if the distance from and to the connector node is > than the max then the node can be eliminated
-    cnt = 0
-    for v in src_dt_vertices:
-        if (v != src) and (v != tgt):
-            if g.vp['Connector'][v]:
-
-                dist_src_v = shortest_distance(g, src, v, weights=weights, max_dist=max_dist)
-                dist_v_tgt = shortest_distance(g, v, tgt, weights=weights, max_dist=max_dist)
-
-                dist = dist_src_v + dist_v_tgt
-
-                # if no path between vertices or dist too long
-                if (dist < 0) or (dist > max_dist):
-                    g.vp['Filter'][v] = False
-                    cnt += 1
-
-    if cnt > 0:
-        pass
-        #print('excl nodes - distance:{}'.format(cnt))
 
     return g
 
