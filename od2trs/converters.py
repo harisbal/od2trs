@@ -272,6 +272,7 @@ def od2trs(od, max_legs=None, include_loops=False,
                     ordered_departtimes=ordered_departtimes,
                     coords=coords)
 
+    # TODO avoid duplicates
     zones = range(G.get_vertices().size)
 
     if not ncores:
