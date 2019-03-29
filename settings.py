@@ -1,4 +1,3 @@
-# settings.py
 import os
 
 
@@ -9,7 +8,7 @@ def init():
 
     parameters = dict()
 
-    parameters['run_optimisation'] = False
+    parameters['run_optimisation'] = True
 
     # explore multiple scenarios or not
     parameters['explore'] = True

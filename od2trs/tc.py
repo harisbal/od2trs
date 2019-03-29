@@ -32,7 +32,7 @@ class TripChain:
         """
         :param legs: list of Leg
         """
-        if len(legs) >= 1:
+        if len(legs) >= 2:
             self.legs = legs
 
             zones = list()
@@ -41,7 +41,7 @@ class TripChain:
             self.zones = zones
 
         else:
-            raise ValueError('Only one Leg found')
+            raise ValueError('Less than 2 legs found')
 
         self.id = None
         self.no_legs = len(legs)

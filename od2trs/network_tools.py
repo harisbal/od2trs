@@ -1,10 +1,11 @@
 import itertools
+import numpy as np
 import graph_tool as gt
 import od2trs.filters as filters
 
-from graph_tool.topology import all_paths, shortest_distance
+from graph_tool.topology import all_paths
 from graph_tool.util import find_vertex
-
+from graph_tool import openmp_get_num_threads
 
 def include_loops(zones_seqs, loops, max_legs=None):
     for zs in zones_seqs:
@@ -75,18 +76,21 @@ def identify_cycles(g, src, max_legs):
     for out_node in out_nodes:
         for in_node in in_nodes:
             if out_node == in_node:
-                out_node_idx = gf.vertex_index[out_node]
-                cycles.append([src_idx, out_node_idx, src_idx])
-                continue
-
-            simple_paths = all_paths(gf, out_node, in_node, max_legs)
-            for sp in simple_paths:
-                cycles.append([src_idx, *sp, src_idx])
+                out_node_idx = g.vertex_index[out_node]
+                c = np.array([src_idx, out_node_idx, src_idx])
+                cycles.append(c)
+            else:
+                simple_paths = all_paths(gf, out_node, in_node, max_legs)
+                for sp in simple_paths:
+                    sp = np.insert(sp, 0, src_idx)
+                    # np.append changes dtype
+                    sp = np.insert(sp, len(sp), src_idx)
+                    cycles.append(sp)
 
     return cycles
 
 
-def identify_zones_sequences(g, src_idx, max_legs, max_tr_dist,
+def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                              include_loops, filter_dir_names, ordered_departtimes):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
@@ -101,8 +105,8 @@ def identify_zones_sequences(g, src_idx, max_legs, max_tr_dist,
     :return zones_seqs: zones sequences
     """
 
-    def _sort_zones_by_departtime(zone):
-        zone_dt = g.vp['Departtime'][zone]
+    def _sort_nodes_by_departtime(node):
+        zone_dt = g.vp['Departtime'][node]
         return ordered_departtimes.index(zone_dt)
 
     def _get_other_vertices(g, vertices):
@@ -118,8 +122,11 @@ def identify_zones_sequences(g, src_idx, max_legs, max_tr_dist,
                        'non-home': filter_dir_names.non_home}
 
     # Create a list with all the src zones in different departtimes(dt)
-    # Retrieve the vertex based on its index
-    src = g.vertex(src_idx)
+    srcs = find_vertex(g, g.vp['Zone'], src)
+    srcs.sort(key=_sort_nodes_by_departtime)
+
+    """
+    #src = g.vertex(src)
     src_name = g.vp['name'][src]
     src_zone = g.vp['Zone'][src]
     src_dt = g.vp['Departtime'][src]
@@ -129,93 +136,115 @@ def identify_zones_sequences(g, src_idx, max_legs, max_tr_dist,
 
     # Get the the src zones accross all time levels
     src_zones = find_vertex(g, g.vp['Zone'], src_zone)
-    src_zones.sort(key=_sort_zones_by_departtime)
+    src_zones.sort(key=_sort_nodes_by_departtime)
+    """
     # filter for the subsequent ones
-    tgts = [z for z in src_zones if g.vp['Departtime'][z] in subsequent_departtimes]
+    tgts = srcs.copy()
     # print([g.vp['Departtime'][dt] for dt in tgts])
     # begin with everything filtered out and
-    efilt_src_zone_connectors = g.new_edge_property('bool', False)
+    efilt = g.new_edge_property('bool', False)
 
-    # enable all connectors but these between src_zones
-    for e in g.edges():
-        if g.ep['Connector'][e]:
-            if not g.vp['Zone'][e.source()] == g.vp['Zone'][src]:
-                efilt_src_zone_connectors[e] = True
+    # enable all connectors but these between srcs
+    for src in srcs:
+        for e in g.edges():
+            if g.ep['Connector'][e]:
+                if g.vp['Zone'][e.source()] != g.vp['Zone'][src]:
+                    efilt[e] = True
 
-    g.edge_properties['Filter'] = efilt_src_zone_connectors
-
+    g.edge_properties['Filter'] = efilt
     # Filter for vertices
     g.vertex_properties['Filter'] = g.new_vertex_property('bool', True)
 
     zones_seqs = list()
 
-    for tgt in tgts:
-        # print('sub zone: {}'.format(g.vp['name'][tgt]))
+    for i, src in enumerate(srcs):
 
-        # TODO The vertices filter should be propagated between iterations
-        gv = gt.Graph(g, directed=True)
+        src_name = g.vp['name'][src]
+        src_dt = g.vp['Departtime'][src]
 
-        tgt_name = g.vp['name'][tgt]
-        tgt_dt = g.vp['Departtime'][tgt]
-        print('from:{} to :{}'.format(src_name, tgt_name))
+        for j, tgt in enumerate(tgts):
+            # do not check for cases where the tgt is earlier than src
+            if j < i:
+                continue
 
-        # Enable all nh for other zones
-        other_zones = _get_other_vertices(g, [src, *tgts])
-        k = 'non-home'
-        for z in other_zones:
-            gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True)
+            gv = gt.Graph(g, directed=True)
 
-        # Enable fh from src and disable nh
-        k = 'from-home'
-        gv = filters.filter_edges_by_direction(gv, src, k, direction_names[k], enable=True)
+            tgt_name = g.vp['name'][tgt]
+            tgt_dt = g.vp['Departtime'][tgt]
 
-        # Enable th from tgt and disable nh
-        k = 'to-home'
-        gv = filters.filter_edges_by_direction(gv, tgt, k, direction_names[k], enable=True)
+            #print('from:{} to :{}'.format(src_name, tgt_name))
 
-        # Disable nhb trips for src and subsequent zones
-        k = 'non-home'
-        for z in [src, *tgts]:
-            gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
+            # Enable all nh for other zones
+            other_zones = _get_other_vertices(g, [*srcs])
+            k = 'non-home'
+            for z in other_zones:
+                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=True)
 
-        gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+            # Enable fh from src
+            k = 'from-home'
+            gv = filters.filter_edges_by_direction(gv, src, k, direction_names[k], enable=True)
 
-        if src_dt != tgt_dt:
-            extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
+            # Enable th from tgt
+            k = 'to-home'
+            gv = filters.filter_edges_by_direction(gv, tgt, k, direction_names[k], enable=True)
 
-            # filter first the time-passages and then by distance
-            weights = [None, gv.ep['Distance']]
+            # Disable nhb trips ending at srcs
+            k = 'non-home'
+            for z in srcs:
+                gv = filters.filter_edges_by_direction(gv, z, k, direction_names[k], enable=False)
 
-            for w in weights:
-                if w is None:
-                    max_dist = max_legs + extra_legs
-                else:
-                    max_dist = max_tr_dist
+            gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
 
-                gv = filters.filter_distant_vertices(gv, src, tgt,
-                                                     subsequent_departtimes,
-                                                     max_dist=max_dist,
-                                                     weights=w)
+            if src != tgt:
+                extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
 
-                gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+                # filter first the time-passages and then by distance
+                weights = [None, gv.ep['Distance']]
 
-        # gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+                for w in weights:
+                    if w is None:
+                        max_dist = max_legs + extra_legs
+                    else:
+                        max_dist = max_tr_dist
 
-        # get the src and tgt after the filtering
-        upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
-        upd_tgt = find_vertex(gv, gv.vp['name'], tgt_name)[0]
+                    gv = filters.filter_distant_vertices(gv, src, tgt,
+                                                         ordered_departtimes,
+                                                         max_dist=max_dist,
+                                                         weights=w)
 
-        if upd_src == upd_tgt:
-            zss = identify_cycles(gv, upd_src, max_legs-2)
-            zones_seqs.extend(zss)
-        else:
-            # jumping between time levels requires extra legs
-            max_legs_extra = max_legs + extra_legs
-            #if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
-            zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
-            zones_seqs.extend(zss)
+                    gv = gt.GraphView(gv, vfilt=gv.vp['Filter'], efilt=gv.ep['Filter'])
+
+            # Filtering the graph removes references to src and tgt
+            upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
+            upd_tgt = find_vertex(gv, gv.vp['name'], tgt_name)[0]
+
+            if upd_src == upd_tgt:
+                zss = identify_cycles(gv, upd_src, max_legs - 2)
+                zones_seqs.extend(zss)
+            else:
+                # jumping between time levels requires extra legs
+                max_legs_extra = max_legs + extra_legs
+                # if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
+                zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
+                zones_seqs.extend(zss)
 
     return zones_seqs
+
+    """
+            # get the src and tgt after the filtering
+            upd_src = find_vertex(gv, gv.vp['name'], src_name)[0]
+            upd_tgt = find_vertex(gv, gv.vp['name'], tgt_name)[0]
+
+            if upd_src == upd_tgt:
+                zss = identify_cycles(gv, upd_src, max_legs-2)
+                zones_seqs.extend(zss)
+            else:
+                # jumping between time levels requires extra legs
+                max_legs_extra = max_legs + extra_legs
+                #if _shortest_path_exists(gv, upd_src, upd_tgt, max_legs_extra):
+                zss = all_paths(gv, upd_src, upd_tgt, max_legs_extra)
+                zones_seqs.extend(zss)
+    """
 
     """
     # TODO is not working

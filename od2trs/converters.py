@@ -6,12 +6,12 @@ from functools import partial
 import itertools
 import pandas as pd
 import graph_tool as gt
+from graph_tool import openmp_set_num_threads
 
 import od2trs.utilities as utils
 import od2trs.network_tools as nettools
 import od2trs.distributions as distrs
 import od2trs.filters as filters
-
 from od2trs.tc import Leg, TripChain
 
 
@@ -21,7 +21,6 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
     od = od[['Source', 'Target'] + attr_cols]
 
     od.dropna(axis=1, inplace=True)
-    #od = od.fillna(0)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_departtimes is not None:
@@ -136,9 +135,6 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
     if avail_legs:
         legs_combs.append(avail_legs.copy())
 
-    if not avail_legs:
-        a = 1
-
     for src, tgt in utils.pairwise(zones_seq[1:-1]):
         edges = g.edge(src, tgt, all_edges=True)
         avail_legs.clear()
@@ -242,7 +238,7 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        print('Filtered trs: {}'.format(len(filtered_trs)))
+        # print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
         return None
@@ -260,6 +256,8 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
+    openmp_set_num_threads(1)
+
     od_g = od.to_frame()
     if distances is not None:
         od_g = od_g.join(distances)
@@ -272,8 +270,7 @@ def od2trs(od, max_legs=None, include_loops=False,
                     ordered_departtimes=ordered_departtimes,
                     coords=coords)
 
-    # TODO avoid duplicates
-    zones = range(G.get_vertices().size)
+    zones = list(set(G.vp['Zone']))[0:20]
 
     if not ncores:
         ncores = cpu_count() - 1
@@ -295,15 +292,16 @@ def od2trs(od, max_legs=None, include_loops=False,
                         target_distr=target_distr,
                         distr_dims=distr_dims),
                         zones), total=len(zones)):
+            """
             if trs:
                 for tr in trs:
                     tr.id = tr_id
                     tr_id += 1
 
-
                 trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
+            """
 
     if descrs:
         trs_descr_df = pd.concat(descrs)

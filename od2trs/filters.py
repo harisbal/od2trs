@@ -1,10 +1,7 @@
 import re
-from collections.abc import Iterable
 import pandas as pd
-import graph_tool as gt
 
 from graph_tool.topology import shortest_distance
-from graph_tool.search import dijkstra_search
 from graph_tool.util import find_vertex
 
 
@@ -120,25 +117,25 @@ def filter_edges_by_direction(g, src, direction, direction_names,
     return g
 
 
-def filter_distant_vertices(g, src, tgt, subsequent_departtimes, max_dist, weights):
+def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights):
     """
     :param g:
     :param src:
     :param tgt:
     :param max_dist:
-    :param subsequent_departtimes:
+    :param ordered_departtimes:
     :return g: filtered g
     """
 
     src_dt = g.vp['Departtime'][src]
     tgt_dt = g.vp['Departtime'][tgt]
 
-    src_dt_idx = subsequent_departtimes.index(src_dt)
-    tgt_dt_idx = subsequent_departtimes.index(tgt_dt)
+    src_dt_idx = ordered_departtimes.index(src_dt)
+    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
 
     cnt = 0
     # iterate only between the required dts
-    for dt in subsequent_departtimes[src_dt_idx:tgt_dt_idx+1]:
+    for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx + 1]:
 
         dt_vertices = find_vertex(g, g.vp['Departtime'], dt)
 
@@ -158,7 +155,8 @@ def filter_distant_vertices(g, src, tgt, subsequent_departtimes, max_dist, weigh
                         cnt += 1
 
     if cnt > 0:
-        print('excl nodes - {}:{}'.format(weights, cnt))
+        pass
+        #print('excl nodes - {}:{}'.format(weights, cnt))
 
     return g
 
@@ -194,7 +192,8 @@ def filter_distant_vertices2(g, src, tgt, max_dist, weights):
                     cnt += 1
 
     if cnt > 0:
-        print('excl nodes - distance:{}'.format(cnt))
+        pass
+        #print('excl nodes - distance:{}'.format(cnt))
 
     return g
 
