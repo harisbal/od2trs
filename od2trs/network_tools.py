@@ -2,10 +2,11 @@ import itertools
 import numpy as np
 import graph_tool as gt
 import od2trs.filters as filters
+import od2trs.utilities as utils
 
 from graph_tool.topology import all_paths
 from graph_tool.util import find_vertex
-from graph_tool import openmp_get_num_threads
+
 
 def include_loops(zones_seqs, loops, max_legs=None):
     for zs in zones_seqs:
@@ -42,20 +43,18 @@ def add_chron_connectors(g, ordered_departtimes):
         # Sort the departtimes
         dts = sorted(node_departtimes[n], key=lambda tp: ordered_departtimes.index(tp))
         # create the connections for all the subsequent departtimes
-        for i, dt_src in enumerate(dts):
-            if i < len(dts):
-                for dt_tgt in dts[i+1:]:
-                    src_name = '{}-{}'.format(n, dt_src)
-                    tgt_name = '{}-{}'.format(n, dt_tgt)
+        for dt_src, dt_tgt in utils.pairwise(dts):
+            src_name = '{}-{}'.format(n, dt_src)
+            tgt_name = '{}-{}'.format(n, dt_tgt)
 
-                    src_idx = d_vertex_names[src_name]
-                    tgt_idx = d_vertex_names[tgt_name]
+            src_idx = d_vertex_names[src_name]
+            tgt_idx = d_vertex_names[tgt_name]
 
-                    e = g.add_edge(src_idx, tgt_idx)
-                    g.ep['Connector'][e] = True
+            e = g.add_edge(src_idx, tgt_idx)
+            g.ep['Connector'][e] = True
 
-                    g.vp['Connector'][src_idx] = True
-                    g.vp['Connector'][tgt_idx] = True
+            g.vp['Connector'][src_idx] = True
+            g.vp['Connector'][tgt_idx] = True
 
     return g
 
