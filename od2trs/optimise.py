@@ -1,13 +1,10 @@
-import pandas as pd
-
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-
-import settings
-
+from pyutilib.common._exceptions import ApplicationError
 
 def prepare_model(trs, trs_info, od, target_distr,
-                  distr_constr_enabled):
+                  distr_constr_enabled, distr_perc_tolerance,
+                  mip_tolerances_lowercutoff):
 
     # TODO for some reason it passes 2 args
     def init_chains_descr(_model, _):
@@ -24,16 +21,13 @@ def prepare_model(trs, trs_info, od, target_distr,
 
         return d_distr_grps
 
-    settings.init()
-    params = settings.parameters['optimisation']
-
     model = ConcreteModel()
     model.od = od
     model.trs = trs
     model.trs_info = trs_info
     model.target_distr = target_distr
 
-    model.distr_perc_tolerance = params['distribution_percentage_tolerance']
+    model.distr_perc_tolerance = distr_perc_tolerance
 
     model.OdPairIds = Set(initialize=model.od.index.unique('Odpairid').tolist())
     model.ChainIds = Set(initialize=model.trs_info.index.unique().values.tolist())
@@ -46,8 +40,8 @@ def prepare_model(trs, trs_info, od, target_distr,
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.ChainIds)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
-    if params['mip tolerances lowercutoff'] is not None:
-        model.cutoff = - params['mip tolerances lowercutoff'] * model.od.sum()
+    if mip_tolerances_lowercutoff is not None:
+        model.cutoff = -mip_tolerances_lowercutoff * model.od.sum()
 
     if distr_constr_enabled:
         model.GrpIds = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
@@ -59,7 +53,10 @@ def prepare_model(trs, trs_info, od, target_distr,
     return model
 
 
-def run_model(model, distr_constr_enabled, send_to_neos):
+def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
+              mip_strategy_file=2, mip_strategy_probe=3, mip_tolerances_lowercutoff=None,
+              timelimit=None):
+
     def maximise_used_trips(_model):
         return sum(
                (sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
@@ -96,36 +93,50 @@ def run_model(model, distr_constr_enabled, send_to_neos):
         model.distr_rule_low = Constraint(model.GrpIds, rule=distr_rule_low)
         model.distr_rule_high = Constraint(model.GrpIds, rule=distr_rule_high)
 
-    params = settings.parameters['optimisation']
-
     opt = SolverFactory('cplex')
-    opt.options['workmem'] = params['work memory']
-    opt.options['mip strategy file'] = params['mip strategy file']
-    opt.options['mip strategy probe'] = params['mip strategy probe']
+
+    if workmem:
+        opt.options['workmem'] = workmem
+
+    opt.options['mip strategy file'] = mip_strategy_file
+    opt.options['mip strategy probe'] = mip_strategy_probe
     opt.options['simplex display'] = 2
 
-    if params['mip tolerances lowercutoff'] is not None:
+    if mip_tolerances_lowercutoff is not None:
         opt.options['mip tolerances lowercutoff'] = model.cutoff
         opt.options['mip limits solutions'] = 1 # Will stop once the first feasible solution is achieved
 
-    if params['timelimit']:
-        opt.options['timelimit'] = params['timelimit']
+    if timelimit:
+        opt.options['timelimit'] = timelimit
 
-    if send_to_neos:
+    if submit_to_neos:
         solver_manager = SolverManagerFactory('neos')
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        results = opt.solve(model, tee=True)
+        try:
+            results = opt.solve(model, tee=True)
+        except ApplicationError:
+            opt.set_executable(r'/opt/ibm/ILOG/CPLEX_Studio128/cplex/bin/x86-64_linux/cplex')
+            results = opt.solve(model, tee=True)
 
     model.solutions.store_to(results)
     return results
 
 
-def main(trs, trs_info, od, target_distr,
-         distr_constr_enabled, submit_to_neos=False):
+def main(trs, trs_info, od, target_distr=None,
+         distr_constr_enabled=False,
+         distr_perc_tolerance=None,
+         submit_to_neos=False, workmem=None,
+         mip_strategy_file=2, mip_strategy_probe=3,
+         mip_tolerances_lowercutoff=None, timelimit=None):
 
-    mymodel = prepare_model(trs, trs_info, od,
-                            target_distr, distr_constr_enabled)
-    results = run_model(mymodel, distr_constr_enabled, submit_to_neos)
+    mymodel = prepare_model(trs, trs_info, od, target_distr,
+                            distr_constr_enabled, distr_perc_tolerance,
+                            mip_tolerances_lowercutoff)
+
+    results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
+                        workmem, mip_strategy_file, mip_strategy_probe,
+                        mip_tolerances_lowercutoff, timelimit)
+
     return results

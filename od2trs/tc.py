@@ -1,7 +1,6 @@
 import collections
 import pandas as pd
 import od2trs.utilities as util
-import settings
 
 
 class Leg:
@@ -86,13 +85,13 @@ class TripChain:
         else:
             return False
 
-    def create_depart_times_seq(self):
+    def create_depart_times_seq(self, verbose=False):
         tps = list()
         for leg in self.legs:
             if leg.departtime:
                 tps.append(leg.departtime)
             else:
-                print('departtime missing from leg, return empty')
+                #print('departtime missing from leg, return empty')
                 return None
 
         return tuple(tps)
@@ -106,13 +105,6 @@ class TripChain:
                 #print('leg distance not defined, returning None')
                 return None
         return distance
-
-    def count_external_zones(self):
-        cnt = 0
-        for leg in self.legs:
-            if not leg.target.startswith(settings.parameters['int_zone_str']):
-                cnt += 1
-        return cnt
 
     def to_dict(self):
         d_tc = dict()

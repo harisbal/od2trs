@@ -12,6 +12,7 @@ def main(traj):
     max_legs = traj.par.trs.max_legs
     include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
+    grp_purposes = traj.par.trs.d_grp_purposes
     ordered_departtimes = traj.par.ordered_departtimes
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
@@ -31,10 +32,10 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.fetch_prepare_od(filepaths['od_in'], trips_thresh, idx_cols)
+    od = myio.fetch_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
 
-    if 'Distancegroup' in distr_dims:
-        distances = myio.read_distances(filepaths['distances'])
+    if distr_dims and ('Distancegroup' in distr_dims):
+        distances = myio.read_distances(filepaths['in']['distances'])
     else:
         distances = None
 

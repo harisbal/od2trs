@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 
-import settings
 import od2trs.utilities as utils
 
 
@@ -43,15 +42,14 @@ def fetch_target_distr(infilepath, distr_cols,
     return target_distr
 
 
-def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
+def fetch_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
     idx_cols = [str.capitalize(v) for v in idx_cols]
     od = (pd.read_csv(infilepath)
           .rename(columns=str.capitalize)
           .set_index(idx_cols)
           .squeeze())
-
     # TODO this must become more generic
-    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None, None]
+    grp_keys = [None, None, grp_purposes, None, None, None]
     od = od.groupby(grp_keys, level=od.index.names).sum()
 
     od = od.reset_index()
@@ -105,18 +103,15 @@ def read_zones_info(infilepath):
     return df
 
 
-def export_results(results):
-
-    settings.init()
-    filepaths = settings.filepaths
+def export_results(results, filepaths):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    od.to_csv(filepaths['od_out'], header=True)
-    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['trs_mdl_descr'], index=True)
-    trs_mdl_info.dropna(axis=1).to_csv(filepaths['trs_mdl_info'], index=True)
+    od.to_csv(filepaths['out']['od'], header=True)
+    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_descr'], index=True)
+    trs_mdl_info.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_info'], index=True)
 
     if target_distr is not None:
-        target_distr.to_csv(os.path.join(filepaths['target_distr']), index=True)
+        target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)
 
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
