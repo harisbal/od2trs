@@ -297,7 +297,8 @@ def od2trs(od, max_legs=None, include_loops=False,
     od_g = od.to_frame()
     if distances is not None:
         od_g = od_g.join(distances)
-        od_g = od_g.fillna(0)
+        # TODO Drop missing values (could cause problems)
+        od_g = od_g.dropna(axis=1)
 
     od_g = od_g.reset_index()
     attr_cols = [c for c in od_g.columns.tolist() if c not in ['Source', 'Target']]

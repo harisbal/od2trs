@@ -183,17 +183,18 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
 
             if src != tgt:
                 extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
-
                 # filter first the time-passages and then by distance
-                weights = [(None, max_legs+extra_legs), (g.ep['Distance'], max_tr_dist)]
+                weights = [(None, max_legs+extra_legs)]
 
-                """
+                if 'Distance' in g.edge_properties:
+                    weights.append((g.ep['Distance'], max_tr_dist))
+
                 for w, max_dist in weights:
                     g = filters.filter_distant_vertices(g, src, tgt,
                                                         ordered_departtimes,
                                                         max_dist=max_dist,
                                                         weights=w)
-                """
+
             if src == tgt:
                 zss = identify_cycles(g, src, max_legs-2)
                 zones_seqs.extend(zss)
@@ -205,7 +206,6 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
 
             g.clear_filters()
 
-    print(len(zones_seqs))
     return zones_seqs
 
     # TODO is not working
