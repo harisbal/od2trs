@@ -1,4 +1,5 @@
 import re
+import numpy as np
 import pandas as pd
 
 import graph_tool as gt
@@ -97,34 +98,29 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
 
 def filter_edges_by_direction(g, src, direction, direction_names,
-                              property_name='Filter', enable=True,
-                              include_connectors=False,
-                              in_edges=None, out_edges=None,
-                              all_edges=None):
+                              efilt_name='Filter', enable=True,
+                              include_connectors=False):
 
+    # we need to query the unfiltered graph
+    gunf = gt.Graph(g)
+    gunf.clear_filters()
+
+    # I get_xx_edges returns a 3 elements tuple (src, tgt, idx)
     if direction == 'from-home':
-        if out_edges is None:
-            edges = src.out_edges()
-        else:
-            edges = out_edges
+        edges = gunf.get_out_edges(src)
     elif direction == 'to-home':
-        if in_edges is None:
-            edges = src.in_edges()
-        else:
-            edges = in_edges
+        edges = gunf.get_in_edges(src)
     elif direction == 'non-home':
-        if all_edges is None:
-            edges = src.all_edges()
-        else:
-            edges = all_edges
+        edges = np.concatenate((gunf.get_out_edges(src), gunf.get_in_edges(src)))
     else:
         raise KeyError('Value parameter "direction" not accepted,'
                        'Accepted values: "from-home", "to-home", non-home"')
 
     for e in edges:
-        if include_connectors == g.ep['Connector'][e]:
-            if g.ep['Direction'][e] in direction_names:
-                g.ep[property_name][e] = enable
+        if include_connectors == gunf.ep['Connector'][e]:
+            if gunf.ep['Direction'][e] in direction_names:
+                # I need to update only the index
+                g.ep[efilt_name].get_array()[e[2]] = enable
 
     return g
 
@@ -176,7 +172,7 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights)
                         cnt += 1
 
     if cnt > 0:
-        pass
+        a=1
         #print('excl nodes - {}:{}'.format(weights, cnt))
 
     return g

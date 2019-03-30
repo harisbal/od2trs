@@ -1,17 +1,3 @@
-""" Module that shows how to wrap *pypet* around an existing project
-
-Thanks to *pypet* the module is now very flexible.
-You can immediately start exploring different sets
-of parameters, like different seeds or cell numbers.
-Accordingly, you can simply change ``exp_dict`` to explore different sets.
-
-On the contrary, this is tedious in the original code
-and requires some effort of refactoring.
-
-"""
-
-__author__ = 'Robert Meyer'
-
 import os
 import shutil
 import logging
@@ -39,11 +25,8 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
 def wrap_automaton(traj, single_run=True, export_flat=False):
     """ Simple wrapper function for compatibility with *pypet*.
-
     We will call the original simulation functions with data extracted from ``traj``.
-
     The resulting automaton patterns wil also be stored into the trajectory.
-
     :param traj: Trajectory container for data
 
     """
@@ -65,10 +48,10 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    traj.f_add_result('od', od, comment='od_')
+    traj.f_add_result('od', od, comment='od')
     traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
-    traj.f_add_result('eplased_time', elapsed_time, comment='Elapsed time')
+    traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if target_distr is not None:
         traj.f_add_result('target_distr', target_distr, comment='target_distr')
