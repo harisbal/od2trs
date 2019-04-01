@@ -33,7 +33,6 @@ def od_to_graph(od, attr_cols, ordered_departtimes=None,
                 'float32': 'double',
                 'float64': 'double'}
 
-
     # text buffer
     buf = io.StringIO()
     # saving a data frame to a buffer (same as with a regular file):
@@ -169,8 +168,11 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
 
     trs = list()
     for lc in legs_combs:
-        tr = TripChain(legs=lc)
-        trs.append(tr)
+        try:
+            tr = TripChain(legs=lc)
+            trs.append(tr)
+        except ValueError:
+            print(zones_seq)
 
     return trs
 
@@ -219,6 +221,9 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
                                                    include_loops, filter_dirs,
                                                    ordered_departtimes)
 
+    if not zones_seqs:
+        return None
+
     filtered_trs = list()
     for zs in zones_seqs:
 
@@ -240,10 +245,10 @@ def identify_trs_wrapper(src, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        # print('Filtered trs: {}'.format(len(filtered_trs)))
+        #print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
-        return None
+        return
 
 
 def identify_trs_wrapper_profiling(src, G, max_legs, include_loops, max_tr_dist,
@@ -274,7 +279,7 @@ def identify_trs_wrapper_profiling(src, G, max_legs, include_loops, max_tr_dist,
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        # print('Filtered trs: {}'.format(len(filtered_trs)))
+        print('Filtered trs: {}'.format(len(filtered_trs)))
         return filtered_trs
     else:
         return None
@@ -292,6 +297,7 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
+    # If not explicitly set up messes up the multiprocessing
     openmp_set_num_threads(1)
 
     od_g = od.to_frame()
@@ -307,7 +313,8 @@ def od2trs(od, max_legs=None, include_loops=False,
                     ordered_departtimes=ordered_departtimes,
                     coords=coords)
 
-    zones = list(set(G.vp['Zone']))#[0:20]
+    zones = list(set(G.vp['Zone']))
+    zones.sort()
 
     if not ncores:
         ncores = cpu_count() - 1
@@ -315,7 +322,6 @@ def od2trs(od, max_legs=None, include_loops=False,
         ncores = cpu_count()
 
     profiling = False
-
     if not profiling:
         with Pool(ncores, initializer=init_identify_trs_wrapper, initargs=[G]) as pool:
             descrs = list()

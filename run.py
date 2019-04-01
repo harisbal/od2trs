@@ -87,7 +87,7 @@ def prepare_traj_params(traj, cfg):
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
-    ncores = json.loads(cfg['OPTIMISATION']['ncores'])
+    ncores = json.loads(cfg['DEFAULT']['ncores'])
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
     distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
     distr_constr_enabled = json.loads(cfg['OPTIMISATION']['distribution_constraints_enabled'])

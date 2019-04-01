@@ -162,9 +162,11 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             if j < i:
                 continue
 
+            # print(g.vp['Zone'][src])
+            # print(g.vp['name'][src], g.vp['name'][tgt])
             # Reset the g to its initial state
-            g.ep['Filter'] = efilt_init
-            g.vp['Filter'] = vfilt_init
+            g.ep['Filter'] = efilt_init.copy()
+            g.vp['Filter'] = vfilt_init.copy()
             g.set_filters(g.ep['Filter'], g.vp['Filter'])
 
             src_dt = g.vp['Departtime'][src]
@@ -181,7 +183,10 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             for z in srcs:
                 g = filters.filter_edges_by_direction(g, z, k, direction_names[k], enable=False)
 
-            if src != tgt:
+            if src == tgt:
+                zss = identify_cycles(g, src, max_legs - 2)
+                zones_seqs.extend(zss)
+            else:
                 extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
                 # filter first the time-passages and then by distance
                 weights = [(None, max_legs+extra_legs)]
@@ -195,10 +200,6 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                                                         max_dist=max_dist,
                                                         weights=w)
 
-            if src == tgt:
-                zss = identify_cycles(g, src, max_legs-2)
-                zones_seqs.extend(zss)
-            else:
                 # jumping between time levels requires extra legs
                 max_legs_extra = max_legs + extra_legs
                 zss = all_paths(g, src, tgt, max_legs_extra)
@@ -208,6 +209,7 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
 
     return zones_seqs
 
+    """
     # TODO is not working
     if include_loops:
         for zs in zss:
@@ -224,3 +226,4 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                     # the loop includes the interm_node already
                     zs_loop = zs[:idx-1] + l + zs[idx+1:]
                     zones_seqs.append(zs_loop)
+    """
