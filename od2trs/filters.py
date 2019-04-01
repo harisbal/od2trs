@@ -222,8 +222,10 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist)
         # Extra legs for tour because of timelevel jumps
         if weights is None:
             extra_dist = ordered_departtimes.index(dt) - src_dt_idx
+            search_dist = max_dist+extra_dist-1
         else:
             extra_dist = 0
+            search_dist = max_dist
 
         vs = set(find_vertex(g, g.vp['Departtime'], dt))
         if src in vs:
@@ -239,12 +241,12 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist)
         if vertices:
             # The tgt must be reached within max_dist+extra_dist-1
             # because we need at least one extra leg from vertex to tgt
-            dists_from_src = shortest_distance(g, src, vertices, weights=weights, max_dist=max_dist+extra_dist-1)
+            dists_from_src = shortest_distance(g, src, vertices, weights=weights, max_dist=search_dist)
             # we need to reverse temporarily
             g.set_reversed(True)
             # The tgt must be reached within max_dist+extra_dist-1
             # because we need at least one extra leg from src to vertex
-            dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights, max_dist=max_dist+extra_dist-1)
+            dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights, max_dist=search_dist)
             g.set_reversed(False)
 
             for idx, v in enumerate(vertices):
