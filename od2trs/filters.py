@@ -125,13 +125,22 @@ def filter_edges_by_direction(g, src, direction, direction_names,
     return g
 
 
-def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights):
+def filter_edges_by_departtime(g, dt):
+    # TODO improve performance
+    for e in g.edges():
+        if g.ep['Departtime'][e] != dt:
+            g.ep['Filter'][e] = False
+    return g
+
+
+def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist):
     """
     :param g:
     :param src:
     :param tgt:
     :param max_dist:
     :param ordered_departtimes:
+    :param weights:
     :return g: filtered g
     """
 
@@ -144,32 +153,40 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, max_dist, weights)
     # iterate only between the required dts
     vertices = list()
     vs_connectors = set(find_vertex(g, g.vp['Connector'], True))
-    for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx]:
+    for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx+1]:
         vs_dts = set(find_vertex(g, g.vp['Departtime'], dt))
         vs = list(vs_dts & vs_connectors)
+        if src in vs:
+            vs.remove(src)
+        if tgt in vs:
+            vs.remove(tgt)
+
         if not vs:
             continue
         else:
             vertices.extend(vs)
 
+    cnt = 0
     if vertices:
-        dists_from_src = shortest_distance(g, src, vertices, weights=weights)
+        dists_from_src = shortest_distance(g, src, vertices, weights=weights, max_dist=max_dist)
 
         # we need to reverse temporarily
         g.set_reversed(True)
-        dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights)
+        dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights, max_dist=max_dist)
         g.set_reversed(False)
 
         # All paths connecting different departtimes (time-levels) should cross connector nodes
         # if the distance from and to the connector node is > than the max then the node can be eliminated
         for idx, v in enumerate(vertices):
-            if (v != src) and (v != tgt):
-                dist_src_v = dists_from_src[idx]
-                dist_v_tgt = dists_to_tgt[idx]
-                dist = float(dist_src_v) + float(dist_v_tgt)
-                # if no path between vertices or dist too long
-                if dist > max_dist:
-                    g.vp['Filter'][v] = False
+            dist_src_v = dists_from_src[idx]
+            dist_v_tgt = dists_to_tgt[idx]
+            dist = float(dist_src_v) + float(dist_v_tgt)
+            # if no path between vertices or dist too long
+            if dist > max_dist:
+                g.vp['Filter'][v] = False
+                cnt += 1
+
+    #print('count {}: {}'.format(weights, cnt))
 
     return g
 
