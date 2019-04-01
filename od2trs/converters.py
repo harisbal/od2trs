@@ -168,11 +168,8 @@ def zones_seq_to_tr(zones_seq, g, filter_dirs):
 
     trs = list()
     for lc in legs_combs:
-        try:
-            tr = TripChain(legs=lc)
-            trs.append(tr)
-        except ValueError:
-            print(zones_seq)
+        tr = TripChain(legs=lc)
+        trs.append(tr)
 
     return trs
 

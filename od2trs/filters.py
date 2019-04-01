@@ -2,7 +2,6 @@ import re
 import numpy as np
 import pandas as pd
 
-import graph_tool as gt
 from graph_tool.topology import shortest_distance
 from graph_tool.util import find_vertex
 
@@ -98,42 +97,49 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
 
 def filter_edges_by_direction(g, src, direction, direction_names,
-                              efilt_name='Filter', enable=True,
+                              filt_name='Filter', enable=True,
                               include_connectors=False):
 
-    # we need to query the unfiltered graph
-    gunf = gt.Graph(g)
-    gunf.clear_filters()
+    # when enabling we need to query the unfiltered graph
+    g.clear_filters()
 
     # I get_xx_edges returns a 3 elements tuple (src, tgt, idx)
     if direction == 'from-home':
-        edges = gunf.get_out_edges(src)
+        edges = src.out_edges()
     elif direction == 'to-home':
-        edges = gunf.get_in_edges(src)
+        edges = src.in_edges()
     elif direction == 'non-home':
-        edges = np.concatenate((gunf.get_out_edges(src), gunf.get_in_edges(src)))
+        edges = src.all_edges()
     else:
         raise KeyError('Value parameter "direction" not accepted,'
                        'Accepted values: "from-home", "to-home", non-home"')
-
     for e in edges:
-        if include_connectors == gunf.ep['Connector'][e]:
-            if gunf.ep['Direction'][e] in direction_names:
-                # I need to update only the index
-                g.ep[efilt_name].get_array()[e[2]] = enable
+        if include_connectors == g.ep['Connector'][e]:
+            if g.ep['Direction'][e] in direction_names:
+                g.ep[filt_name][e] = enable
+
+    g.set_filters(eprop=g.ep[filt_name], vprop=g.vp[filt_name])
 
     return g
 
 
-def filter_edges_by_departtime(g, dt):
-    # TODO improve performance
-    for e in g.edges():
-        if g.ep['Departtime'][e] != dt:
-            g.ep['Filter'][e] = False
+def filter_edges_by_departtime(g, dt, filt_name='Filter'):
+
+    # when enabling we need to query the unfiltered graph
+    g.clear_filters()
+
+    vals = g.ep['Departtime'].get_2d_array([0])[0]
+    mask = vals == dt
+    init_mask = g.ep[filt_name].a.copy()
+    mask = init_mask * mask
+    g.ep[filt_name].a = mask.copy()
+
+    g.set_filters(eprop=g.ep[filt_name], vprop=g.vp[filt_name])
+
     return g
 
 
-def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist):
+def filter_distant_connectors(g, src, tgt, ordered_departtimes, weights, max_dist):
     """
     :param g:
     :param src:
@@ -185,6 +191,70 @@ def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist)
             if dist > max_dist:
                 g.vp['Filter'][v] = False
                 cnt += 1
+
+    #print('count {}: {}'.format(weights, cnt))
+
+    return g
+
+
+def filter_distant_vertices(g, src, tgt, ordered_departtimes, weights, max_dist):
+    """
+    :param g:
+    :param src:
+    :param tgt:
+    :param max_dist:
+    :param ordered_departtimes:
+    :param weights:
+    :return g: filtered g
+    """
+
+    src_dt = g.vp['Departtime'][src]
+    tgt_dt = g.vp['Departtime'][tgt]
+
+    src_dt_idx = ordered_departtimes.index(src_dt)
+    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
+
+    # iterate only between the required dts
+    vertices = list()
+    cnt = 0
+    for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx+1]:
+
+        # Extra legs for tour because of timelevel jumps
+        if weights is None:
+            extra_dist = ordered_departtimes.index(dt) - src_dt_idx
+        else:
+            extra_dist = 0
+
+        vs = set(find_vertex(g, g.vp['Departtime'], dt))
+        if src in vs:
+            vs.remove(src)
+        if tgt in vs:
+            vs.remove(tgt)
+
+        if not vs:
+            continue
+        else:
+            vertices.extend(vs)
+
+        if vertices:
+            # The tgt must be reached within max_dist+extra_dist-1
+            # because we need at least one extra leg from vertex to tgt
+            dists_from_src = shortest_distance(g, src, vertices, weights=weights, max_dist=max_dist+extra_dist-1)
+            # we need to reverse temporarily
+            g.set_reversed(True)
+            # The tgt must be reached within max_dist+extra_dist-1
+            # because we need at least one extra leg from src to vertex
+            dists_to_tgt = shortest_distance(g, tgt, vertices, weights=weights, max_dist=max_dist+extra_dist-1)
+            g.set_reversed(False)
+
+            for idx, v in enumerate(vertices):
+                dist_src_v = dists_from_src[idx]
+                dist_v_tgt = dists_to_tgt[idx]
+                dist = float(dist_src_v) + float(dist_v_tgt)
+                # if no path between vertices or dist too long
+                if dist > max_dist+extra_dist:
+                    g.vp['Filter'][v] = False
+                    cnt += 1
 
     #print('count {}: {}'.format(weights, cnt))
 

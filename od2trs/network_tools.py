@@ -13,7 +13,7 @@ def include_loops(zones_seqs, loops, max_legs=None):
         for i, z in enumerate(zs[1:-1]):
             if z in loops:
                 # the last element of loops[z] and zs{i+1:] is the same
-                zss_loop = itertools.product([zs[i:i+1]], loops[z], [zs[i+1:]])
+                zss_loop = itertools.product([zs[i:i + 1]], loops[z], [zs[i + 1:]])
                 for zsl in zss_loop:
                     zsl_flat = list(itertools.chain(*zsl))
                     if max_legs:
@@ -60,7 +60,6 @@ def add_chron_connectors(g, ordered_departtimes):
 
 
 def identify_cycles(g, src, max_legs):
-
     src_idx = g.vertex_index[src]
     # in multigraphs returns duplicates
     out_nodes = g.get_out_neighbors(src)
@@ -108,22 +107,28 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
         zone_dt = g.vp['Departtime'][node]
         return ordered_departtimes.index(zone_dt)
 
-    def _enable_all_edges_by_direction(g, direction_names):
-        gunf = gt.Graph(g)
-        gunf.clear_filters()
-        for d in direction_names:
-            for e in find_edge(gunf, gunf.ep['Direction'], d):
-                g.ep['Filter'][e] = True
+    def _enable_all_edges_by_direction(g, directions):
+        g.clear_filters()
+
+        vals = g.ep['Direction'].get_2d_array([0])[0]
+        mask = np.isin(vals, directions)
+        g.ep['Filter'].a = mask
+
+        g.set_filters(g.ep['Filter'], g.vp['Filter'])
+
         return g
 
     def _enable_connectors(g, excluded_vertices):
-        gunf = gt.Graph(g)
-        gunf.clear_filters()
-        for e in find_edge(gunf, gunf.ep['Connector'], True):
+        g.clear_filters()
+
+        for e in find_edge(g, g.ep['Connector'], True):
             if e.source() not in excluded_vertices:
                 g.ep['Filter'][e] = True
             else:
                 g.ep['Filter'][e] = False
+
+        g.set_filters(g.ep['Filter'], g.vp['Filter'])
+
         return g
 
     direction_names = {'from-home': filter_dir_names.from_home,
@@ -162,6 +167,11 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             if j < i:
                 continue
 
+
+            if g.vp['name'][src] == g.vp['name'][src] == 'E01014540-IP':
+                a=1
+
+
             # print(g.vp['Zone'][src])
             print(g.vp['name'][src], g.vp['name'][tgt])
             # Reset the g to its initial state
@@ -172,6 +182,9 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             src_dt = g.vp['Departtime'][src]
             tgt_dt = g.vp['Departtime'][tgt]
 
+            src_dt_idx = ordered_departtimes.index(src_dt)
+            tgt_dt_idx = ordered_departtimes.index(tgt_dt)
+
             # Enable fh from src
             k = 'from-home'
             g = filters.filter_edges_by_direction(g, src, k, direction_names[k], enable=True)
@@ -180,12 +193,15 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             g = filters.filter_edges_by_direction(g, tgt, k, direction_names[k], enable=True)
             # Disable nhb trips ending at srcs
             k = 'non-home'
-            for z in srcs:
+            for z in srcs[src_dt_idx:tgt_dt_idx+1]:
                 g = filters.filter_edges_by_direction(g, z, k, direction_names[k], enable=False)
 
+            #[207 591 568 207]
+
+            extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
             # filter first the time-passages and then by distance
-            # -1 because we require at least one more leg from conector to tgt
-            weights = [(None, max_legs+extra_legs-1)]
+            # -1 because we require at least one more leg from the connector to the tgt
+            weights = [(None, max_legs + extra_legs - 1)]
 
             if 'Distance' in g.edge_properties:
                 weights.append((g.ep['Distance'], max_tr_dist))
@@ -201,10 +217,6 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                 zss = identify_cycles(g, src, max_legs - 2)
                 zones_seqs.extend(zss)
             else:
-                extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
-
-                # the number of legs on each time-level can be thresholded
-
                 # jumping between time levels requires extra legs
                 max_legs_extra = max_legs + extra_legs
                 zss = all_paths(g, src, tgt, max_legs_extra)
@@ -214,71 +226,16 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
 
     return zones_seqs
 
-
-def paths_identification_by_departtime(g, src, tgt, max_legs, ordered_departtimes):
     """
-    the number of legs on each time-level can be thresholded
-    For legs on the src and tgt time-level the max number of legs = max_legs-1
-    while for the rest max-2 because
-    parts of tours at intermediate levels require 1 leg from src and to 1 leg to tgt
+    cnt_edges = g.num_edges()
+                cnt_vertices = g.num_vertices()
+                density = 2 * cnt_edges / (cnt_vertices * (cnt_vertices - 1))
 
-    """
-    src_dt = g.vp['Departtime'][src]
-    tgt_dt = g.vp['Departtime'][tgt]
+                if g.is_directed():
+                    density /= 2
 
-    src_dt_idx = ordered_departtimes.index(src_dt)
-    tgt_dt_idx = ordered_departtimes.index(tgt_dt)
-
-    vs_connectors = set(find_vertex(g, g.vp['Connector'], True))
-    paths = dict()
-    for dt in ordered_departtimes[src_dt_idx:tgt_dt_idx + 1]:
-        vs_dts = set(find_vertex(g, g.vp['Departtime'], dt))
-        dt_connectors = list(vs_dts & vs_connectors)
-
-        if dt_connectors:
-            if dt == src_dt:
-                # src timelevel
-                upd_max_legs = max_legs - 1
-                srcs = src.copy()
-                tgts = dt_connectors.copy()
-            elif dt == tgt_dt:
-                # tgt timelevel
-                g.set_reversed(True)
-                upd_max_legs = max_legs - 1
-                srcs = tgt.copy()
-                tgts = dt_connectors.copy()
-            else:
-                # intermediate timelevels
-                upd_max_legs = max_legs - 2
-                srcs = dt_connectors.copy()
-                tgts = dt_connectors.copy()
-
-            for s in srcs:
-                paths[dt] = dict()
-                for t in tgts:
-                    dt_paths = all_paths(g, s, t, cutoff=upd_max_legs)
-
-                    paths[dt] = list(dt_paths)
-
-
-
-            if g.is_reversed():
-                g.set_reversed(False)
-
-            # All paths connecting different departtimes (time-levels) should cross connector nodes
-            # if the distance from and to the connector node is > than the max then the node can be eliminated
-            for idx, v in enumerate(tgts):
-                if (v != src) and (v != tgt):
-                    dist_src_v = dists_from_src[idx]
-                    dist_v_tgt = dists_to_tgt[idx]
-                    dist = float(dist_src_v) + float(dist_v_tgt)
-                    # if no path between vertices or dist too long
-                    if dist > max_dist:
-                        g.vp['Filter'][v] = False
-
-    return g
-
-    """
+                print('nodes:{}, vertices:{}, density: {:.2%}'.format(cnt_vertices, cnt_edges, density))
+                
     # TODO is not working
     if include_loops:
         for zs in zss:
