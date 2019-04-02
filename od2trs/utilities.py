@@ -1,8 +1,29 @@
+import os
 import itertools
 import re
 import pandas as pd
 
-import settings
+
+def prepare_filepaths_from_config(cfg):
+    filepaths = dict()
+    filepaths['in'] = dict()
+    filepaths['out'] = dict()
+
+    infolder = cfg['FILEPATHS_IN']['infolder']
+    outfolder = cfg['FILEPATHS_OUT']['outfolder']
+
+    infilepaths = cfg['FILEPATHS_IN']
+    outfilepaths = cfg['FILEPATHS_OUT']
+
+    for fp in infilepaths:
+        if fp != 'infolder':
+            filepaths['in'][fp] = os.path.join(infolder, infilepaths[fp])
+
+    for fp in outfilepaths:
+        if fp != 'outfolder':
+            filepaths['out'][fp] = os.path.join(outfolder, outfilepaths[fp])
+
+    return filepaths
 
 
 def pairwise(iterable):

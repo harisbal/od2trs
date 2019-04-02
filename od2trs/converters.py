@@ -14,20 +14,34 @@ import od2trs.filters as filters
 from od2trs.tc import Leg, TripChain
 
 
-def od_to_G(od, orig_col, dest_col, attr_cols, coords=None,
-            verbose=True):
+def od_to_graph(od, src_col, tgt_col, attr_cols,
+                ordered_departtimes=None,
+                coords=None, verbose=True):
 
-    G = nx.from_pandas_edgelist(od.reset_index(),
-                                orig_col, dest_col,
+    od = od.reset_index()
+    od = od[[src_col, tgt_col] + attr_cols]
+    #od.dropna(axis=1, inplace=True)
+
+    # Split the nodes of the networks in levels according to the time period of departure
+    if ordered_departtimes is not None:
+        od[src_col] = od[src_col] + '-' + od['Departtime']
+        od[tgt_col] = od[tgt_col] + '-' + od['Departtime']
+
+    g = nx.from_pandas_edgelist(od.reset_index(),
+                                src_col, tgt_col,
                                 attr_cols,
                                 nx.MultiDiGraph())
+    # Set the node attributes
+    zone_names = {n: n.split('-')[0] for n in g.nodes}
+    nx.set_node_attributes(g, zone_names, name='Zone')
+
     if verbose:
-        print('Network desnity: {:.2%}'.format(nx.density(G)))
+        print('Network density: {:.2%}'.format(nx.density(g)))
 
     if coords is not None:
         d_coords = coords.to_dict()
-        nx.set_node_attributes(G, d_coords, '(x,y)')
-    return G
+        nx.set_node_attributes(g, d_coords, '(x,y)')
+    return g
 
 
 def zones_seq_to_trs(zones_seq, G, filter_dirs):
@@ -99,8 +113,8 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
 
         no_legs = tr.no_legs
         depart_times = tr.depart_times
-
-        trs_info.append([tr.id, no_legs, dist, dist_grp, depart_times])
+        loops_cnt = tr.loops_cnt
+        trs_info.append([tr.id, no_legs, loops_cnt, dist, dist_grp, depart_times])
         trs_decr.update(tr.to_dict())
 
     idx = 'Tourid'
@@ -120,20 +134,11 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
     return trs_descr_df, trs_info_df
 
 
-def df_to_graph(df, attr_cols=None):
-    g = nx.from_pandas_edgelist(df.reset_index(),
-                                'Source', 'Target',
-                                attr_cols, nx.MultiDiGraph())
-
-    return g
-
-
 def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
-                      filter_dirs, ordered_time_periods, target_distr,
+                      filter_dirs, ordered_departtimes, target_distr,
                       distr_dims):
 
-
-    zones_seqs = nettools.identify_tour_zone_sequences(src_zone, max_legs, G, filter_dirs)
+    zones_seqs = nettools.identify_tour_zones_sequences(src_zone, max_legs, G, filter_dirs)
 
     if not zones_seqs:
         return None
@@ -142,7 +147,7 @@ def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
 
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_possible_trs(trs, ordered_time_periods)
+        trs = filters.filter_possible_trs(trs, ordered_departtimes)
 
         # filter by maximum distance
         if max_tr_dist:
@@ -165,39 +170,43 @@ def init_multiproc_wrapper(_G):
     G = _G
 
 
-def od2trs(od, max_legs=None, filter_dirs=None,
-           ordered_time_periods=None,
+def od2trs(od, max_legs=None, include_loops=False,
+           filter_dirs=None, ordered_departtimes=None,
            target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, max_tr_dist=None,
            coords=None, ncores=None):
 
-    attr_cols = ['Purpose', 'Direction', 'Departtime']
+    od_g = od.to_frame()
+    if distances is not None:
+        od_g = od_g.join(distances)
+        # TODO Drop missing values (could cause problems)
+        od_g = od_g.dropna(axis=1)
 
-    if distances:
-        attr_cols.append('Distance')
-        od = od.join(distances)
+    od_g = od_g.reset_index()
+    attr_cols = [c for c in od_g.columns.tolist() if c not in ['Source', 'Target']]
 
-    G = od_to_G(od, orig_col='Source', dest_col='Target',
-                attr_cols=attr_cols, coords=coords)
+    G = od_to_graph(od, src_col='Source', tgt_col='Target',
+                    ordered_departtimes=ordered_departtimes,
+                    attr_cols=attr_cols, coords=coords)
 
-    zones = G.nodes
+    zones = list(set([z for k, z in G.nodes.data('Zone')]))
+    zones.sort()
 
     if not ncores:
-        ncores = cpu_count()-1
+        ncores = cpu_count() - 1
 
     descrs = list()
     infos = list()
 
     tr_id = 1
 
-    with Pool(ncores, initializer=init_multiproc_wrapper,
-              initargs=[G]) as pool:
+    with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
         for trs in tqdm(pool.imap_unordered(partial(
                         multiproc_wrapper,
                         max_legs=max_legs,
                         max_tr_dist=max_tr_dist,
                         filter_dirs=filter_dirs,
-                        ordered_time_periods=ordered_time_periods,
+                        ordered_departtimes=ordered_departtimes,
                         target_distr=target_distr,
                         distr_dims=distr_dims),
                         zones), total=len(zones)):

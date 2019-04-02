@@ -9,20 +9,22 @@ def main(traj):
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
 
-    distr_dims = traj.par.trs.distr_dims
     max_legs = traj.par.trs.max_legs
+    include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
-    ordered_time_periods = traj.par.ordered_time_periods
+    grp_purposes = traj.par.trs.d_grp_purposes
+    ordered_departtimes = traj.par.ordered_departtimes
+    max_tr_dist = traj.par.trs.max_tr_dist
+    trips_thresh = traj.par.trs.trips_thresh
+    distr_dims = traj.par.trs.distr_dims
+    distr_perc_thresh = traj.par.trs.distr_perc_thresh
+    distr_constr_enabled = traj.par.optim.distr_constr_enabled
+    run_optim = traj.par.optim.run_optim
+    submit_to_neos = traj.par.optim.submit_to_neos
+
     dist_bins = traj.par.trs.dist_bins
     if not isinstance(dist_bins, list):
         dist_bins = None
-    max_tr_dist = traj.par.trs.max_tr_dist
-    trips_thresh = traj.par.trs.trips_thresh
-    distr_perc_thresh = traj.par.trs.distr_perc_thresh
-    distr_constr_enabled = traj.par.optim.distr_constr_enabled
-
-    run_optim = traj.par.optim.run_optim
-    submit_to_neos = traj.par.optim.submit_to_neos
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -30,10 +32,10 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.fetch_prepare_od(filepaths['od_in'], trips_thresh, idx_cols)
+    od = myio.fetch_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
 
-    if 'Distancegroup' in distr_dims:
-        distances = myio.read_distances(filepaths['distances'])
+    if distr_dims and ('Distancegroup' in distr_dims):
+        distances = myio.read_distances(filepaths['in']['distances'])
     else:
         distances = None
 
@@ -47,8 +49,9 @@ def main(traj):
     else:
         target_distr = None
 
-    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
-                                                    ordered_time_periods=ordered_time_periods,
+    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
+                                                    filter_dirs=filter_dirs,
+                                                    ordered_departtimes=ordered_departtimes,
                                                     target_distr=target_distr,
                                                     distr_dims=distr_dims, dist_bins=dist_bins,
                                                     distances=distances, max_tr_dist=max_tr_dist,
@@ -67,11 +70,11 @@ def main(traj):
         trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
         trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
 
-        results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
-
         print('Complete!')
 
-        return results
+    results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
+
+    return results
 
 
 if __name__ == '__main__':
