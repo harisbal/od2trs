@@ -4,8 +4,7 @@ import graph_tool as gt
 import od2trs.filters as filters
 import od2trs.utilities as utils
 
-from graph_tool.topology import all_paths
-from graph_tool.util import find_vertex, find_edge
+import graph_tool.all as gt
 
 
 def include_loops(zones_seqs, loops, max_legs=None):
@@ -42,13 +41,23 @@ def add_chron_connectors(g, ordered_departtimes):
         earliest_dt = ordered_departtimes.index(ndt[0])
         latest_dt = ordered_departtimes.index(ndt[-1])
 
-        for dt_src, dt_tgt in utils.pairwise(ordered_departtimes[earliest_dt: latest_dt+1]):
+        for src_dt, tgt_dt in utils.pairwise(ordered_departtimes[earliest_dt: latest_dt+1]):
             # create the connections for all the subsequent departtimes
-            src_name = '{}-{}'.format(n, dt_src)
-            tgt_name = '{}-{}'.format(n, dt_tgt)
+            src_name = '{}-{}'.format(n, src_dt)
+            tgt_name = '{}-{}'.format(n, tgt_dt)
 
-            src = find_vertex(g, g.vp['name'], src_name)[0]
-            tgt = find_vertex(g, g.vp['name'], tgt_name)[0]
+            src = gt.find_vertex(g, g.vp['name'], src_name)[0]
+
+            # the tgt vertex may be missing
+            try:
+                tgt = gt.find_vertex(g, g.vp['name'], tgt_name)[0]
+            except IndexError:
+                tgt = g.add_vertex()
+                for p in g.vp.keys():
+                    g.vp[p][tgt] = g.vp[p][src]
+
+                g.vp['name'][tgt] = tgt_name
+                g.vp['Departtime'][tgt] = tgt_dt
 
             e = g.add_edge(src, tgt)
             g.ep['Connector'][e] = True
@@ -78,7 +87,7 @@ def identify_cycles(g, src, max_legs):
                 c = np.array([src_idx, out_node_idx, src_idx])
                 cycles.append(c)
             else:
-                simple_paths = all_paths(gf, out_node, in_node, max_legs)
+                simple_paths = gt.all_paths(gf, out_node, in_node, max_legs)
                 for sp in simple_paths:
                     sp = np.insert(sp, 0, src_idx)
                     # np.append changes dtype
@@ -121,7 +130,7 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
     def _enable_connectors(g, excluded_vertices):
         g.clear_filters()
 
-        for e in find_edge(g, g.ep['Connector'], True):
+        for e in gt.find_edge(g, g.ep['Connector'], True):
             if e.source() not in excluded_vertices:
                 g.ep['Filter'][e] = True
             else:
@@ -131,12 +140,17 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
 
         return g
 
+    if src == 'E01014387':
+        pass
+    else:
+        return None
+
     direction_names = {'from-home': filter_dir_names.from_home,
                        'to-home': filter_dir_names.to_home,
                        'non-home': filter_dir_names.non_home}
 
     # Create a list with all the src zones in different departtimes(dt)
-    srcs = find_vertex(g, g.vp['Zone'], src)
+    srcs = gt.find_vertex(g, g.vp['Zone'], src)
     srcs.sort(key=_sort_nodes_by_departtime)
 
     # filter for the subsequent ones
@@ -167,10 +181,13 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             if j < i:
                 continue
 
-
-            if g.vp['name'][src] == g.vp['name'][src] == 'E01014540-IP':
-                a=1
-
+            if g.vp['name'][src] == 'E01014387-AM':
+                if g.vp['name'][tgt] == 'E01014387-PM':
+                    pass
+                else:
+                    continue
+            else:
+                continue
 
             # print(g.vp['Zone'][src])
             print(g.vp['name'][src], g.vp['name'][tgt])
@@ -196,8 +213,6 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
             for z in srcs[src_dt_idx:tgt_dt_idx+1]:
                 g = filters.filter_edges_by_direction(g, z, k, direction_names[k], enable=False)
 
-            #[207 591 568 207]
-
             extra_legs = ordered_departtimes.index(tgt_dt) - ordered_departtimes.index(src_dt)
             # filter first the time-passages and then by distance
             # -1 because we require at least one more leg from the connector to the tgt
@@ -212,15 +227,21 @@ def identify_zones_sequences(g, src, max_legs, max_tr_dist,
                                                     weights=w,
                                                     max_dist=max_dist)
 
+            if g.vp['name'][src] == 'E01014387-AM':
+                if g.vp['name'][tgt] == 'E01014387-PM':
+                    g.save('g_analysis.gt')
+
             if src == tgt:
                 g = filters.filter_edges_by_departtime(g, src_dt)
-                zss = identify_cycles(g, src, max_legs - 2)
-                zones_seqs.extend(zss)
+                zss = list(identify_cycles(g, src, max_legs - 2))
+                if zss:
+                    zones_seqs.extend(zss)
             else:
                 # jumping between time levels requires extra legs
                 max_legs_extra = max_legs + extra_legs
-                zss = all_paths(g, src, tgt, max_legs_extra)
-                zones_seqs.extend(zss)
+                zss = list(gt.all_paths(g, src, tgt, max_legs_extra))
+                if zss:
+                    zones_seqs.extend(zss)
 
             g.clear_filters()
 
