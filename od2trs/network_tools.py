@@ -30,31 +30,31 @@ def add_chron_connectors(g, ordered_departtimes):
     adding the connectors between nodes on different layers
     """
 
-    names = list(g.vp['name'])
-    d_vertex_names = dict(zip(names, range(len(names))))
-
     # dict with all the departtimes a trip begins from each node
     node_departtimes = dict()
-    for n in g.vp['name']:
-        node, dt = n.split('-', 1)
+    for ndt in g.vp['name']:
+        node, dt = ndt.split('-', 1)
         node_departtimes.setdefault(node, set()).update([dt])
 
-    for n in node_departtimes:
-        # Sort the departtimes
-        dts = sorted(node_departtimes[n], key=lambda tp: ordered_departtimes.index(tp))
-        # create the connections for all the subsequent departtimes
-        for dt_src, dt_tgt in utils.pairwise(dts):
+    for n, ndt in node_departtimes.items():
+        ndt = list(ndt)
+        ndt.sort(key=lambda tp: ordered_departtimes.index(tp))
+        earliest_dt = ordered_departtimes.index(ndt[0])
+        latest_dt = ordered_departtimes.index(ndt[-1])
+
+        for dt_src, dt_tgt in utils.pairwise(ordered_departtimes[earliest_dt: latest_dt+1]):
+            # create the connections for all the subsequent departtimes
             src_name = '{}-{}'.format(n, dt_src)
             tgt_name = '{}-{}'.format(n, dt_tgt)
 
-            src_idx = d_vertex_names[src_name]
-            tgt_idx = d_vertex_names[tgt_name]
+            src = find_vertex(g, g.vp['name'], src_name)[0]
+            tgt = find_vertex(g, g.vp['name'], tgt_name)[0]
 
-            e = g.add_edge(src_idx, tgt_idx)
+            e = g.add_edge(src, tgt)
             g.ep['Connector'][e] = True
 
-            g.vp['Connector'][src_idx] = True
-            g.vp['Connector'][tgt_idx] = True
+            g.vp['Connector'][src] = True
+            g.vp['Connector'][tgt] = True
 
     return g
 
