@@ -67,7 +67,7 @@ def prepare_traj_params(traj, cfg):
     include_loops = json.loads(cfg['TOURS']['include_loops'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
-    ordered_departtimes = json.loads(cfg['TOURS']['ordered_departtimes'])
+    ordered_dts = json.loads(cfg['TOURS']['ordered_departtimes'])
     distribution_percent_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
     max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
 
@@ -113,7 +113,7 @@ def prepare_traj_params(traj, cfg):
     else:
         traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
 
-    traj.par.trs.ordered_departtimes = Parameter('ordered_departtimes', ordered_departtimes,
+    traj.par.trs.ordered_dts = Parameter('ordered_dts', ordered_dts,
                                                  comment='Distribution Dimensions')
 
     traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distribution_percent_thresh[0],
