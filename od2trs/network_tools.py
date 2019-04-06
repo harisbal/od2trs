@@ -2,6 +2,35 @@ import networkx as nx
 import od2trs.filters as filters
 
 
+def identify_cycles(g, src, limit):
+
+    gf = g.copy()
+
+    # Prevent src out_nodes to connected with in_nodes
+    gf.remove_node(src)
+
+    out_nodes = g.successors(src)
+    in_nodes = g.predecessors(src)
+
+    cycles = list()
+    for out_node in out_nodes:
+        for in_node in in_nodes:
+            if out_node == in_node:
+                c = [src, out_node, src]
+                cycles.append(c)
+            else:
+                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit)
+                for sp in simple_paths:
+                    sp.insert(0, src)
+                    sp.append(src)
+                    cycles.append(sp)
+
+    if cycles:
+        return cycles
+    else:
+        return None
+
+
 def identify_tour_zones_sequences(g, src, max_legs, max_tr_dist, filter_dirs, ordered_dts):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
@@ -40,16 +69,13 @@ def identify_tour_zones_sequences(g, src, max_legs, max_tr_dist, filter_dirs, or
             if src == tgt:
                 # Keep only edges in src_dt
                 gff = filters.filter_connectors(gf, keep=False)
-                zs = list(nx.simple_cycles_root(gff, root=src, limit=max_legs))
+                zs = identify_cycles(gff, src, limit=max_legs-2)
                 if zs:
-                    for z in zs:
-                        z.append(src)
                     zone_seqs.extend(zs)
             else:
                 # TODO filter by distance
                 zs = list(nx.all_simple_paths(gf, src, tgt, cutoff=max_legs+extra_legs,
                                               weight='Distance', max_dist=max_tr_dist))
-                #zs = list(nx.all_simple_paths(gf, src, tgt, cutoff=max_legs+extra_legs))
 
                 if zs:
                     zone_seqs.extend(zs)
