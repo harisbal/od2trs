@@ -128,7 +128,7 @@ def main(trs, trs_info, od, target_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=None,
          submit_to_neos=False, workmem=None,
-         mip_strategy_file=2, mip_strategy_probe=3,
+         mip_strategy_file=2,mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
     mymodel = prepare_model(trs, trs_info, od, target_distr,

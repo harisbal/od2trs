@@ -283,3 +283,11 @@ def od2trs(od, max_legs=None, include_loops=False,
     print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
     return trs_descr_df, trs_info_df
+
+
+def results_to_od(descr, info, idx_cols):
+    idx_cols = [str.capitalize(v) for v in idx_cols]
+    info.rename(columns={'Timesused': 'Dailytrips'}, inplace=True)
+    jn = descr.join(info['Dailytrips'])
+    od = jn.groupby(idx_cols)['Dailytrips'].sum()
+    return od

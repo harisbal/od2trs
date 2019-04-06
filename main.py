@@ -21,6 +21,17 @@ def main(traj):
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
     run_optim = traj.par.optim.run_optim
     submit_to_neos = traj.par.optim.submit_to_neos
+    emphasis_mip = traj.par.optim.emphasis_mip
+    # TODO find cleaner approach (pypet does not like null or None
+    if traj.par.optim.mip_tolerances_lowercutoff == -1:
+        mip_tolerances_lowercutoff = None
+    else:
+        mip_tolerances_lowercutoff = traj.par.optim.mip_tolerances_lowercutoff
+
+    timelimit = traj.par.optim.timelimit
+    workmem = traj.par.optim.workmem
+    mip_strategy_probe = traj.par.optim.mip_strategy_probe
+    mip_strategy_file = traj.par.optim.mip_strategy_file
 
     dist_bins = traj.par.trs.dist_bins
     if not isinstance(dist_bins, list):
@@ -51,28 +62,37 @@ def main(traj):
     else:
         target_distr = None
 
-    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
-                                                    filter_dirs=filter_dirs, ordered_dts=ordered_dts,
-                                                    distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
-                                                    dist_bins=dist_bins, distr_dims=distr_dims,
-                                                    target_distr=target_distr, ncores=ncores)
+    trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
+                                            filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                            distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
+                                            dist_bins=dist_bins, distr_dims=distr_dims,
+                                            target_distr=target_distr, ncores=ncores)
 
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-        optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
-                                 target_distr, distr_constr_enabled,
+
+        optim_results = opt.main(trs_descr, trs_info, od,
+                                 target_distr=target_distr,
+                                 distr_constr_enabled=distr_constr_enabled,
+                                 workmem=workmem,
+                                 timelimit=timelimit,
+                                 mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
+                                 mip_strategy_probe=mip_strategy_probe,
+                                 mip_strategy_file=mip_strategy_file,
                                  submit_to_neos=submit_to_neos)
 
         solution_tour_times_used = filters.extract_tour_times_used(optim_results)
         last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
         trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
-        trs_mdl_info = trs_mdl_info.join(trs_mdl_times_used)
-        trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
-        trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
+        trs_info = trs_info.join(trs_mdl_times_used)
+        trs_info.fillna({'Timesused': 0}, inplace=True)
+        trs_info['Timesused'] = trs_info['Timesused'].astype(int)
 
+        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+        od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
         print('Complete!')
 
-    results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
+    results = [od_out, trs_descr, trs_info, target_distr]
 
     return results
 

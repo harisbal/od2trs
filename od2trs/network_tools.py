@@ -24,6 +24,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
             else:
                 # Subtract the distance from drc to successor and from predecessor to tgt
                 # TODO could cause issues in MultiGraphs because I don't know the key of the edges
+                # I must find a way to get the correct key if I ever have multiple edges between nodes!
                 if weight is not None:
                     excl_dist = g.get_edge_data(src, out_node)[0][weight] + g.get_edge_data(in_node, tgt)[0][weight]
                 else:

@@ -11,16 +11,20 @@ class Leg:
                  purpose=None, departtime=None,
                  direction=None, distance=None, **kwargs):
 
+        attrs = ['source', 'target', 'purpose', 'odpairid',
+                 'direction', 'departtime', 'distance']
         # Tours deriving from multilevel graphs include the time level in the name
-        self.source = source
-        self.target = target
+        self.source = source.split('-', 1)[0]
+        self.target = target.split('-', 1)[0]
         self.purpose = purpose
         self.direction = direction
         self.departtime = departtime
         self.distance = distance
+        self.odpairid = None
 
         for key in kwargs:
-            setattr(self, key.lower(), kwargs[key])
+            if key.lower() in attrs:
+                setattr(self, key.lower(), kwargs[key])
 
 
 class TripChain:
