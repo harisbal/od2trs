@@ -18,7 +18,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
             if out_node == in_node:
                 c = [src, out_node, src]
                 if max_dist:
-                    dist = sum([float(dist or 0) for u, v, dist in g.edges(c, data=weight)])
+                    dist = sum([float(dist or 0) for u, v, dist in gf.edges(c, data=weight)])
                     if dist <= max_dist:
                         cycles.append(c)
             else:
@@ -54,11 +54,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
     :return: potential_tripchains
     """
 
-    gf = filters.filter_edges_by_direction(g, src, filter_dirs)
-    #gf = filters.limit_cycle_length(gf, src, limit=max_legs)
-    # TODO filter distant vertices
-
-    zones = [n for n, z in gf.nodes(data='Zone') if z == src]
+    zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
     srcs = zones.copy()
@@ -71,6 +67,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
+            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
+            # gf = filters.limit_cycle_length(gf, src, limit=max_legs)
+            # TODO filter distant vertices
+
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
@@ -81,7 +81,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
                 gff = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
             else:
-                gff = gf
+                gff = gf.copy()
                 extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
                 limit = max_legs - 2 + extra_legs
 
