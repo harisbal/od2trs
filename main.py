@@ -34,10 +34,12 @@ def main(traj):
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
     od = myio.fetch_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
 
-    if distr_dims and ('Distancegroup' in distr_dims):
+    try:
         distances = myio.read_distances(filepaths['in']['distances'])
-    else:
+        dist_attr = 'Distance'
+    except FileNotFoundError:
         distances = None
+        dist_attr = None
 
     if distr_constr_enabled:
         # TODO inteval_cols is not very generic
@@ -50,12 +52,10 @@ def main(traj):
         target_distr = None
 
     trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
-                                                    filter_dirs=filter_dirs,
-                                                    ordered_dts=ordered_dts,
-                                                    target_distr=target_distr,
-                                                    distr_dims=distr_dims, dist_bins=dist_bins,
-                                                    distances=distances, max_tr_dist=max_tr_dist,
-                                                    ncores=ncores)
+                                                    filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                                    distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
+                                                    dist_bins=dist_bins, distr_dims=distr_dims,
+                                                    target_distr=target_distr, ncores=ncores)
 
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))

@@ -76,6 +76,11 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     g = _add_chron_connectors(g, ordered_dts)
 
+    # assure that nodes are unique
+    names = g.nodes.keys()
+    if len(names) != len(set(names)):
+        raise ValueError('Duplicate node names in graph')
+
     if verbose:
         print('Network density: {:.2%}'.format(nx.density(g)))
 
@@ -177,13 +182,13 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
     return trs_descr_df, trs_info_df
 
 
-def multiproc_wrapper(src_zone, max_legs, max_tr_dist,
-                      filter_dirs, ordered_dts, target_distr,
-                      distr_dims):
+def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
+                      max_legs, max_tr_dist, dist_attr,
+                      target_distr, distr_dims):
 
     g = G.copy()
-    zones_seqs = nettools.identify_tour_zones_sequences(g, src_zone, max_legs, max_tr_dist,
-                                                        filter_dirs, ordered_dts)
+    zones_seqs = nettools.identify_tour_zones_sequences(g, src_zone, filter_dirs, ordered_dts,
+                                                        max_legs, max_tr_dist, dist_attr)
 
     print(len(zones_seqs))
     if not zones_seqs:
@@ -219,7 +224,7 @@ def init_multiproc_wrapper(_G):
 def od2trs(od, max_legs=None, include_loops=False,
            filter_dirs=None, ordered_dts=None,
            target_distr=None, distr_dims=None, dist_bins=None,
-           distances=None, max_tr_dist=None,
+           distances=None, dist_attr=None, max_tr_dist=None,
            coords=None, ncores=None):
 
     odg = od.to_frame()
@@ -251,6 +256,7 @@ def od2trs(od, max_legs=None, include_loops=False,
                         multiproc_wrapper,
                         max_legs=max_legs,
                         max_tr_dist=max_tr_dist,
+                        dist_attr=dist_attr,
                         filter_dirs=filter_dirs,
                         ordered_dts=ordered_dts,
                         target_distr=target_distr,
