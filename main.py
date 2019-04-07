@@ -92,6 +92,9 @@ def main(traj):
         od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
         print('Complete!')
 
+    else:
+        od_out = None
+
     results = [od_out, trs_descr, trs_info, target_distr]
 
     return results

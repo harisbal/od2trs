@@ -107,7 +107,9 @@ def export_results(results, filepaths):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    od.to_csv(filepaths['out']['od'], header=True)
+    if od is not None:
+        od.to_csv(filepaths['out']['od'], header=True)
+
     trs_mdl_descr.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_descr'], index=True)
     trs_mdl_info.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_info'], index=True)
 

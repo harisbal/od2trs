@@ -26,7 +26,12 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 # TODO could cause issues in MultiGraphs because I don't know the key of the edges
                 # I must find a way to get the correct key if I ever have multiple edges between nodes!
                 if weight is not None:
-                    excl_dist = g.get_edge_data(src, out_node)[0][weight] + g.get_edge_data(in_node, tgt)[0][weight]
+                    # TODO improve
+                    dists_from = g.get_edge_data(src, out_node)
+                    dists_to = g.get_edge_data(in_node, tgt)
+                    dist_from = dists_from[list(dists_from.keys())[0]][weight]
+                    dist_to = dists_to[list(dists_to.keys())[0]][weight]
+                    excl_dist = dist_from + dist_to
                 else:
                     excl_dist = 0
 
@@ -67,6 +72,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
+            # TODO check if FH or TH trips exist and otherwise continue
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
             # gf = filters.limit_cycle_length(gf, src, limit=max_legs)
             # TODO filter distant vertices
