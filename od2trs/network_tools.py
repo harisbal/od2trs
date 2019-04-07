@@ -43,7 +43,6 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 else:
                     excl_dist = 0
 
-                print(max_dist-excl_dist)
                 simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit, weight=weight, max_dist=max_dist-excl_dist)
                 for sp in simple_paths:
                     sp.insert(0, src)
@@ -68,9 +67,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
     :return: potential_tripchains
     """
 
-    #if src != 'E01014747':
-    #    return []
-
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
@@ -86,7 +82,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
             # TODO check if FH or TH trips exist and otherwise continue
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
-            # gf = filters.limit_cycle_length(gf, src, limit=max_legs)
+
+            distance_filters = [(None, max_legs), ('Distance', max_tr_dist)]
+            for w, md in distance_filters:
+                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
             # TODO filter distant vertices
 
             print(src, tgt)
