@@ -156,16 +156,18 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
     dists_from_src = dict(nx.single_source_dijkstra_path_length(g, source=src, cutoff=cutoff, weight=weight))
     dists_to_tgt = dict(nx.single_source_dijkstra_path_length(g_reversed, source=tgt, cutoff=cutoff, weight=weight))
 
-    lens_min_cycle = {k: dists_from_src.get(k, 0) + dists_to_tgt.get(k, 0)
-                      for k in set(dists_from_src)}
+    dists = dict()
+    for n in g.nodes():
+        # if a node is not reachable from src or tgt then it is not present in the returned dicts
+        dists[n] = dists_from_src.get(n, cutoff+1) + dists_to_tgt.get(n, cutoff+1)
 
     # if the cycle len is greater than the cutoff do not include nodes in the new g
     nodes = set()
     nodes.add(src)
     nodes.add(tgt)
-    for k, length in lens_min_cycle.items():
-        if length <= cutoff:
-            nodes.add(k)
+    for n, dist in dists.items():
+        if dist <= cutoff:
+            nodes.add(n)
 
     return g.subgraph(nodes)
 

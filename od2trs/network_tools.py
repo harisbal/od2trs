@@ -80,26 +80,24 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
-            # TODO check if FH or TH trips exist and otherwise continue
-            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
-
-            distance_filters = [(None, max_legs), ('Distance', max_tr_dist)]
-            for w, md in distance_filters:
-                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
-            # TODO filter distant vertices
-
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
-            # TODO filter by distance
+            extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+            # TODO check if FH or TH trips exist and otherwise continue
+            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
+
+            distance_filters = [(None, max_legs+extra_legs), ('Distance', max_tr_dist)]
+            for w, md in distance_filters:
+                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
+
             if src == tgt:
                 # Keep only edges in src_dt
                 gff = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
             else:
                 gff = gf.copy()
-                extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
                 limit = max_legs - 2 + extra_legs
 
             zs = identify_cycles(gff, src, tgt, limit=limit,
