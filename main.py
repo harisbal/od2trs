@@ -68,6 +68,7 @@ def main(traj):
                                             dist_bins=dist_bins, distr_dims=distr_dims,
                                             target_distr=target_distr, ncores=ncores)
 
+    od_out = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
 
@@ -81,21 +82,19 @@ def main(traj):
                                  mip_strategy_file=mip_strategy_file,
                                  submit_to_neos=submit_to_neos)
 
-        solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-        last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
-        trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
-        trs_info = trs_info.join(trs_mdl_times_used)
-        trs_info.fillna({'Timesused': 0}, inplace=True)
-        trs_info['Timesused'] = trs_info['Timesused'].astype(int)
+        times_used = filters.extract_tour_times_used(optim_results)
+        if times_used:
+            last_sol = times_used.index.unique(level='Solutionno').max()
+            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
+            trs_info = trs_info.join(trs_mdl_times_used)
+            trs_info.fillna({'Timesused': 0}, inplace=True)
+            trs_info['Timesused'] = trs_info['Timesused'].astype(int)
 
-        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-        od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
-        print('Complete!')
-
-    else:
-        od_out = None
+            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+            od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     results = [od_out, trs_descr, trs_info, target_distr]
+    print('Complete!')
 
     return results
 

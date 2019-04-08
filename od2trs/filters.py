@@ -184,9 +184,12 @@ def extract_tour_times_used(optim_results):
         for k, v in sol['Variable'].items():
             tour_id = int(re.search('([\d]+)', k).group())
             d_tour_times_used[(sol_id, tour_id)] = v['Value']
-    # to df
-    sr = pd.Series(d_tour_times_used).round(2).astype(int)
-    sr.index.names = ['Solutionno', 'Tourid']
-    sr.name = 'Timesused'
-    return sr
+    if d_tour_times_used:
+        # to df
+        sr = pd.Series(d_tour_times_used).round(2).astype(int)
+        sr.index.names = ['Solutionno', 'Tourid']
+        sr.name = 'Timesused'
+        return sr
+    else:
+        return None
 
