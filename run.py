@@ -49,7 +49,8 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    traj.f_add_result('od', od, comment='od')
+    if od is not None:
+        traj.f_add_result('od', od, comment='od')
     traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
     traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')

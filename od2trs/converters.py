@@ -32,10 +32,10 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
         for z, zdt in zone_dts.items():
             zdt = list(zdt)
             zdt.sort(key=lambda tp: _ordered_dts.index(tp))
-            earliest_dt = _ordered_dts.index(zdt[0])
-            latest_dt = _ordered_dts.index(zdt[-1])
+            earliest_dt_idx = _ordered_dts.index(zdt[0])
+            latest_dt_idx = _ordered_dts.index(zdt[-1])
 
-            for src_dt, tgt_dt in utils.pairwise(_ordered_dts[earliest_dt: latest_dt + 1]):
+            for src_dt, tgt_dt in utils.pairwise(_ordered_dts[earliest_dt_idx: latest_dt_idx + 1]):
                 # create the connections for all the subsequent departtimes
                 src_name = '{}-{}'.format(z, src_dt)
                 tgt_name = '{}-{}'.format(z, tgt_dt)
@@ -182,15 +182,21 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
     return trs_descr_df, trs_info_df
 
 
+def results_to_od(descr, info, idx_cols):
+    idx_cols = [str.capitalize(v) for v in idx_cols]
+    info.rename(columns={'Timesused': 'Dailytrips'}, inplace=True)
+    jn = descr.join(info['Dailytrips'])
+    od = jn.groupby(idx_cols)['Dailytrips'].sum()
+    return od
+
+
 def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
                       max_legs, max_tr_dist, dist_attr,
                       target_distr, distr_dims):
 
-    g = G.copy()
-    zones_seqs = nettools.identify_tour_zones_sequences(g, src_zone, filter_dirs, ordered_dts,
+    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
                                                         max_legs, max_tr_dist, dist_attr)
 
-    print(len(zones_seqs))
     if not zones_seqs:
         return None
 
@@ -242,7 +248,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
-
+    #zones = [zones[zones.index('E01014747')], zones[zones.index('E01014797')]]
     if not ncores:
         ncores = cpu_count() - 1
 
@@ -283,11 +289,3 @@ def od2trs(od, max_legs=None, include_loops=False,
     print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
     return trs_descr_df, trs_info_df
-
-
-def results_to_od(descr, info, idx_cols):
-    idx_cols = [str.capitalize(v) for v in idx_cols]
-    info.rename(columns={'Timesused': 'Dailytrips'}, inplace=True)
-    jn = descr.join(info['Dailytrips'])
-    od = jn.groupby(idx_cols)['Dailytrips'].sum()
-    return od

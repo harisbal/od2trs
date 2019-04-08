@@ -133,16 +133,16 @@ def filter_connectors(g, keep=False):
     return gf
 
 
-def limit_cycle_length(G, source, limit):
+def filter_distant_nodes(g, src, tgt, weight, cutoff):
     """
 
     Parameters
     ----------
-    G : NetworkX DiGraph
+    g : NetworkX DiGraph
        A directed graph
-    source : node
+    src : node
       the node where cycles will originate from
-    limit : int
+    cutoff : int
       an integer specifying the maximum allowed length of cycles
     Returns
     -------
@@ -152,29 +152,24 @@ def limit_cycle_length(G, source, limit):
 
     """
 
-    subG = None
-    sccs = nx.strongly_connected_components(G)
-    for scc in sccs:
-        if source in scc:
-            subG = G.subgraph(scc)
-            break
-    if subG:
-        lens_from_source = nx.single_source_shortest_path_length(subG, source=source)
-        lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=source))
+    g_reversed = g.reverse()
+    dists_from_src = dict(nx.single_source_dijkstra_path_length(g, source=src, cutoff=cutoff, weight=weight))
+    dists_to_tgt = dict(nx.single_source_dijkstra_path_length(g_reversed, source=tgt, cutoff=cutoff, weight=weight))
 
-        lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
-                          for k in set(lens_from_source)}
+    dists = dict()
+    for n in g.nodes():
+        # if a node is not reachable from src or tgt then it is not present in the returned dicts
+        dists[n] = dists_from_src.get(n, cutoff+1) + dists_to_tgt.get(n, cutoff+1)
 
-        # if the cycle len is greater than the limit do not include nodes in the new G
-        nodes = set()
-        nodes.add(source)
-        for k, length in lens_min_cycle.items():
-            if length <= limit:
-                nodes.add(k)
+    # if the cycle len is greater than the cutoff do not include nodes in the new g
+    nodes = set()
+    nodes.add(src)
+    nodes.add(tgt)
+    for n, dist in dists.items():
+        if dist <= cutoff:
+            nodes.add(n)
 
-        return G.subgraph(nodes)
-    else:
-        return G
+    return g.subgraph(nodes)
 
 
 def extract_tour_times_used(optim_results):
@@ -189,9 +184,12 @@ def extract_tour_times_used(optim_results):
         for k, v in sol['Variable'].items():
             tour_id = int(re.search('([\d]+)', k).group())
             d_tour_times_used[(sol_id, tour_id)] = v['Value']
-    # to df
-    sr = pd.Series(d_tour_times_used).round(2).astype(int)
-    sr.index.names = ['Solutionno', 'Tourid']
-    sr.name = 'Timesused'
-    return sr
+    if d_tour_times_used:
+        # to df
+        sr = pd.Series(d_tour_times_used).round(2).astype(int)
+        sr.index.names = ['Solutionno', 'Tourid']
+        sr.name = 'Timesused'
+        return sr
+    else:
+        return None
 

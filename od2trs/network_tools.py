@@ -1,16 +1,24 @@
 import networkx as nx
 import od2trs.filters as filters
+import od2trs.utilities as utils
 
 
 def identify_cycles(g, src, tgt, limit, weight, max_dist):
+
+    def _get_multigraph_first_edge_data(u, v, attr):
+        a = g.get_edge_data(u, v)
+        a = a[list(a.keys())[0]][attr]
+        return a
 
     gf = g.copy()
 
     # Prevent src out_nodes to connected with in_nodes
     gf.remove_node(src)
+    if tgt in gf.nodes:
+        gf.remove_node(tgt)
 
-    out_nodes = g.successors(src)
-    in_nodes = g.predecessors(tgt)
+    out_nodes = list(g.successors(src))
+    in_nodes = list(g.predecessors(tgt))
 
     cycles = list()
     for out_node in out_nodes:
@@ -18,7 +26,10 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
             if out_node == in_node:
                 c = [src, out_node, src]
                 if max_dist:
-                    dist = sum([float(dist or 0) for u, v, dist in gf.edges(c, data=weight)])
+                    dist = 0
+                    for u, v in utils.pairwise(c):
+                        # TODO could cause issues in MultiGraphs because I don't know the key of the edges
+                        dist += _get_multigraph_first_edge_data(u, v, weight)
                     if dist <= max_dist:
                         cycles.append(c)
             else:
@@ -26,16 +37,13 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 # TODO could cause issues in MultiGraphs because I don't know the key of the edges
                 # I must find a way to get the correct key if I ever have multiple edges between nodes!
                 if weight is not None:
-                    # TODO improve
-                    dists_from = g.get_edge_data(src, out_node)
-                    dists_to = g.get_edge_data(in_node, tgt)
-                    dist_from = dists_from[list(dists_from.keys())[0]][weight]
-                    dist_to = dists_to[list(dists_to.keys())[0]][weight]
+                    dist_from = _get_multigraph_first_edge_data(src, out_node, weight)
+                    dist_to = _get_multigraph_first_edge_data(in_node, tgt, weight)
                     excl_dist = dist_from + dist_to
                 else:
                     excl_dist = 0
 
-                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit, weight, max_dist-excl_dist)
+                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit, weight=weight, max_dist=max_dist-excl_dist)
                 for sp in simple_paths:
                     sp.insert(0, src)
                     sp.append(tgt)
@@ -72,23 +80,24 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
-            # TODO check if FH or TH trips exist and otherwise continue
-            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
-            # gf = filters.limit_cycle_length(gf, src, limit=max_legs)
-            # TODO filter distant vertices
-
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
-            # TODO filter by distance
+            extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+            # TODO check if FH or TH trips exist and otherwise continue
+            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
+
+            distance_filters = [(None, max_legs+extra_legs), ('Distance', max_tr_dist)]
+            for w, md in distance_filters:
+                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
+
             if src == tgt:
                 # Keep only edges in src_dt
                 gff = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
             else:
                 gff = gf.copy()
-                extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
                 limit = max_legs - 2 + extra_legs
 
             zs = identify_cycles(gff, src, tgt, limit=limit,
