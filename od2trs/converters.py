@@ -278,7 +278,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
-    #zones = [zones[zones.index('E01014747')], zones[zones.index('E01014797')]]
+
     if not ncores:
         ncores = cpu_count() - 1
 
@@ -287,7 +287,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     tr_id = 1
 
-    profiling = True
+    profiling = False
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:

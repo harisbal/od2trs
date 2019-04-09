@@ -56,7 +56,7 @@ def main(traj):
 
     if distr_constr_enabled:
         try:
-            # TODO inteval_cols is not very generic
+            # TODO IMPROVE (not too generic)
             target_distr = myio.read_target_distr(filepaths['target_distr'], distr_dims,
                                                   interval_cols=['Distancegroup'],
                                                   seq_cols=['Departtimes'])

@@ -14,8 +14,7 @@ def prepare_distribution_from_observed(obs_info, distr_dims, dist_bins):
     percs.name = 'Percentage'
 
     obs_distr = pd.concat([sizes, percs], axis=1)
-    obs_distr = obs_distr.reset_index()
-    obs_distr.index.name = 'Distrgroupid'
+    obs_distr['Distrgroupid'] = obs_distr.reset_index().index.values
 
     return obs_distr
 
