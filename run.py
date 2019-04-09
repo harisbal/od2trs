@@ -17,7 +17,7 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
     infldr = os.path.join(inputs_fldr, data_src, aggr_lvl, 'sample_perc_{}'.format(int(perc_sample_size * 100)))
 
-    files = ['od.csv', 'distances.csv', 'target_distr.csv']
+    files = ['od.csv', 'distances.csv', 'target_distr.csv', 'trs_obs_info.scv']
     for f in files:
         nf = os.path.join(infldr, f)
         print(nf)

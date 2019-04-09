@@ -61,9 +61,9 @@ def main(traj):
                                                   interval_cols=['Distancegroup'],
                                                   seq_cols=['Departtimes'])
 
-        except FileNotFoundError:
-            obs_info = myio.read_obs_info(filepaths['trs_obs_info'])
-            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims)
+        except KeyError:
+            obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'])
+            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims, dist_bins)
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
