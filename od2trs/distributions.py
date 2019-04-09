@@ -1,6 +1,25 @@
 import pandas as pd
 
 
+def prepare_distribution_from_observed(obs_info, distr_dims):
+    """
+    Create the distribution based on the tour data
+    The distribution groups identified in the observed data may not match the
+    groups identified in the created tripchains.
+    """
+
+    sizes = obs_info.groupby(distr_dims)['Timesused'].sum()
+    sizes.name = 'Size'
+    percs = sizes.div(sizes.sum())
+    percs.name = 'Percentage'
+
+    obs_distr = pd.concat([sizes, percs], axis=1)
+    obs_distr = obs_distr.reset_index()
+    obs_distr.index.name = 'Distrgroupid'
+
+    return obs_distr
+
+
 def assign_distr_group(trs_info_df, target_distr, distr_dims):
 
     # Keep only the distribution group id and its definition

@@ -10,9 +10,9 @@ def create_folders(folder_list):
             os.makedirs(folder)
 
 
-def fetch_target_distr(infilepath, distr_cols,
-                       interval_cols=None, seq_cols=None,
-                       percent_col='Percentage'):
+def read_target_distr(infilepath, distr_cols,
+                      interval_cols=None, seq_cols=None,
+                      percent_col='Percentage'):
 
     target_distr = pd.read_csv(infilepath)
 
@@ -42,7 +42,7 @@ def fetch_target_distr(infilepath, distr_cols,
     return target_distr
 
 
-def fetch_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
+def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
     idx_cols = [str.capitalize(v) for v in idx_cols]
     od = (pd.read_csv(infilepath)
           .rename(columns=str.capitalize)
@@ -85,6 +85,10 @@ def fetch_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
     #od.dropna(inplace=True)
 
     return od
+
+
+def read_obs_info(infilepath):
+    return pd.read_csv(infilepath, index_col=0)
 
 
 def read_distances(infilepath):

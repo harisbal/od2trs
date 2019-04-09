@@ -94,13 +94,12 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
             if src == tgt:
                 # Keep only edges in src_dt
-                gff = filters.filter_connectors(gf, keep=False)
+                gf = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
             else:
-                gff = gf.copy()
                 limit = max_legs - 2 + extra_legs
 
-            zs = identify_cycles(gff, src, tgt, limit=limit,
+            zs = identify_cycles(gf, src, tgt, limit=limit,
                                  weight=dist_attr, max_dist=max_tr_dist)
             if zs:
                 zone_seqs.extend(zs)

@@ -1,7 +1,8 @@
 import od2trs.io as myio
+import od2trs.distributions as distrs
 import od2trs.converters as converters
-import od2trs.optimise as opt
 import od2trs.filters as filters
+import od2trs.optimise as opt
 
 
 def main(traj):
@@ -21,7 +22,8 @@ def main(traj):
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
     run_optim = traj.par.optim.run_optim
     submit_to_neos = traj.par.optim.submit_to_neos
-    emphasis_mip = traj.par.optim.emphasis_mip
+    #emphasis_mip = traj.par.optim.emphasis_mip
+
     # TODO find cleaner approach (pypet does not like null or None
     if traj.par.optim.mip_tolerances_lowercutoff == -1:
         mip_tolerances_lowercutoff = None
@@ -43,7 +45,7 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.fetch_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
+    od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
 
     try:
         distances = myio.read_distances(filepaths['in']['distances'])
@@ -53,10 +55,16 @@ def main(traj):
         dist_attr = None
 
     if distr_constr_enabled:
-        # TODO inteval_cols is not very generic
-        target_distr = myio.fetch_target_distr(filepaths['target_distr'], distr_dims,
-                                               interval_cols=['Distancegroup'],
-                                               seq_cols=['Departtimes'])
+        try:
+            # TODO inteval_cols is not very generic
+            target_distr = myio.read_target_distr(filepaths['target_distr'], distr_dims,
+                                                  interval_cols=['Distancegroup'],
+                                                  seq_cols=['Departtimes'])
+
+        except FileNotFoundError:
+            obs_info = myio.read_obs_info(filepaths['trs_obs_info'])
+            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims)
+
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
     else:
