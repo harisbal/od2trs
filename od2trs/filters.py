@@ -122,14 +122,16 @@ def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
             if (g.nodes[s]['Zone'] == g.nodes[src]['Zone']) | (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone']):
                 gf.remove_edge(s, t, k)
 
+    # After this point the graph is not multilevel
+    gf = nx.DiGraph(gf)
     return gf
 
 
 def filter_connectors(g, keep=False):
     gf = g.copy()
-    for src, tgt, k, attrs in g.edges(data=True, keys=True):
+    for src, tgt, attrs in g.edges(data=True):
         if not attrs['Connector'] == keep:
-            gf.remove_edge(src, tgt, k)
+            gf.remove_edge(src, tgt)
     return gf
 
 
@@ -168,6 +170,39 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
     for n, dist in dists.items():
         if dist <= cutoff:
             nodes.add(n)
+
+    return g.subgraph(nodes)
+
+
+def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
+
+    src_dt = src.split('-', 1)[1]
+    tgt_dt = tgt.split('-', 1)[1]
+
+    src_dt_nodes = set()
+    tgt_dt_nodes = set()
+
+    for n in g.nodes():
+        dt = n.split('-', 1)[1]
+        if dt == src_dt:
+            src_dt_nodes.add(n)
+        if dt == tgt_dt:
+            tgt_dt_nodes.add(n)
+
+    nodes = set(g.nodes())
+
+    for n in src_dt_nodes:
+        try:
+            nx.single_source_dijkstra(g, source=src, target=n, cutoff=max_legs-1)
+        except nx.NetworkXNoPath:
+            nodes.remove(n)
+
+    if src_dt != tgt_dt:
+        for n in tgt_dt_nodes:
+            try:
+                nx.single_source_dijkstra(g, source=n, target=tgt, cutoff=max_legs-1)
+            except nx.NetworkXNoPath:
+                nodes.remove(n)
 
     return g.subgraph(nodes)
 
