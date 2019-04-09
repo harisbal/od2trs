@@ -77,6 +77,16 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
     :return: potential_tripchains
     """
 
+    def _path_exists(_g, _src, _tgt):
+        try:
+            nx.shortest_path(gf, src, tgt)
+            return True
+        except nx.NetworkXNoPath:
+            return False
+
+    # Convert to DiGraph from MultiDiGraph
+    g = nx.DiGraph(g)
+
     #if src != 'E01014798':
     #    return None
 
@@ -101,8 +111,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             tgt_dt = tgt.split('-', 1)[1]
 
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
-            # TODO check if FH or TH trips exist and otherwise continue
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
+
+            if not _path_exists(gf, src, tgt):
+                continue
 
             distance_filters = [(None, max_legs+extra_legs), ('Distance', max_tr_dist)]
             for w, md in distance_filters:
