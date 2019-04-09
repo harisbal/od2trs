@@ -5,60 +5,46 @@ import od2trs.utilities as utils
 
 def identify_cycles(g, src, tgt, limit, weight, max_dist):
 
-    def _get_multigraph_first_edge_data(_g, u, v, attr):
-        a = _g.get_edge_data(u, v)[attr]
-        return a
-
     gf = g.copy()
 
-    # Prevent src out_nodes to connected with in_nodes
+    # Prevent src succs to connected with preds
     gf.remove_node(src)
     if tgt in gf.nodes:
         gf.remove_node(tgt)
 
-    out_nodes = list(g.successors(src))
-    in_nodes = list(g.predecessors(tgt))
+    succs = list(g.successors(src))
+    preds = list(g.predecessors(tgt))
 
     cycles = list()
-    for out_node in out_nodes:
-        for in_node in in_nodes:
-            """
-            if out_node != 'E01014889-AM':
-                continue
-            if in_node != 'E01014540-OP':
-                continue
-            """
-            if out_node == in_node:
-                c = [src, out_node, src]
+    for succ in succs:
+        for pred in preds:
+
+            if succ == pred:
+                c = [src, succ, src]
                 if max_dist:
                     dist = 0
                     for u, v in utils.pairwise(c):
-                        # TODO could cause issues in MultiGraphs because I don't know the key of the edges
-                        dist += _get_multigraph_first_edge_data(g, u, v, weight)
+                        dist += g.get_edge_data(u, v)[weight]
                     if dist <= max_dist:
                         cycles.append(c)
             else:
                 # Subtract the distance from drc to successor and from predecessor to tgt
-                # TODO could cause issues in MultiGraphs because I don't know the key of the edges
-                # I must find a way to get the correct key if I ever have multiple edges between nodes!
                 if weight is not None:
-                    dist_from = _get_multigraph_first_edge_data(g, src, out_node, weight)
-                    dist_to = _get_multigraph_first_edge_data(g, in_node, tgt, weight)
+                    dist_from = g.get_edge_data(src, succ)[weight]
+                    dist_to = g.get_edge_data(pred, tgt)[weight]
                     excl_dist = dist_from + dist_to
                 else:
                     excl_dist = 0
 
-                simple_paths = nx.all_simple_paths(gf, out_node, in_node, cutoff_len=limit,
-                                                   weight=weight, cutoff_weight=max_dist-excl_dist)
+                simple_paths = nx.all_simple_paths(gf, succ, pred, cutoff_len=limit,
+                                                   weight=weight,
+                                                   cutoff_weight=max_dist-excl_dist)
                 for sp in simple_paths:
                     sp.insert(0, src)
                     sp.append(tgt)
                     cycles.append(sp)
 
     if cycles:
-        #import pandas as pd
-        #df = pd.DataFrame(cycles)
-        #df.to_csv('paths.csv')
         return cycles
     else:
         return None
