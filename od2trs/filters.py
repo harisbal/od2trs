@@ -105,31 +105,31 @@ def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
 
     gf = g.copy()
     # Creates a graph that origins edges from and to
-    for s, t, k, attrs in g.edges(data=True, keys=True):
+    for s, t, attrs in g.edges(data=True):
         if not attrs['Connector']:
             if attrs['Direction'] in nhb_names:
                 # NHB trips should be removed from the src and in all dts
                 if (g.nodes[s]['Zone'] == g.nodes[src]['Zone']) | (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone']):
-                    gf.remove_edge(s, t, k)
+                    gf.remove_edge(s, t)
             elif attrs['Direction'] in fh_names:
                 if not s == src:
-                    gf.remove_edge(s, t, k)
+                    gf.remove_edge(s, t)
             elif attrs['Direction'] in th_names:
                 if not t == tgt:
-                    gf.remove_edge(s, t, k)
+                    gf.remove_edge(s, t)
         else:
             # Remove connectors linked to src_zone
             if (g.nodes[s]['Zone'] == g.nodes[src]['Zone']) | (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone']):
-                gf.remove_edge(s, t, k)
+                gf.remove_edge(s, t)
 
     return gf
 
 
 def filter_connectors(g, keep=False):
     gf = g.copy()
-    for src, tgt, k, attrs in g.edges(data=True, keys=True):
+    for src, tgt, attrs in g.edges(data=True):
         if not attrs['Connector'] == keep:
-            gf.remove_edge(src, tgt, k)
+            gf.remove_edge(src, tgt)
     return gf
 
 

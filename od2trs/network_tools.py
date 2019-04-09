@@ -6,8 +6,7 @@ import od2trs.utilities as utils
 def identify_cycles(g, src, tgt, limit, weight, max_dist):
 
     def _get_multigraph_first_edge_data(_g, u, v, attr):
-        a = _g.get_edge_data(u, v)
-        a = a[list(a.keys())[0]][attr]
+        a = _g.get_edge_data(u, v)[attr]
         return a
 
     gf = g.copy()
@@ -49,8 +48,8 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 else:
                     excl_dist = 0
 
-                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit,
-                                                   weight=weight, max_dist=max_dist-excl_dist)
+                simple_paths = nx.all_simple_paths(gf, out_node, in_node, cutoff_len=limit,
+                                                   weight=weight, cutoff_weight=max_dist-excl_dist)
                 for sp in simple_paths:
                     sp.insert(0, src)
                     sp.append(tgt)
@@ -79,7 +78,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
     def _path_exists(_g, _src, _tgt):
         try:
-            nx.shortest_path(gf, src, tgt)
+            nx.shortest_path(_g, src, tgt)
             return True
         except nx.NetworkXNoPath:
             return False
