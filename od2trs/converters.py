@@ -287,7 +287,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     tr_id = 1
 
-    profiling = False
+    profiling = True
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
