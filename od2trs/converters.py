@@ -41,9 +41,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 tgt_name = '{}-{}'.format(z, tgt_dt)
 
                 # the tgt vertex may be missing
-                try:
-                    tgt = _g.nodes[tgt_name]
-                except KeyError:
+                if not tgt_name in _g.nodes():
                     _g.add_node(tgt_name)
                     _g.nodes[tgt_name]['Zone'] = z
                     _g.nodes[tgt_name]['Departtime'] = tgt_dt
