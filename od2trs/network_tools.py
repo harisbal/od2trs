@@ -18,7 +18,6 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
     cycles = list()
     for succ in succs:
         for pred in preds:
-
             if succ == pred:
                 c = [src, succ, src]
                 if max_dist:
@@ -28,7 +27,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                     if dist <= max_dist:
                         cycles.append(c)
             else:
-                # Subtract the distance from drc to successor and from predecessor to tgt
+                # Subtract the distance from src to successor and from predecessor to tgt
                 if weight is not None:
                     dist_from = g.get_edge_data(src, succ)[weight]
                     dist_to = g.get_edge_data(pred, tgt)[weight]
@@ -69,12 +68,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
         except nx.NetworkXNoPath:
             return False
 
-    # Convert to DiGraph from MultiDiGraph
-    g = nx.DiGraph(g)
-
-    #if src != 'E01014798':
-    #    return None
-
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
@@ -88,20 +81,20 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
-            #if tgt != 'E01014798-OP':
-            #    continue
-
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+            # This function also converts MultiDiGraph to DiGraph
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
 
             if not _path_exists(gf, src, tgt):
                 continue
 
-            distance_filters = [(None, max_legs+extra_legs), ('Distance', max_tr_dist)]
+            gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
+
+            distance_filters = [(None, (max_legs+extra_legs)), ('Distance', max_tr_dist)]
             for w, md in distance_filters:
                 gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
 

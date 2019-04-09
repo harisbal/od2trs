@@ -83,7 +83,7 @@ def main(traj):
                                  submit_to_neos=submit_to_neos)
 
         times_used = filters.extract_tour_times_used(optim_results)
-        if times_used:
+        if times_used is not None:
             last_sol = times_used.index.unique(level='Solutionno').max()
             trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
             trs_info = trs_info.join(trs_mdl_times_used)
@@ -93,7 +93,6 @@ def main(traj):
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     results = [od_out, trs_descr, trs_info, target_distr]
-    print('Complete!')
 
     return results
 

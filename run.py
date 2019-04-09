@@ -44,6 +44,8 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     results = mn.main(traj)
     elapsed_time = time.time() - start_time
 
+    print('Complete!')
+
     if export_flat:
         myio.export_results(results, traj.conf.filepaths)
 
