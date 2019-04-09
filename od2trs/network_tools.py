@@ -38,6 +38,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 simple_paths = nx.all_simple_paths(gf, succ, pred, cutoff_len=limit,
                                                    weight=weight,
                                                    cutoff_weight=max_dist-excl_dist)
+
                 for sp in simple_paths:
                     sp.insert(0, src)
                     sp.append(tgt)

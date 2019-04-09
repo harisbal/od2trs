@@ -286,7 +286,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     tr_id = 1
 
-    profiling = False
+    profiling = True
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
@@ -322,7 +322,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
         return trs_descr_df, trs_info_df
     else:
-        for zone in zones[10:15]:
+        for zone in zones[13:15]:
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs,
                                               max_tr_dist=max_tr_dist,
                                               dist_attr=dist_attr,
