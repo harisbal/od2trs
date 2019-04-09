@@ -89,7 +89,6 @@ def main(traj):
             trs_info = trs_info.join(trs_mdl_times_used)
             trs_info.fillna({'Timesused': 0}, inplace=True)
             trs_info['Timesused'] = trs_info['Timesused'].astype(int)
-
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 

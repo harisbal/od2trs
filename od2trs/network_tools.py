@@ -5,8 +5,8 @@ import od2trs.utilities as utils
 
 def identify_cycles(g, src, tgt, limit, weight, max_dist):
 
-    def _get_multigraph_first_edge_data(u, v, attr):
-        a = g.get_edge_data(u, v)
+    def _get_multigraph_first_edge_data(_g, u, v, attr):
+        a = _g.get_edge_data(u, v)
         a = a[list(a.keys())[0]][attr]
         return a
 
@@ -23,13 +23,19 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
     cycles = list()
     for out_node in out_nodes:
         for in_node in in_nodes:
+            """
+            if out_node != 'E01014889-AM':
+                continue
+            if in_node != 'E01014540-OP':
+                continue
+            """
             if out_node == in_node:
                 c = [src, out_node, src]
                 if max_dist:
                     dist = 0
                     for u, v in utils.pairwise(c):
                         # TODO could cause issues in MultiGraphs because I don't know the key of the edges
-                        dist += _get_multigraph_first_edge_data(u, v, weight)
+                        dist += _get_multigraph_first_edge_data(g, u, v, weight)
                     if dist <= max_dist:
                         cycles.append(c)
             else:
@@ -37,19 +43,23 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 # TODO could cause issues in MultiGraphs because I don't know the key of the edges
                 # I must find a way to get the correct key if I ever have multiple edges between nodes!
                 if weight is not None:
-                    dist_from = _get_multigraph_first_edge_data(src, out_node, weight)
-                    dist_to = _get_multigraph_first_edge_data(in_node, tgt, weight)
+                    dist_from = _get_multigraph_first_edge_data(g, src, out_node, weight)
+                    dist_to = _get_multigraph_first_edge_data(g, in_node, tgt, weight)
                     excl_dist = dist_from + dist_to
                 else:
                     excl_dist = 0
 
-                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit, weight=weight, max_dist=max_dist-excl_dist)
+                simple_paths = nx.all_simple_paths(gf, out_node, in_node, limit,
+                                                   weight=weight, max_dist=max_dist-excl_dist)
                 for sp in simple_paths:
                     sp.insert(0, src)
                     sp.append(tgt)
                     cycles.append(sp)
 
     if cycles:
+        #import pandas as pd
+        #df = pd.DataFrame(cycles)
+        #df.to_csv('paths.csv')
         return cycles
     else:
         return None
@@ -67,6 +77,9 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
     :return: potential_tripchains
     """
 
+    #if src != 'E01014798':
+    #    return None
+
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
@@ -79,6 +92,9 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
         for j, tgt in enumerate(tgts):
             if j < i:
                 continue
+
+            #if tgt != 'E01014798-OP':
+            #    continue
 
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
@@ -94,13 +110,12 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
             if src == tgt:
                 # Keep only edges in src_dt
-                gff = filters.filter_connectors(gf, keep=False)
+                gf = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
             else:
-                gff = gf.copy()
                 limit = max_legs - 2 + extra_legs
 
-            zs = identify_cycles(gff, src, tgt, limit=limit,
+            zs = identify_cycles(gf, src, tgt, limit=limit,
                                  weight=dist_attr, max_dist=max_tr_dist)
             if zs:
                 zone_seqs.extend(zs)
