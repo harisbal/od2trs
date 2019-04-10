@@ -158,9 +158,9 @@ def trs_to_df(trs, target_distr, distr_dims, dist_bins):
             dist_grp = None
 
         no_legs = tr.no_legs
-        depart_times = tr.depart_times
+        departtimes = tr.departtimes
         loops_cnt = tr.loops_cnt
-        trs_info.append([tr.id, no_legs, loops_cnt, dist, dist_grp, depart_times])
+        trs_info.append([tr.id, no_legs, loops_cnt, dist, dist_grp, departtimes])
         trs_decr.update(tr.to_dict())
 
     idx = 'Tourid'

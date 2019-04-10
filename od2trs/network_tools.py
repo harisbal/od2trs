@@ -90,12 +90,11 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
-            """
-            if src != 'E01014387-AM':
-                continue
-            if tgt != 'E01014387-IP':
-                continue
-            """
+            #if src != 'E01014487-AM':
+            #    continue
+            #if tgt != 'E01014487-OP':
+            #    continue
+
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
@@ -117,11 +116,17 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
                 # Keep only edges in src_dt
                 gf = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
+                zs = identify_cycles(gf, src, tgt, limit=limit,
+                                     weight=dist_attr, maxdist=max_tr_dist)
             else:
-                limit = max_legs - 2 + extra_legs
+                #limit = max_legs - 2 + extra_legs
+                limit = max_legs + extra_legs
+                zs = identify_cycles(gf, src, tgt, limit=limit,
+                                     weight=dist_attr, maxdist=max_tr_dist)
+            #nx.write_gpickle(gf.copy(), 'net.pcl')
 
-            zs = identify_cycles(gf, src, tgt, limit=limit,
-                                 weight=dist_attr, maxdist=max_tr_dist)
+            #zs = identify_cycles(gf, src, tgt, limit=limit,
+            #                     weight=dist_attr, maxdist=max_tr_dist)
             if zs:
                 zone_seqs.extend(zs)
 
