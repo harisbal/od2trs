@@ -63,7 +63,8 @@ def main(traj):
 
         except KeyError:
             obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'])
-            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims, dist_bins)
+            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims,
+                                                                     dist_bins, max_legs)
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)

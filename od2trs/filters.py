@@ -69,6 +69,7 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         if dist_bins is not None:
             dist = tr.distance
             # TODO check if bottlenecks
+            #print(tr.distance, tr.zones, tr.departtimes)
             dist_grp = pd.cut([dist], pd.IntervalIndex(dist_bins))[0]
             d_dims['Distancegroup'] = dist_grp
 

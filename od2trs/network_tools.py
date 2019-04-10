@@ -3,7 +3,7 @@ import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
-def identify_cycles(g, src, tgt, limit, weight, max_dist):
+def identify_cycles(g, src, tgt, limit, weight, maxdist):
 
     gf = g.copy()
 
@@ -19,13 +19,19 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
     for succ in succs:
         for pred in preds:
 
+            """
+            if succ != 'E01014542-AM':
+                continue
+            if pred != 'E01014470-IP':
+                continue
+            """
             if succ == pred:
                 c = [src, succ, tgt]
-                if max_dist:
+                if maxdist:
                     dist = 0
                     for u, v in utils.pairwise(c):
                         dist += g.get_edge_data(u, v)[weight]
-                    if dist <= max_dist:
+                    if dist <= maxdist:
                         cycles.append(c)
             else:
                 # Subtract the distance from src to successor and from predecessor to tgt
@@ -39,7 +45,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 # TODO Returned tour with greater than max dist!
                 simple_paths = nx.all_simple_paths(gf, succ, pred, cutoff_len=limit,
                                                    weight=weight,
-                                                   cutoff_weight=max_dist-excl_dist)
+                                                   cutoff_weight=maxdist - excl_dist)
 
                 for sp in simple_paths:
                     sp.insert(0, src)
@@ -84,6 +90,12 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
+            """
+            if src != 'E01014387-AM':
+                continue
+            if tgt != 'E01014387-IP':
+                continue
+            """
             print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
@@ -109,7 +121,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
                 limit = max_legs - 2 + extra_legs
 
             zs = identify_cycles(gf, src, tgt, limit=limit,
-                                 weight=dist_attr, max_dist=max_tr_dist)
+                                 weight=dist_attr, maxdist=max_tr_dist)
             if zs:
                 zone_seqs.extend(zs)
 
