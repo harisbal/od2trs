@@ -209,6 +209,40 @@ def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
     return g.subgraph(nodes)
 
 
+def filter_by_edge_betweenness_centrality(g, src, n, weight=None, thresh=1):
+
+    """
+
+    :param g:
+    :param src:
+    :param n:
+    :param weight:
+    :param thresh:
+    :return:
+    """
+
+    # edge betweenness
+    eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], g.nodes(), weight=weight))
+    eb.name = 'bc'
+
+    # Exclude connectors
+    filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
+    # Exclude hb trips
+    filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
+    # Focus on single weight edges
+    filter_edges += [(u, v) for u, v, attr in g.edges(data=weight, default=0) if attr != thresh]
+    eb.drop(set(filter_edges), inplace=True)
+
+    n = eb.nlargest(n)
+    # exclude links with 0 eb
+    to_rmv = n[n != 0].index.tolist()
+
+    gt = g.copy()
+    for e in to_rmv:
+        gt.remove_edge(*e)
+    return gt
+
+
 def extract_tour_times_used(optim_results):
     """
     Returns dictionary of the number times each tour is used for each solution

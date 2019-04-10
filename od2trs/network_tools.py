@@ -107,6 +107,18 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             for w, md in distance_filters:
                 gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
 
+            # Use edge betweeneess centrality to simplify the graph
+            # TODO the number of nexcl_edges should be excluded from the optimisation
+            # TODO the decision about the number of edges to be excluded should be automated
+            nexcl_edges = int(gf.number_of_edges() * 0.02) # 0.5% of edges excluded
+
+            try:
+                print(gf.number_of_edges(), nexcl_edges)
+            except:
+                pass
+            gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
+                                                               'Dailytrips', thresh=1)
+
             if src == tgt:
                 # Keep only edges in src_dt
                 gf = filters.filter_connectors(gf, keep=False)
@@ -114,14 +126,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
                 zs = identify_cycles(gf, src, tgt, limit=limit,
                                      weight=dist_attr, maxdist=max_tr_dist)
             else:
-                #limit = max_legs - 2 + extra_legs
                 limit = max_legs + extra_legs
                 zs = nx.all_simple_paths(gf, src, tgt, cutoff_len=limit,
                                          weight=dist_attr, cutoff_weight=max_tr_dist)
-            nx.write_gpickle(gf.copy(), 'net.pcl')
 
-            #zs = identify_cycles(gf, src, tgt, limit=limit,
-            #                     weight=dist_attr, maxdist=max_tr_dist)
             if zs:
                 zone_seqs.extend(zs)
 
