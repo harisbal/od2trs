@@ -72,7 +72,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
     def _path_exists(_g, _src, _tgt):
         try:
-            nx.shortest_path(_g, src, tgt)
+            nx.shortest_path(_g, src, _tgt)
             return True
         except nx.NetworkXNoPath:
             return False
@@ -90,17 +90,13 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             if j < i:
                 continue
 
-            # print(src, tgt)
+            print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
             # This function also converts MultiDiGraph to DiGraph
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
-
-            if not _path_exists(gf, src, tgt):
-                continue
-
             gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
             distance_filters = [(None, (max_legs+extra_legs)), ('Distance', max_tr_dist)]
@@ -110,12 +106,17 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             # Use edge betweeneess centrality to simplify the graph
             # TODO the number of nexcl_edges should be excluded from the optimisation
             # TODO the decision about the number of edges to be excluded should be automated
-            nexcl_edges = int(gf.number_of_edges() * 0.02) # 0.5% of edges excluded
+            nexcl_edges = int(gf.number_of_edges() * 1) # 0.5% of edges excluded
 
-            print(gf.number_of_edges(), nexcl_edges)
-
+            edges_bef = gf.number_of_edges()
             gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
                                                                weight='Distance', trips_thresh=1)
+
+            print(edges_bef, gf.number_of_edges(), gf.number_of_edges()/edges_bef)
+
+            if not _path_exists(gf, src, tgt):
+                print('no path!')
+                continue
 
             if src == tgt:
                 # Keep only edges in src_dt

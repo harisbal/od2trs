@@ -229,8 +229,8 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
     filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
     # Exclude hb trips
     filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
-    # Focus on single weight edges
-    filter_edges += [(u, v) for u, v, attr in g.edges(data=weight, default=0) if attr != trips_thresh]
+    # Focus on single trips
+    filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
     eb.drop(set(filter_edges), inplace=True)
 
     n = eb.nlargest(nexcl)
@@ -240,6 +240,7 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
     gt = g.copy()
     for e in to_rmv:
         gt.remove_edge(*e)
+
     return gt
 
 
