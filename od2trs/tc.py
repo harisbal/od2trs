@@ -54,7 +54,7 @@ class TripChain:
         self.chron_ordered = None
         self.no_external_zones = None
         self.distrgroupid= None
-        self.departtimes = self.create_depart_times_seq()
+        self.departtimes = self.create_departtimes_seq()
         self.distance = self.calculate_distance()
 
     def create_zones_seq(self):
@@ -95,7 +95,7 @@ class TripChain:
         else:
             return False
 
-    def create_depart_times_seq(self, verbose=False):
+    def create_departtimes_seq(self, verbose=False):
         tps = list()
         for leg in self.legs:
             if leg.departtime:
