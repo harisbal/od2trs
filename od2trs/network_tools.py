@@ -18,8 +18,9 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
     cycles = list()
     for succ in succs:
         for pred in preds:
+
             if succ == pred:
-                c = [src, succ, src]
+                c = [src, succ, tgt]
                 if max_dist:
                     dist = 0
                     for u, v in utils.pairwise(c):
@@ -35,6 +36,7 @@ def identify_cycles(g, src, tgt, limit, weight, max_dist):
                 else:
                     excl_dist = 0
 
+                # TODO Returned tour with greater than max dist!
                 simple_paths = nx.all_simple_paths(gf, succ, pred, cutoff_len=limit,
                                                    weight=weight,
                                                    cutoff_weight=max_dist-excl_dist)

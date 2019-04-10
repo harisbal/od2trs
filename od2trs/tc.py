@@ -49,12 +49,18 @@ class TripChain:
         self.id = None
         self.no_legs = len(legs)
         self.tour = self.is_tour()
+        self.zones = self.create_zones_seq()
         self.loops_cnt = self.count_loops()
         self.chron_ordered = None
         self.no_external_zones = None
         self.distrgroupid= None
-        self.depart_times = self.create_depart_times_seq()
+        self.departtimes = self.create_depart_times_seq()
         self.distance = self.calculate_distance()
+
+    def create_zones_seq(self):
+        zones = [l.source for l in self.legs]
+        zones.append(self.legs[-1].target)
+        return zones
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -106,7 +112,7 @@ class TripChain:
             if leg.distance:
                 distance += leg.distance
             else:
-                #print('leg distance not defined, returning None')
+                print('leg distance not defined, returning None')
                 return None
         return distance
 

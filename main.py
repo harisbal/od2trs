@@ -67,6 +67,8 @@ def main(traj):
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
+        # We can get the maximum distance after filtering
+        max_tr_dist = target_distr.index.get_level_values('Distancegroup').max().right
     else:
         target_distr = None
 

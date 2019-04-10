@@ -73,8 +73,8 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
             d_dims['Distancegroup'] = dist_grp
 
         if 'Departtimes' in distr_dims:
-            depart_times = tr.depart_times
-            d_dims['Departtimes'] = depart_times
+            departtimes = tr.departtimes
+            d_dims['Departtimes'] = departtimes
 
         mask = list()
         for dd in distr_dims:
