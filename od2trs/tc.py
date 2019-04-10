@@ -114,7 +114,7 @@ class TripChain:
             else:
                 print('leg distance not defined, returning None')
                 return None
-        return distance
+        return round(distance, 3)
 
     def to_dict(self):
         d_tc = dict()

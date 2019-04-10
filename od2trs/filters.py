@@ -85,6 +85,7 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
         # TODO must change to .at (fails for some reason)
         perc = target_distr['Percentage'].loc[mask]
+
         if isinstance(perc, float):
             filter_trs.append(tr)
         else:
