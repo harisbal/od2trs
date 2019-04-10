@@ -112,12 +112,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             # TODO the decision about the number of edges to be excluded should be automated
             nexcl_edges = int(gf.number_of_edges() * 0.02) # 0.5% of edges excluded
 
-            try:
-                print(gf.number_of_edges(), nexcl_edges)
-            except:
-                pass
+            print(gf.number_of_edges(), nexcl_edges)
+
             gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
-                                                               'Dailytrips', thresh=1)
+                                                               weight='Distance', trips_thresh=1)
 
             if src == tgt:
                 # Keep only edges in src_dt

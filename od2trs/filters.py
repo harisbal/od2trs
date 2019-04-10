@@ -209,7 +209,7 @@ def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
     return g.subgraph(nodes)
 
 
-def filter_by_edge_betweenness_centrality(g, src, n, weight=None, thresh=1):
+def filter_by_edge_betweenness_centrality(g, src, n, weight=None, trips_thresh=1):
 
     """
 
@@ -217,7 +217,7 @@ def filter_by_edge_betweenness_centrality(g, src, n, weight=None, thresh=1):
     :param src:
     :param n:
     :param weight:
-    :param thresh:
+    :param trips_thresh:
     :return:
     """
 
@@ -230,7 +230,7 @@ def filter_by_edge_betweenness_centrality(g, src, n, weight=None, thresh=1):
     # Exclude hb trips
     filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
     # Focus on single weight edges
-    filter_edges += [(u, v) for u, v, attr in g.edges(data=weight, default=0) if attr != thresh]
+    filter_edges += [(u, v) for u, v, attr in g.edges(data=weight, default=0) if attr != trips_thresh]
     eb.drop(set(filter_edges), inplace=True)
 
     n = eb.nlargest(n)
