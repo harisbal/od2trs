@@ -205,8 +205,8 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
         #trs = filters.filter_possible_trs(trs, ordered_dts)
 
         # filter by maximum distance
-        #if max_tr_dist:
-        #    trs = filters.filetr_trs_by_max_dist(trs, max_tr_dist)
+        if max_tr_dist:
+            trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
             trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims)
@@ -234,12 +234,11 @@ def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
 
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-
         #trs = filters.filter_possible_trs(trs, ordered_dts)
 
         # filter by maximum distance
-        #if max_tr_dist:
-        #    trs = filters.filetr_trs_by_max_dist(trs, max_tr_dist)
+        if max_tr_dist:
+            trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
             trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims)
@@ -288,7 +287,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     tr_id = 1
 
-    profiling = True
+    profiling = False
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:

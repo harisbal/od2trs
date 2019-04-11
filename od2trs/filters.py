@@ -19,7 +19,7 @@ def filter_possible_trs(trs, ordered_dts):
     return possible_trs
 
 
-def filetr_trs_by_max_dist(trs, max_dist):
+def filter_trs_by_max_dist(trs, max_dist):
 
     filtered_trs = list()
     for tr in trs:
@@ -156,24 +156,22 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
 
     """
 
-    g_reversed = g.reverse()
-    dists_from_src = dict(nx.single_source_dijkstra_path_length(g, source=src, cutoff=cutoff, weight=weight))
-    dists_to_tgt = dict(nx.single_source_dijkstra_path_length(g_reversed, source=tgt, cutoff=cutoff, weight=weight))
+    dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
 
-    dists = dict()
+    keep_nodes = set()
     for n in g.nodes():
-        # if a node is not reachable from src or tgt then it is not present in the returned dicts
-        dists[n] = dists_from_src.get(n, cutoff+1) + dists_to_tgt.get(n, cutoff+1)
+        try:
+            dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
+            dist = dists_from_src[n] + dist_to_tgt
+            if dist <= cutoff:
+                keep_nodes.add(n)
+        except (nx.NetworkXNoPath, KeyError):
+            continue
 
-    # if the cycle len is greater than the cutoff do not include nodes in the new g
-    nodes = set()
-    nodes.add(src)
-    nodes.add(tgt)
-    for n, dist in dists.items():
-        if dist <= cutoff:
-            nodes.add(n)
+    keep_nodes.add(src)
+    keep_nodes.add(tgt)
 
-    return g.subgraph(nodes)
+    return g.subgraph(keep_nodes).copy()
 
 
 def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):

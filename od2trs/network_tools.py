@@ -15,16 +15,31 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
 
+    dists_from_src = nx.shortest_path_length(g, source=src, weight='Distance')
+    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight='Distance')
+
+    # we do not know the exact predecessor in nx.all_simple_paths
+    # Nonetheless, we can exclude the minimum distance from all predecessors
+    dists_preds_to_tgt = {n: dists_to_tgt[n] for n in preds}
+
+    if dists_preds_to_tgt:
+        min_dist_to_tgt = min(dists_preds_to_tgt.values())
+    else:
+        min_dist_to_tgt = 0
+
     cycles = list()
     for succ in succs:
-        for pred in preds:
+        excl_dist = dists_from_src[succ] + min_dist_to_tgt
+        simple_paths = nx.all_simple_paths(gf, succ, preds, cutoff_len=limit,
+                                           weight=weight, cutoff_weight=maxdist-excl_dist)
 
-            """
-            if succ != 'E01014542-AM':
-                continue
-            if pred != 'E01014470-IP':
-                continue
-            """
+        for sp in simple_paths:
+            sp.insert(0, src)
+            sp.append(tgt)
+            cycles.append(sp)
+
+        # append the case where succ == pred
+        for pred in preds:
             if succ == pred:
                 c = [src, succ, tgt]
                 if maxdist:
@@ -33,24 +48,6 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
                         dist += g.get_edge_data(u, v)[weight]
                     if dist <= maxdist:
                         cycles.append(c)
-            else:
-                # Subtract the distance from src to successor and from predecessor to tgt
-                if weight is not None:
-                    dist_from = g.get_edge_data(src, succ)[weight]
-                    dist_to = g.get_edge_data(pred, tgt)[weight]
-                    excl_dist = dist_from + dist_to
-                else:
-                    excl_dist = 0
-
-                # TODO Returned tour with greater than max dist!
-                simple_paths = nx.all_simple_paths(gf, succ, pred, cutoff_len=limit,
-                                                   weight=weight,
-                                                   cutoff_weight=maxdist - excl_dist)
-
-                for sp in simple_paths:
-                    sp.insert(0, src)
-                    sp.append(tgt)
-                    cycles.append(sp)
 
     if cycles:
         return cycles
@@ -99,6 +96,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
             gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
+            if not _path_exists(gf, src, tgt):
+                print('no path!')
+                continue
+
             distance_filters = [(None, (max_legs+extra_legs)), ('Distance', max_tr_dist)]
             for w, md in distance_filters:
                 gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
@@ -106,28 +107,26 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             # Use edge betweeneess centrality to simplify the graph
             # TODO the number of nexcl_edges should be excluded from the optimisation
             # TODO the decision about the number of edges to be excluded should be automated
-            nexcl_edges = int(gf.number_of_edges() * 1) # 0.5% of edges excluded
+            nexcl_edges = int(gf.number_of_edges() * 0.02) # 0.5% of edges excluded
 
             edges_bef = gf.number_of_edges()
             gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
                                                                weight='Distance', trips_thresh=1)
-
-            print(edges_bef, gf.number_of_edges(), gf.number_of_edges()/edges_bef)
-
-            if not _path_exists(gf, src, tgt):
-                print('no path!')
-                continue
+            try:
+                print(edges_bef, gf.number_of_edges(), gf.number_of_edges()/edges_bef)
+            except:
+                pass
 
             if src == tgt:
                 # Keep only edges in src_dt
                 gf = filters.filter_connectors(gf, keep=False)
                 limit = max_legs - 2
-                zs = identify_cycles(gf, src, tgt, limit=limit,
-                                     weight=dist_attr, maxdist=max_tr_dist)
+                zs = identify_cycles(gf, src, tgt, limit=limit, weight=dist_attr,
+                                     maxdist=max_tr_dist)
             else:
-                limit = max_legs + extra_legs
-                zs = nx.all_simple_paths(gf, src, tgt, cutoff_len=limit,
-                                         weight=dist_attr, cutoff_weight=max_tr_dist)
+                limit = max_legs - 2 + extra_legs
+                zs = identify_cycles(gf, src, tgt, limit=limit, weight=dist_attr,
+                                     maxdist=max_tr_dist)
 
             if zs:
                 zone_seqs.extend(zs)
