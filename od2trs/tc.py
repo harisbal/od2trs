@@ -49,13 +49,22 @@ class TripChain:
         self.id = None
         self.no_legs = len(legs)
         self.tour = self.is_tour()
-        self.zones = self.create_zones_seq()
+        self.zones = None
         self.loops_cnt = self.count_loops()
         self.chron_ordered = None
         self.no_external_zones = None
         self.distrgroupid= None
-        self.departtimes = self.create_departtimes_seq()
-        self.distance = self.calculate_distance()
+        self.distance = None
+        self.departtimes = None
+
+        if self.departtimes is None:
+            self.departtimes = self.create_departtimes_seq()
+
+        if self.distance is None:
+            self.distance = self.calculate_distance()
+
+        if self.zones is None:
+            self.create_zones_seq()
 
     def create_zones_seq(self):
         zones = [l.source for l in self.legs]

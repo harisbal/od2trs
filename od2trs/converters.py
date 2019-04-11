@@ -205,8 +205,8 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
         #trs = filters.filter_possible_trs(trs, ordered_dts)
 
         # filter by maximum distance
-        if max_tr_dist:
-            trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
+        #if max_tr_dist:
+        #    trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
             trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims)
