@@ -53,12 +53,9 @@ def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
     return target_distr
 
 
-def filter_trs_by_target_distr(trs, target_distr, distr_dims):
+def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
     filter_trs = list()
-
-    if 'Distancegroup' in distr_dims:
-        dist_bins = target_distr.index.unique('Distancegroup')
 
     for tr in trs:
         d_dims = dict()
@@ -66,12 +63,11 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         no_legs = tr.no_legs
         d_dims['Legs'] = no_legs
 
-        if dist_bins is not None:
-            dist = tr.distance
-            # TODO check if bottlenecks
-            #print(tr.distance, tr.zones, tr.departtimes)
-            dist_grp = pd.cut([dist], pd.IntervalIndex(dist_bins))[0]
-            d_dims['Distancegroup'] = dist_grp
+        if 'Distancegroup' in distr_dims:
+            if dist_bins is None:
+                raise ValueError('dist_bins cannot be empty when distance group is required')
+            tr.assign_dist_grp(dist_bins)
+            d_dims['Distancegroup'] = tr.dist_grp
 
         if 'Departtimes' in distr_dims:
             departtimes = tr.departtimes

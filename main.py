@@ -38,6 +38,9 @@ def main(traj):
     dist_bins = traj.par.trs.dist_bins
     if not isinstance(dist_bins, list):
         dist_bins = None
+    else:
+        # Convert to pd.Interval
+        dist_bins = converters.list_to_interval(dist_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -47,12 +50,13 @@ def main(traj):
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
 
-    try:
-        distances = myio.read_distances(filepaths['in']['distances'])
-        dist_attr = 'Distance'
-    except FileNotFoundError:
-        distances = None
-        dist_attr = None
+    if 'Distancegroup' in distr_dims:
+        try:
+            distances = myio.read_distances(filepaths['in']['distances'])
+            dist_attr = 'Distance'
+        except FileNotFoundError:
+            distances = None
+            dist_attr = None
 
     if distr_constr_enabled:
         try:
@@ -64,7 +68,8 @@ def main(traj):
         except KeyError:
             obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'])
             target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims,
-                                                                     dist_bins, max_legs)
+                                                                     dist_bins, max_legs,
+                                                                     max_tr_dist)
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)

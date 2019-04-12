@@ -4,7 +4,6 @@ import od2trs.utilities as utils
 
 
 def identify_cycles(g, src, tgt, limit, weight, maxdist):
-
     gf = g.copy()
 
     # Prevent src succs to connected with preds
@@ -31,7 +30,7 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
     for succ in succs:
         excl_dist = dists_from_src[succ] + min_dist_to_tgt
         simple_paths = nx.all_simple_paths(gf, succ, preds, cutoff_len=limit,
-                                           weight=weight, cutoff_weight=maxdist-excl_dist)
+                                           weight=weight, cutoff_weight=maxdist - excl_dist)
 
         for sp in simple_paths:
             sp.insert(0, src)
@@ -69,7 +68,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
     def _path_exists(_g, _src, _tgt):
         try:
-            nx.shortest_path(_g, src, _tgt)
+            nx.shortest_path_length(_g, src, _tgt)
             return True
         except nx.NetworkXNoPath:
             return False
@@ -91,31 +90,30 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
+            #if src != 'E01014387-AM' or tgt != 'E01014387-PM':
+            #    continue
+
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
             # This function also converts MultiDiGraph to DiGraph
             gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
             gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
             if not _path_exists(gf, src, tgt):
-                print('no path!')
                 continue
 
-            distance_filters = [(None, (max_legs+extra_legs)), ('Distance', max_tr_dist)]
+            distance_filters = [(None, (max_legs + extra_legs)), ('Distance', max_tr_dist)]
             for w, md in distance_filters:
                 gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
 
             # Use edge betweeneess centrality to simplify the graph
             # TODO the number of nexcl_edges should be excluded from the optimisation
             # TODO the decision about the number of edges to be excluded should be automated
-            nexcl_edges = int(gf.number_of_edges() * 0.02) # 0.5% of edges excluded
+            nexcl_edges = int(gf.number_of_edges() * 0.0)  # 0.5% of edges excluded
 
-            edges_bef = gf.number_of_edges()
+            # edges_bef = gf.number_of_edges()
             gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
                                                                weight='Distance', trips_thresh=1)
-            try:
-                print(edges_bef, gf.number_of_edges(), gf.number_of_edges()/edges_bef)
-            except:
-                pass
+            # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
             if src == tgt:
                 # Keep only edges in src_dt
