@@ -3,23 +3,7 @@ import pandas as pd
 import networkx as nx
 
 
-def filter_possible_trs(trs, ordered_dts):
-    possible_trs = list()
-    for tc in trs:
-        if not tc.tour:
-            continue
-
-        tc.chron_ordered = tc.is_chron_ordered(departtimes_ordered=
-                                               ordered_dts)
-        if not tc.chron_ordered:
-            continue
-
-        possible_trs.append(tc)
-
-    return possible_trs
-
-
-def filetr_trs_by_max_dist(trs, max_dist):
+def filter_trs_by_max_dist(trs, max_dist):
 
     filtered_trs = list()
     for tr in trs:
@@ -53,12 +37,9 @@ def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
     return target_distr
 
 
-def filter_trs_by_target_distr(trs, target_distr, distr_dims):
+def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
     filter_trs = list()
-
-    if 'Distancegroup' in distr_dims:
-        dist_bins = target_distr.index.unique('Distancegroup')
 
     for tr in trs:
         d_dims = dict()
@@ -66,12 +47,11 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
         no_legs = tr.no_legs
         d_dims['Legs'] = no_legs
 
-        if dist_bins is not None:
-            dist = tr.distance
-            # TODO check if bottlenecks
-            #print(tr.distance, tr.zones, tr.departtimes)
-            dist_grp = pd.cut([dist], pd.IntervalIndex(dist_bins))[0]
-            d_dims['Distancegroup'] = dist_grp
+        if 'Distancegroup' in distr_dims:
+            if dist_bins is None:
+                raise ValueError('dist_bins cannot be empty when distance group is required')
+            tr.assign_dist_grp(dist_bins)
+            d_dims['Distancegroup'] = tr.dist_grp
 
         if 'Departtimes' in distr_dims:
             departtimes = tr.departtimes
@@ -93,6 +73,18 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims):
 
     if filter_trs:
         return filter_trs
+
+
+def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
+    gf = g.copy()
+
+    src_dt_idx = ordered_dts.index(src_dt)
+    tgt_dt_idx = ordered_dts.index(tgt_dt)
+
+    for u, v, dt in g.edges(data='Departtime'):
+        if dt not in ordered_dts[src_dt_idx:tgt_dt_idx+1]:
+            gf.remove_edge(u, v)
+    return gf
 
 
 def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
@@ -156,24 +148,22 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
 
     """
 
-    g_reversed = g.reverse()
-    dists_from_src = dict(nx.single_source_dijkstra_path_length(g, source=src, cutoff=cutoff, weight=weight))
-    dists_to_tgt = dict(nx.single_source_dijkstra_path_length(g_reversed, source=tgt, cutoff=cutoff, weight=weight))
+    dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
 
-    dists = dict()
+    keep_nodes = set()
     for n in g.nodes():
-        # if a node is not reachable from src or tgt then it is not present in the returned dicts
-        dists[n] = dists_from_src.get(n, cutoff+1) + dists_to_tgt.get(n, cutoff+1)
+        try:
+            dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
+            dist = dists_from_src[n] + dist_to_tgt
+            if dist <= cutoff:
+                keep_nodes.add(n)
+        except (nx.NetworkXNoPath, KeyError):
+            continue
 
-    # if the cycle len is greater than the cutoff do not include nodes in the new g
-    nodes = set()
-    nodes.add(src)
-    nodes.add(tgt)
-    for n, dist in dists.items():
-        if dist <= cutoff:
-            nodes.add(n)
+    keep_nodes.add(src)
+    keep_nodes.add(tgt)
 
-    return g.subgraph(nodes)
+    return g.subgraph(keep_nodes).copy()
 
 
 def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
@@ -207,6 +197,41 @@ def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
                 nodes.remove(n)
 
     return g.subgraph(nodes)
+
+
+def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thresh=1):
+
+    """
+
+    :param g:
+    :param src:
+    :param n:
+    :param weight:
+    :param trips_thresh:
+    :return:
+    """
+
+    # edge betweenness
+    eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], g.nodes(), weight=weight))
+    eb.name = 'bc'
+
+    # Exclude connectors
+    filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
+    # Exclude hb trips
+    filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
+    # Focus on single trips
+    filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
+    eb.drop(set(filter_edges), inplace=True)
+
+    n = eb.nlargest(nexcl)
+    # exclude links with 0 eb
+    to_rmv = n[n != 0].index.tolist()
+
+    gt = g.copy()
+    for e in to_rmv:
+        gt.remove_edge(*e)
+
+    return gt
 
 
 def extract_tour_times_used(optim_results):

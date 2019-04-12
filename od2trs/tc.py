@@ -53,9 +53,10 @@ class TripChain:
         self.loops_cnt = self.count_loops()
         self.chron_ordered = None
         self.no_external_zones = None
-        self.distrgroupid= None
-        self.departtimes = self.create_departtimes_seq()
+        self.distr_group_id = None
+        self.dist_grp = None
         self.distance = self.calculate_distance()
+        self.departtimes = self.create_departtimes_seq()
 
     def create_zones_seq(self):
         zones = [l.source for l in self.legs]
@@ -78,6 +79,16 @@ class TripChain:
         loops_cnt = max(collections.Counter(zns).values())
         return loops_cnt
 
+    def assign_dist_grp(self, dist_bins):
+        def _return_dist_grp(_dist_bins):
+            dist = self.distance
+            for _db in dist_bins:
+                if dist in _db:
+                    return _db
+
+        dg = _return_dist_grp(dist_bins)
+        self.dist_grp = dg
+
     def is_chron_ordered(self, departtimes_ordered):
         if util.sequence_isunique(departtimes_ordered):
             pass
@@ -95,13 +106,12 @@ class TripChain:
         else:
             return False
 
-    def create_departtimes_seq(self, verbose=False):
+    def create_departtimes_seq(self):
         tps = list()
         for leg in self.legs:
             if leg.departtime:
                 tps.append(leg.departtime)
             else:
-                #print('departtime missing from leg, return empty')
                 return None
 
         return tuple(tps)

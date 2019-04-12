@@ -71,7 +71,7 @@ def prepare_traj_params(traj, cfg):
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
     ordered_dts = json.loads(cfg['TOURS']['ordered_departtimes'])
-    distribution_percent_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
+    distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
     max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
@@ -119,7 +119,7 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.ordered_dts = Parameter('ordered_dts', ordered_dts,
                                                  comment='Distribution Dimensions')
 
-    traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distribution_percent_thresh[0],
+    traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distr_perc_thresh[0],
                                                comment='Distribution Percentage Threshold')
 
     traj.par.trs.max_tr_dist = Parameter('max_tr_dist', max_tr_dist, comment='Maximum allowed distance for trs')
