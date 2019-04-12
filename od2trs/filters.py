@@ -3,22 +3,6 @@ import pandas as pd
 import networkx as nx
 
 
-def filter_possible_trs(trs, ordered_dts):
-    possible_trs = list()
-    for tc in trs:
-        if not tc.tour:
-            continue
-
-        tc.chron_ordered = tc.is_chron_ordered(departtimes_ordered=
-                                               ordered_dts)
-        if not tc.chron_ordered:
-            continue
-
-        possible_trs.append(tc)
-
-    return possible_trs
-
-
 def filter_trs_by_max_dist(trs, max_dist):
 
     filtered_trs = list()
@@ -89,6 +73,18 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
     if filter_trs:
         return filter_trs
+
+
+def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
+    gf = g.copy()
+
+    src_dt_idx = ordered_dts.index(src_dt)
+    tgt_dt_idx = ordered_dts.index(tgt_dt)
+
+    for u, v, dt in g.edges(data='Departtime'):
+        if dt not in ordered_dts[src_dt_idx:tgt_dt_idx+1]:
+            gf.remove_edge(u, v)
+    return gf
 
 
 def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):

@@ -92,10 +92,11 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
             #if src != 'E01014387-AM' or tgt != 'E01014387-PM':
             #    continue
-
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+
+            gf = filters.filter_by_departtime(g, src_dt, tgt_dt, ordered_dts)
             # This function also converts MultiDiGraph to DiGraph
-            gf = filters.filter_edges_by_direction(g, src, tgt, filter_dirs)
+            gf = filters.filter_edges_by_direction(gf, src, tgt, filter_dirs)
             gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
             if not _path_exists(gf, src, tgt):
