@@ -103,7 +103,10 @@ def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
         if not attrs['Connector']:
             if attrs['Direction'] in nhb_names:
                 # NHB trips should be removed from the src and in all dts
-                if (g.nodes[s]['Zone'] == g.nodes[src]['Zone']) | (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone']):
+                if ((g.nodes[s]['Zone'] == g.nodes[src]['Zone']) |
+                    (g.nodes[s]['Zone'] == g.nodes[tgt]['Zone']) |
+                    (g.nodes[t]['Zone'] == g.nodes[src]['Zone']) |
+                        (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone'])):
                     gf.remove_edge(s, t, k)
             elif attrs['Direction'] in fh_names:
                 if not s == src:
