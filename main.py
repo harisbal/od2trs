@@ -18,16 +18,20 @@ def main(traj):
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
+    excl_edges_perc = traj.par.trs.excl_edges_perc
+
     distr_perc_thresh = traj.par.trs.distr_perc_thresh
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
+    distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
+
     run_optim = traj.par.optim.run_optim
     submit_to_neos = traj.par.optim.submit_to_neos
     #emphasis_mip = traj.par.optim.emphasis_mip
 
-    # TODO find cleaner approach (pypet does not like null or None
-    if traj.par.optim.mip_tolerances_lowercutoff == -1:
+    try:
+        traj.par.optim.mip_tolerances_lowercutoff.f_is_empty()
         mip_tolerances_lowercutoff = None
-    else:
+    except AttributeError:
         mip_tolerances_lowercutoff = traj.par.optim.mip_tolerances_lowercutoff
 
     timelimit = traj.par.optim.timelimit
@@ -39,6 +43,7 @@ def main(traj):
     if not isinstance(dist_bins, list):
         dist_bins = None
     else:
+        dist_bins.append(float('inf'))
         # Convert to pd.Interval
         dist_bins = converters.list_to_interval(dist_bins)
 
@@ -49,6 +54,11 @@ def main(traj):
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
+
+    try:
+        zones_info = myio.read_zones_info(filepaths['in']['zones_info'])
+    except FileNotFoundError:
+        zones_info = None
 
     if 'Distancegroup' in distr_dims:
         try:
@@ -61,20 +71,24 @@ def main(traj):
     if distr_constr_enabled:
         try:
             # TODO IMPROVE (not too generic)
-            target_distr = myio.read_target_distr(filepaths['target_distr'], distr_dims,
+            target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
                                                   interval_cols=['Distancegroup'],
                                                   seq_cols=['Departtimes'])
 
-        except KeyError:
-            obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'])
-            target_distr = distrs.prepare_distribution_from_observed(obs_info, distr_dims,
-                                                                     dist_bins, max_legs,
-                                                                     max_tr_dist)
+        except FileNotFoundError:
+            seq_cols = ['Departtimes']
+            obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'], seq_cols)
+            target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
+                                                         dist_bins, max_legs,
+                                                         max_tr_dist)
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
-        # We can get the maximum distance after filtering
-        max_tr_dist = target_distr.index.get_level_values('Distancegroup').max().right
+        max_legs = target_distr.index.get_level_values('Legs').max()
+        # We can get the maximum distance and legs after filtering
+        maxdist = target_distr.index.get_level_values('Distancegroup').max().right
+        if maxdist != float('inf'):
+            max_tr_dist = maxdist
     else:
         target_distr = None
 
@@ -82,7 +96,8 @@ def main(traj):
                                             filter_dirs=filter_dirs, ordered_dts=ordered_dts,
                                             distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
                                             dist_bins=dist_bins, distr_dims=distr_dims,
-                                            target_distr=target_distr, ncores=ncores)
+                                            target_distr=target_distr, excl_edges_perc=excl_edges_perc,
+                                            zones_info=zones_info, ncores=ncores)
 
     od_out = None
     if run_optim:
@@ -91,6 +106,7 @@ def main(traj):
         optim_results = opt.main(trs_descr, trs_info, od,
                                  target_distr=target_distr,
                                  distr_constr_enabled=distr_constr_enabled,
+                                 distr_perc_tolerance=distr_perc_tolerance,
                                  workmem=workmem,
                                  timelimit=timelimit,
                                  mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,

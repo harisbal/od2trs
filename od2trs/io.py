@@ -24,14 +24,7 @@ def read_target_distr(infilepath, distr_cols,
 
     if seq_cols:
         for c in seq_cols:
-            target_distr[c] = (target_distr[c].
-                               str.replace(' ', '').
-                               str.replace('(', '').
-                               str.replace(')', '').
-                               str.replace(')', '').
-                               str.replace("'", '').
-                               str.split(','))
-            target_distr[c] = target_distr[c].apply(tuple)
+            target_distr[c] = utils.to_sequence(target_distr[c])
 
     target_distr = target_distr.groupby(distr_cols)[percent_col].sum()
 
@@ -87,8 +80,14 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
     return od
 
 
-def read_obs_info(infilepath):
-    return pd.read_csv(infilepath, index_col=0)
+def read_obs_info(infilepath, seq_cols):
+    obs_info = pd.read_csv(infilepath, index_col=0)
+
+    if seq_cols:
+        for c in seq_cols:
+            obs_info[c] = utils.to_sequence(obs_info[c])
+
+    return obs_info
 
 
 def read_distances(infilepath):

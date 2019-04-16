@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def prepare_distribution_from_observed(obs_info, distr_dims, dist_bins, max_legs=None, maxdist=None):
+def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdist=None):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the

@@ -14,8 +14,8 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
 
-    dists_from_src = nx.shortest_path_length(g, source=src, weight='Distance')
-    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight='Distance')
+    dists_from_src = nx.shortest_path_length(g, source=src, weight=weight)
+    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight=weight)
 
     # we do not know the exact predecessor in nx.all_simple_paths
     # Nonetheless, we can exclude the minimum distance from all predecessors
@@ -54,7 +54,8 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
         return None
 
 
-def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, max_tr_dist, dist_attr):
+def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
+                                  max_tr_dist, dist_attr, excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -90,8 +91,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
 
-            #if src != 'E01014387-AM' or tgt != 'E01014387-PM':
-            #    continue
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
 
             gf = filters.filter_by_departtime(g, src_dt, tgt_dt, ordered_dts)
@@ -113,7 +112,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs, ma
 
             # edges_bef = gf.number_of_edges()
             gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
-                                                               weight='Distance', trips_thresh=1)
+                                                               weight=None, trips_thresh=1)
             # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
             if src == tgt:

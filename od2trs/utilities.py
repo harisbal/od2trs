@@ -41,6 +41,18 @@ def is_ascending(lst):
     return True
 
 
+def to_sequence(s):
+    s = (s.str.replace(' ', '').
+         str.replace('(', '').
+         str.replace(')', '').
+         str.replace(')', '').
+         str.replace("'", '').
+         str.split(','))
+    s = s.apply(tuple)
+
+    return s
+
+
 def sequence_isunique(sequence):
     # Check if entries in sequence unique
     set_sequence = set(sequence)

@@ -17,24 +17,15 @@ def filter_trs_by_max_dist(trs, max_dist):
     return filtered_trs
 
 
-def filter_lowpercent_distr_groups(target_distr, thresh, percent_col='Percent'):
+def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
     # TODO I can improve it so it picks the right combination to maintain the specified threshold
-    def _create_filter_mask(s):
-        """
-        filter out groups so that the remaining ones account for the remaining percentage (thresh)
-        """
-        s = s.sort_values()
-        s_cumsum = s.cumsum()
-        mask = s_cumsum >= 1 - thresh
-        return mask
+    distr = distr.sort_values(percent_col)
+    distr = distr[distr[percent_col].cumsum() >= 1 - thresh]
+    # Re-calculate the percentage
+    distr.loc(axis=1)[percent_col] /= distr[percent_col].sum()
 
-        mask = _create_filter_mask(target_distr[percent_col])
-        # Re-calculate the percentage
-        target_distr = target_distr.loc[mask]
-        target_distr[percent_col] /= target_distr[percent_col].sum()
-
-    return target_distr
+    return distr
 
 
 def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
@@ -235,6 +226,18 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
         gt.remove_edge(*e)
 
     return gt
+
+
+def filter_by_dt_max_legs(zones_seqs, max_legs, ordered_dts):
+    filt_zones_seqs = list()
+    for zs in zones_seqs:
+        src_dt = zs[0].split('-', 1)[1]
+        tgt_dt = zs[-1].split('-', 1)[1]
+        extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+        if len(zs) - 1 <= max_legs + extra_legs:
+            filt_zones_seqs.append(zs)
+
+    return filt_zones_seqs
 
 
 def extract_tour_times_used(optim_results):

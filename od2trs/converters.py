@@ -21,7 +21,7 @@ def list_to_interval(lst):
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,
                 ordered_dts=None,
-                coords=None, verbose=True):
+                zones_info=None, verbose=True):
 
     def _add_chron_connectors(_g, _ordered_dts):
 
@@ -79,6 +79,15 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     g = _add_chron_connectors(g, ordered_dts)
 
+    if zones_info is not None:
+        # add the extra zones info
+        d_attrs = dict()
+        d_info = zones_info.to_dict(orient='index')
+        for n in g.nodes:
+            zone = g.node[n]['Zone']
+            d_attrs[n] = d_info[zone]
+        nx.set_node_attributes(g, d_attrs)
+
     # assure that nodes are unique
     names = g.nodes.keys()
     if len(names) != len(set(names)):
@@ -87,9 +96,6 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     if verbose:
         print('Network density: {:.2%}'.format(nx.density(g)))
 
-    if coords is not None:
-        d_coords = coords.to_dict()
-        nx.set_node_attributes(g, d_coords, '(x,y)')
     return g
 
 
@@ -201,10 +207,10 @@ def results_to_od(descr, info, idx_cols):
 
 def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
                       max_legs, max_tr_dist, dist_attr, dist_bins,
-                      target_distr, distr_dims):
+                      target_distr, distr_dims, excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
-                                                        max_legs, max_tr_dist, dist_attr)
+                                                        max_legs, max_tr_dist, dist_attr, excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -234,10 +240,10 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
 
 def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
                                 max_legs, max_tr_dist, dist_attr, dist_bins,
-                                target_distr, distr_dims):
+                                target_distr, distr_dims, excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
-                                                        max_legs, max_tr_dist, dist_attr)
+                                                        max_legs, max_tr_dist, dist_attr, excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -245,26 +251,22 @@ def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
     filtered_trs = list()
 
     for zs in zones_seqs:
-        print('zones_seq_to_trs')
         trs = zones_seq_to_trs(zs, G, filter_dirs)
+        #trs = filters.filter_possible_trs(trs, ordered_dts)
 
-        # filter by maximum distance
+        # filter by maximum distance (some tours are longer than the max)
+        # This cannot be eliminated 100% during creation
         if max_tr_dist:
             trs = filters.filter_trs_by_max_dist(trs, max_tr_dist)
 
         if target_distr is not None:
-            print('filter_by_target_distr')
             trs = filters.filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins)
 
         if trs:
             filtered_trs.extend(trs)
 
     if filtered_trs:
-        print('Filtered trs', len(filtered_trs))
-
-        trs_descr_df, trs_info_df = trs_to_df(filtered_trs, target_distr, distr_dims)
-
-        return trs_descr_df, trs_info_df
+        return filtered_trs
     else:
         return None
 
@@ -278,7 +280,7 @@ def od2trs(od, max_legs=None, include_loops=False,
            filter_dirs=None, ordered_dts=None,
            target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, dist_attr=None, max_tr_dist=None,
-           coords=None, ncores=None):
+           excl_edges_perc=0, zones_info=None, ncores=None):
 
     odg = od.to_frame()
     if distances is not None:
@@ -291,7 +293,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     G = od_to_graph(odg, src_col='Source', tgt_col='Target',
                     ordered_dts=ordered_dts,
-                    attr_cols=attr_cols, coords=coords)
+                    attr_cols=attr_cols, zones_info=zones_info)
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
@@ -317,7 +319,8 @@ def od2trs(od, max_legs=None, include_loops=False,
                             filter_dirs=filter_dirs,
                             ordered_dts=ordered_dts,
                             target_distr=target_distr,
-                            distr_dims=distr_dims),
+                            distr_dims=distr_dims,
+                            excl_edges_perc=excl_edges_perc),
                             zones), total=len(zones)):
                 if trs:
                     for tr in trs:
@@ -341,7 +344,8 @@ def od2trs(od, max_legs=None, include_loops=False,
 
         return trs_descr_df, trs_info_df
     else:
-        for zone in zones:
+        zones = zones[10:13]
+        for zone in tqdm(zones, total=len(zones)):
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs,
                                               max_tr_dist=max_tr_dist,
                                               dist_attr=dist_attr,
@@ -349,14 +353,15 @@ def od2trs(od, max_legs=None, include_loops=False,
                                               filter_dirs=filter_dirs,
                                               ordered_dts=ordered_dts,
                                               target_distr=target_distr,
-                                              distr_dims=distr_dims)
+                                              distr_dims=distr_dims,
+                                              excl_edges_perc=excl_edges_perc)
 
             if trs:
                 for tr in trs:
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims, dist_bins)
+                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 

@@ -2,6 +2,7 @@ from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 
+
 def prepare_model(trs, trs_info, od, target_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff):
@@ -126,7 +127,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
 def main(trs, trs_info, od, target_distr=None,
          distr_constr_enabled=False,
-         distr_perc_tolerance=None,
+         distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2,mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):

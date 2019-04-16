@@ -73,6 +73,7 @@ def prepare_traj_params(traj, cfg):
     ordered_dts = json.loads(cfg['TOURS']['ordered_departtimes'])
     distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
     max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
+    excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
@@ -81,12 +82,13 @@ def prepare_traj_params(traj, cfg):
     nh_directions = json.loads(cfg['TOURS']['nonhome_directions'])
 
     dist_bins = json.loads(cfg['TOURS']['dist_bins'])
+    # TODO fix
     if not dist_bins:
         dist_bins_range = json.loads(cfg['TOURS']['dist_bins_range'])
         if dist_bins_range:
             dist_bins = list()
             for r in dist_bins_range:
-                dist_bins.append(list(range(0, max_tr_dist, r)))
+                dist_bins.append(list(range(0, max(max_tr_dist), r)))
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
@@ -94,7 +96,6 @@ def prepare_traj_params(traj, cfg):
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
     distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
     distr_constr_enabled = json.loads(cfg['OPTIMISATION']['distribution_constraints_enabled'])
-
     emphasis_mip = json.loads(cfg['OPTIMISATION']['emphasis mip'])
     mip_tolerances_lowercutoff = json.loads(cfg['OPTIMISATION']['mip tolerances lowercutoff'])
     timelimit = json.loads(cfg['OPTIMISATION']['timelimit'])
@@ -117,12 +118,12 @@ def prepare_traj_params(traj, cfg):
         traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
 
     traj.par.trs.ordered_dts = Parameter('ordered_dts', ordered_dts,
-                                                 comment='Distribution Dimensions')
+                                         comment='Distribution Dimensions')
 
     traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distr_perc_thresh[0],
                                                comment='Distribution Percentage Threshold')
 
-    traj.par.trs.max_tr_dist = Parameter('max_tr_dist', max_tr_dist, comment='Maximum allowed distance for trs')
+    traj.par.trs.max_tr_dist = Parameter('max_tr_dist', max_tr_dist[0], comment='Maximum allowed distance for trs')
 
     if dist_bins is None:
         traj.par.trs.dist_bins = Parameter('dist_bins', None, comment='Distance bins')
@@ -138,6 +139,11 @@ def prepare_traj_params(traj, cfg):
                          comment='List of the directions to be filtered for the TH trips')
     traj.f_add_parameter('trs.filter_dirs.non_home', nh_directions,
                          comment='List of the directions to be filtered for the NHB trips')
+
+    traj.par.trs.excl_edges_perc = Parameter('excl_edges_perc', excl_edges_perc[0],
+                                             comment='Percentage of nhb edges to exclude during tours identification')
+
+
     # Scenario specific params
     traj.par.trs.perc_sample_size = Parameter('perc_sample_size', 0.10, comment='Aggregation level')
     traj.par.trs.data_source = Parameter('data_source', '', comment='Data source')
@@ -180,8 +186,9 @@ def prepare_traj_params(traj, cfg):
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
         """
-        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'dist_bins': dist_bins,
-                     'distr_constr_enabled': distr_constr_enabled, 'distr_perc_tolerance': distr_perc_tolerance}
+        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dist': max_tr_dist,
+                     'dist_bins': dist_bins, 'distr_constr_enabled': distr_constr_enabled,
+                     'distr_perc_tolerance': distr_perc_tolerance, 'excl_edges_perc': excl_edges_perc}
 
         d_explore = {key: value for (key, value) in d_explore.items() if isinstance(value, list)}
         explore_order = list(d_explore.keys())
