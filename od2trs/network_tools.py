@@ -4,12 +4,6 @@ import od2trs.utilities as utils
 
 
 def identify_cycles(g, src, tgt, limit, weight, maxdist):
-    gf = g.copy()
-
-    # Prevent src succs to connected with preds
-    gf.remove_node(src)
-    if tgt in gf.nodes:
-        gf.remove_node(tgt)
 
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
@@ -29,7 +23,7 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
     cycles = list()
     for succ in succs:
         excl_dist = dists_from_src[succ] + min_dist_to_tgt
-        simple_paths = nx.all_simple_paths(gf, succ, preds, cutoff_len=limit,
+        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=limit,
                                            weight=weight, cutoff_weight=maxdist - excl_dist)
 
         for sp in simple_paths:
@@ -87,16 +81,18 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if j < i:
                 continue
 
-            print(src, tgt)
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
-
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
 
-            gf = filters.filter_by_departtime(g, src_dt, tgt_dt, ordered_dts)
+            # Needs to be re-initialised at each iteration
+            gf = filters.filter_by_departtime(g.copy(), src_dt, tgt_dt, ordered_dts)
             # This function also converts MultiDiGraph to DiGraph
             gf = filters.filter_edges_by_direction(gf, src, tgt, filter_dirs)
-            gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
+            # After this point the graph is not multilevel
+            gf = nx.DiGraph(gf)
+
+            #gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
             if not _path_exists(gf, src, tgt):
                 continue

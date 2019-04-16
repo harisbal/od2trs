@@ -344,7 +344,8 @@ def od2trs(od, max_legs=None, include_loops=False,
 
         return trs_descr_df, trs_info_df
     else:
-        zones = zones[10:13]
+        idx = zones.index('E01014387')
+        zones = zones[idx:idx+2]
         for zone in tqdm(zones, total=len(zones)):
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs,
                                               max_tr_dist=max_tr_dist,

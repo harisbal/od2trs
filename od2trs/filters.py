@@ -67,15 +67,17 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
 
 def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
-    gf = g.copy()
 
     src_dt_idx = ordered_dts.index(src_dt)
     tgt_dt_idx = ordered_dts.index(tgt_dt)
 
-    for u, v, dt in g.edges(data='Departtime'):
+    to_rmn = set()
+    for s, t, dt in g.edges(data='Departtime'):
         if dt not in ordered_dts[src_dt_idx:tgt_dt_idx+1]:
-            gf.remove_edge(u, v)
-    return gf
+            to_rmn.add((s, t))
+
+    g.remove_edges_from(to_rmn)
+    return g
 
 
 def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
@@ -88,7 +90,7 @@ def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
     th_names = filter_edge_dirs.to_home
     nhb_names = filter_edge_dirs.non_home
 
-    gf = g.copy()
+    to_rmv = set()
     # Creates a graph that origins edges from and to
     for s, t, k, attrs in g.edges(data=True, keys=True):
         if not attrs['Connector']:
@@ -98,29 +100,32 @@ def filter_edges_by_direction(g, src, tgt, filter_edge_dirs):
                     (g.nodes[s]['Zone'] == g.nodes[tgt]['Zone']) |
                     (g.nodes[t]['Zone'] == g.nodes[src]['Zone']) |
                         (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone'])):
-                    gf.remove_edge(s, t, k)
+                    to_rmv.add((s, t, k))
             elif attrs['Direction'] in fh_names:
                 if not s == src:
-                    gf.remove_edge(s, t, k)
+                    to_rmv.add((s, t, k))
             elif attrs['Direction'] in th_names:
                 if not t == tgt:
-                    gf.remove_edge(s, t, k)
+                    to_rmv.add((s, t, k))
         else:
             # Remove connectors linked to src_zone
             if (g.nodes[s]['Zone'] == g.nodes[src]['Zone']) | (g.nodes[t]['Zone'] == g.nodes[tgt]['Zone']):
-                gf.remove_edge(s, t, k)
+                to_rmv.add((s, t, k))
 
-    # After this point the graph is not multilevel
-    gf = nx.DiGraph(gf)
-    return gf
+    g.remove_edges_from(to_rmv)
+
+    return g
 
 
 def filter_connectors(g, keep=False):
-    gf = g.copy()
+    to_rmv = list()
     for src, tgt, attrs in g.edges(data=True):
         if not attrs['Connector'] == keep:
-            gf.remove_edge(src, tgt)
-    return gf
+            to_rmv.append((src, tgt))
+
+    g.remove_edges_from(to_rmv)
+
+    return g
 
 
 def filter_distant_nodes(g, src, tgt, weight, cutoff):
@@ -144,20 +149,20 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
 
     dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
 
-    keep_nodes = set()
+    # nodes are unique no need for set
+    to_rmv = list()
     for n in g.nodes():
         try:
             dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
             dist = dists_from_src[n] + dist_to_tgt
-            if dist <= cutoff:
-                keep_nodes.add(n)
+            if dist > cutoff:
+                to_rmv.append(n)
         except (nx.NetworkXNoPath, KeyError):
             continue
 
-    keep_nodes.add(src)
-    keep_nodes.add(tgt)
+    g.remove_nodes_from(to_rmv)
 
-    return g.subgraph(keep_nodes).copy()
+    return g
 
 
 def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
@@ -221,11 +226,9 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
     # exclude links with 0 eb
     to_rmv = n[n != 0].index.tolist()
 
-    gt = g.copy()
-    for e in to_rmv:
-        gt.remove_edge(*e)
+    g.remove_edges_from(to_rmv)
 
-    return gt
+    return g
 
 
 def filter_by_dt_max_legs(zones_seqs, max_legs, ordered_dts):
