@@ -1,7 +1,6 @@
+import collections
 import pandas as pd
-
 import od2trs.utilities as util
-import settings
 
 
 class Leg:
@@ -12,44 +11,83 @@ class Leg:
                  purpose=None, departtime=None,
                  direction=None, distance=None, **kwargs):
 
-        self.source = source
-        self.target = target
+        attrs = ['source', 'target', 'purpose', 'odpairid',
+                 'direction', 'departtime', 'distance']
+        # Tours deriving from multilevel graphs include the time level in the name
+        self.source = source.split('-', 1)[0]
+        self.target = target.split('-', 1)[0]
         self.purpose = purpose
         self.direction = direction
         self.departtime = departtime
         self.distance = distance
+        self.odpairid = None
 
         for key in kwargs:
-            setattr(self, key.lower(), kwargs[key])
+            if key.lower() in attrs:
+                setattr(self, key.lower(), kwargs[key])
 
 
 class TripChain:
     """
     A TripChain is a sequence of legs
     """
-    def __init__(self, legs, id=None):
+    def __init__(self, legs):
         """
         :param legs: list of Leg
         """
-        if len(legs) >= 1:
+        if len(legs) >= 2:
             self.legs = legs
-        else:
-            raise ValueError('Only one Leg found')
 
-        self.id = id
+            zones = list()
+            for leg in legs:
+                zones.append(leg.source)
+            self.zones = zones
+
+        else:
+            raise ValueError('Less than 2 legs found')
+
+        self.id = None
         self.no_legs = len(legs)
         self.tour = self.is_tour()
+        self.zones = self.create_zones_seq()
+        self.loops_cnt = self.count_loops()
         self.chron_ordered = None
         self.no_external_zones = None
-        self.distrgroupid= None
-        self.depart_times = self.create_depart_times_seq()
+        self.distr_group_id = None
+        self.dist_grp = None
         self.distance = self.calculate_distance()
+        self.departtimes = self.create_departtimes_seq()
+
+    def create_zones_seq(self):
+        zones = [l.source for l in self.legs]
+        zones.append(self.legs[-1].target)
+        return zones
 
     def is_tour(self):
-        if self.legs[0].source == self.legs[-1].target:
+        # Tours deriving from multilevel graphs include the time level in the name
+        src = self.legs[0].source.split('-')[0]
+        tgt = self.legs[-1].target.split('-')[0]
+
+        if src == tgt:
             return True
         else:
             return False
+
+    def count_loops(self):
+        # Tours deriving from multilevel graphs include the time level in the name
+        zns = [z.split('-')[0] for z in self.zones]
+        loops_cnt = max(collections.Counter(zns).values())
+        return loops_cnt
+
+    def assign_dist_grp(self, dist_bins):
+        def _return_dist_grp(_dist_bins):
+            dist = self.distance
+            for _db in dist_bins:
+                if dist in _db:
+                    return _db
+
+        dg = _return_dist_grp(dist_bins)
+        self.dist_grp = dg
 
     def is_chron_ordered(self, departtimes_ordered):
         if util.sequence_isunique(departtimes_ordered):
@@ -68,13 +106,12 @@ class TripChain:
         else:
             return False
 
-    def create_depart_times_seq(self):
+    def create_departtimes_seq(self):
         tps = list()
         for leg in self.legs:
             if leg.departtime:
                 tps.append(leg.departtime)
             else:
-                print('departtime missing from leg, return empty')
                 return None
 
         return tuple(tps)
@@ -85,16 +122,9 @@ class TripChain:
             if leg.distance:
                 distance += leg.distance
             else:
-                #print('leg distance not defined, returning None')
+                print('leg distance not defined, returning None')
                 return None
-        return distance
-
-    def count_external_zones(self):
-        cnt = 0
-        for leg in self.legs:
-            if not leg.target.startswith(settings.parameters['int_zone_str']):
-                cnt += 1
-        return cnt
+        return round(distance, 3)
 
     def to_dict(self):
         d_tc = dict()

@@ -1,7 +1,8 @@
 import od2trs.io as myio
+import od2trs.distributions as distrs
 import od2trs.converters as converters
-import od2trs.optimise as opt
 import od2trs.filters as filters
+import od2trs.optimise as opt
 
 
 def main(traj):
@@ -9,20 +10,42 @@ def main(traj):
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
 
-    distr_dims = traj.par.trs.distr_dims
     max_legs = traj.par.trs.max_legs
+    include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
-    ordered_time_periods = traj.par.ordered_time_periods
-    dist_bins = traj.par.trs.dist_bins
-    if not isinstance(dist_bins, list):
-        dist_bins = None
+    grp_purposes = traj.par.trs.d_grp_purposes
+    ordered_dts = traj.par.ordered_dts
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
+    distr_dims = traj.par.trs.distr_dims
+    excl_edges_perc = traj.par.trs.excl_edges_perc
+
     distr_perc_thresh = traj.par.trs.distr_perc_thresh
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
+    distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
 
     run_optim = traj.par.optim.run_optim
     submit_to_neos = traj.par.optim.submit_to_neos
+    #emphasis_mip = traj.par.optim.emphasis_mip
+
+    try:
+        traj.par.optim.mip_tolerances_lowercutoff.f_is_empty()
+        mip_tolerances_lowercutoff = None
+    except AttributeError:
+        mip_tolerances_lowercutoff = traj.par.optim.mip_tolerances_lowercutoff
+
+    timelimit = traj.par.optim.timelimit
+    workmem = traj.par.optim.workmem
+    mip_strategy_probe = traj.par.optim.mip_strategy_probe
+    mip_strategy_file = traj.par.optim.mip_strategy_file
+
+    dist_bins = traj.par.trs.dist_bins
+    if not isinstance(dist_bins, list):
+        dist_bins = None
+    else:
+        dist_bins.append(float('inf'))
+        # Convert to pd.Interval
+        dist_bins = converters.list_to_interval(dist_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -30,46 +53,78 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.fetch_prepare_od(filepaths['od_in'], trips_thresh, idx_cols)
+    od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
+
+    try:
+        zones_info = myio.read_zones_info(filepaths['in']['zones_info'])
+    except FileNotFoundError:
+        zones_info = None
 
     if 'Distancegroup' in distr_dims:
-        distances = myio.read_distances(filepaths['distances'])
-    else:
-        distances = None
+        try:
+            distances = myio.read_distances(filepaths['in']['distances'])
+            dist_attr = 'Distance'
+        except FileNotFoundError:
+            distances = None
+            dist_attr = None
 
     if distr_constr_enabled:
-        # TODO inteval_cols is not very generic
-        target_distr = myio.fetch_target_distr(filepaths['target_distr'], distr_dims,
-                                               interval_cols=['Distancegroup'],
-                                               seq_cols=['Departtimes'])
+        try:
+            # TODO IMPROVE (not too generic)
+            target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
+                                                  interval_cols=['Distancegroup'],
+                                                  seq_cols=['Departtimes'])
+
+        except FileNotFoundError:
+            seq_cols = ['Departtimes']
+            obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'], seq_cols)
+            target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
+                                                         dist_bins, max_legs,
+                                                         max_tr_dist)
+
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
+        max_legs = target_distr.index.get_level_values('Legs').max()
+        # We can get the maximum distance and legs after filtering
+        maxdist = target_distr.index.get_level_values('Distancegroup').max().right
+        if maxdist != float('inf'):
+            max_tr_dist = maxdist
     else:
         target_distr = None
 
-    trs_mdl_descr, trs_mdl_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
-                                                    ordered_time_periods=ordered_time_periods,
-                                                    target_distr=target_distr,
-                                                    distr_dims=distr_dims, dist_bins=dist_bins,
-                                                    distances=distances, max_tr_dist=max_tr_dist,
-                                                    ncores=ncores)
+    trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
+                                            filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                            distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
+                                            dist_bins=dist_bins, distr_dims=distr_dims,
+                                            target_distr=target_distr, excl_edges_perc=excl_edges_perc,
+                                            zones_info=zones_info, ncores=ncores)
 
+    od_out = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-        optim_results = opt.main(trs_mdl_descr, trs_mdl_info, od,
-                                 target_distr, distr_constr_enabled,
+
+        optim_results = opt.main(trs_descr, trs_info, od,
+                                 target_distr=target_distr,
+                                 distr_constr_enabled=distr_constr_enabled,
+                                 distr_perc_tolerance=distr_perc_tolerance,
+                                 workmem=workmem,
+                                 timelimit=timelimit,
+                                 mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
+                                 mip_strategy_probe=mip_strategy_probe,
+                                 mip_strategy_file=mip_strategy_file,
                                  submit_to_neos=submit_to_neos)
 
-        solution_tour_times_used = filters.extract_tour_times_used(optim_results)
-        last_sol = solution_tour_times_used.index.unique(level='Solutionno').max()
-        trs_mdl_times_used = solution_tour_times_used.xs(last_sol, level='Solutionno')
-        trs_mdl_info = trs_mdl_info.join(trs_mdl_times_used)
-        trs_mdl_info.fillna({'Timesused': 0}, inplace=True)
-        trs_mdl_info['Timesused'] = trs_mdl_info['Timesused'].astype(int)
+        times_used = filters.extract_tour_times_used(optim_results)
+        if times_used is not None:
+            last_sol = times_used.index.unique(level='Solutionno').max()
+            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
+            trs_info = trs_info.join(trs_mdl_times_used)
+            trs_info.fillna({'Timesused': 0}, inplace=True)
+            trs_info['Timesused'] = trs_info['Timesused'].astype(int)
+            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+            od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
-    results = [od, trs_mdl_descr, trs_mdl_info, target_distr]
-
-    print('Complete!')
+    results = [od_out, trs_descr, trs_info, target_distr]
 
     return results
 

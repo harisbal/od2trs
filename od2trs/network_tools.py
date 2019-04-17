@@ -1,53 +1,56 @@
 import networkx as nx
 import od2trs.filters as filters
-import settings
+import od2trs.utilities as utils
 
 
-def reduce_graph_limit_cycle_length(G, source, limit):
-    """
+def identify_cycles(g, src, tgt, limit, weight, maxdist):
 
-    Parameters
-    ----------
-    G : NetworkX DiGraph
-       A directed graph
-    source : node
-      the node where cycles will originate from
-    limit : int
-      an integer specifying the maximum allowed length of cycles
-    Returns
-    -------
-    G : NetworkX DiGraph
-       A directed graph where cycles starting from source
-       cannot be longer than the limit
+    succs = list(g.successors(src))
+    preds = list(g.predecessors(tgt))
 
-    """
+    dists_from_src = nx.shortest_path_length(g, source=src, weight=weight)
+    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight=weight)
 
-    subG = None
-    sccs = nx.strongly_connected_components(G)
-    for scc in sccs:
-        if source in scc:
-            subG = G.subgraph(scc)
-            break
-    if subG:
-        lens_from_source = nx.single_source_shortest_path_length(subG, source=source)
-        lens_to_source = dict(nx.single_target_shortest_path_length(subG, target=source))
+    # we do not know the exact predecessor in nx.all_simple_paths
+    # Nonetheless, we can exclude the minimum distance from all predecessors
+    dists_preds_to_tgt = {n: dists_to_tgt[n] for n in preds}
 
-        lens_min_cycle = {k: lens_from_source.get(k, 0) + lens_to_source.get(k, 0)
-                          for k in set(lens_from_source)}
-
-        # if the cycle len is greater than the limit do not include nodes in the new G
-        nodes = set()
-        nodes.add(source)
-        for k, length in lens_min_cycle.items():
-            if length <= limit:
-                nodes.add(k)
-
-        return G.subgraph(nodes)
+    if dists_preds_to_tgt:
+        min_dist_to_tgt = min(dists_preds_to_tgt.values())
     else:
-        return G
+        min_dist_to_tgt = 0
+
+    cycles = list()
+    for succ in succs:
+        excl_dist = dists_from_src[succ] + min_dist_to_tgt
+        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=limit,
+                                           weight=weight, cutoff_weight=maxdist - excl_dist)
+
+        for sp in simple_paths:
+            sp.insert(0, src)
+            sp.append(tgt)
+            cycles.append(sp)
+
+        # append the case where succ == pred
+        for pred in preds:
+            if succ == pred:
+                c = [src, succ, tgt]
+                if maxdist:
+                    dist = 0
+                    for u, v in utils.pairwise(c):
+                        dist += g.get_edge_data(u, v)[weight]
+                    if dist <= maxdist:
+                        cycles.append(c)
+
+    if cycles:
+        return cycles
+    else:
+        return None
 
 
-def identify_tour_zone_sequences(source, max_legs, G, filter_dirs):
+def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
+                                  max_tr_dist, dist_attr, include_loops,
+                                  excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -58,17 +61,79 @@ def identify_tour_zone_sequences(source, max_legs, G, filter_dirs):
     :param filter_edge_purpose_names: the name of the trip purposes to look for
     :return: potential_tripchains
     """
+    # TODO incorporate
+    def _include_loops(_zss, loops):
+        # loops should be a dict
+        zss_loops = _zss.copy()
+        for zs in _zss:
+            if len(zs) <= max_legs - 2:
+                # interm zones
+                zs_loop = [zl for z in zs[1:-1] for zl in list(loops.get(z, None))]
+                if (len(zs_loop) <= max_legs + extra_legs) and (None not in zs_loop):
+                    zss_loops.append(zs_loop)
+        return zs_loop
 
-    G_filt = filters.filter_graph_edges_by_direction(G, source, filter_dirs)
+    def _path_exists(_g, _src, _tgt):
+        try:
+            nx.shortest_path_length(_g, src, _tgt)
+            return True
+        except nx.NetworkXNoPath:
+            return False
 
-    G_filt = reduce_graph_limit_cycle_length(G_filt, source, limit=max_legs)
+    zones = [n for n, z in g.nodes(data='Zone') if z == src]
+    zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
-    tour_zone_seqs = list()
-    simple_cycles = nx.simple_cycles_root(G_filt, root=source, limit=max_legs)
-    # Make the home zone the initial zone of the chain
-    for sc in simple_cycles:
-        # Complete the trs (repeat first zone)
-        sc.append(sc[0])
-        tour_zone_seqs.append(sc)
+    srcs = zones.copy()
+    tgts = zones.copy()
 
-    return tour_zone_seqs
+    zone_seqs = list()
+
+    for i, src in enumerate(srcs):
+        for j, tgt in enumerate(tgts):
+            if j < i:
+                continue
+
+            src_dt = src.split('-', 1)[1]
+            tgt_dt = tgt.split('-', 1)[1]
+            extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+
+            # Needs to be re-initialised at each iteration
+            gf = filters.filter_by_departtime(g.copy(), src_dt, tgt_dt, ordered_dts)
+            # This function also converts MultiDiGraph to DiGraph
+            gf = filters.filter_edges_by_direction(gf, src, tgt, filter_dirs)
+            # After this point the graph is not multilevel
+            gf = nx.DiGraph(gf)
+
+            #gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
+
+            if not _path_exists(gf, src, tgt):
+                continue
+
+            distance_filters = [(None, (max_legs + extra_legs)), ('Distance', max_tr_dist)]
+            for w, md in distance_filters:
+                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
+
+            # Use edge betweeneess centrality to simplify the graph
+            # TODO the number of nexcl_edges should be excluded from the optimisation
+            # TODO the decision about the number of edges to be excluded should be automated
+            nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
+            # edges_bef = gf.number_of_edges()
+            gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
+                                                               weight=None, trips_thresh=1)
+            # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+
+            if src == tgt:
+                # Keep only edges in src_dt
+                gf = filters.filter_connectors(gf, keep=False)
+                cutoff_legs = max_legs
+            else:
+                cutoff_legs = max_legs + extra_legs
+
+            zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
+
+            if zss:
+                #if loops:
+                #    zss = _include_loops(zss)
+                zone_seqs.extend(zss)
+
+    return zone_seqs

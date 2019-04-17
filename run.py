@@ -1,28 +1,15 @@
-""" Module that shows how to wrap *pypet* around an existing project
-
-Thanks to *pypet* the module is now very flexible.
-You can immediately start exploring different sets
-of parameters, like different seeds or cell numbers.
-Accordingly, you can simply change ``exp_dict`` to explore different sets.
-
-On the contrary, this is tedious in the original code
-and requires some effort of refactoring.
-
-"""
-
-__author__ = 'Robert Meyer'
-
 import os
 import shutil
 import logging
+import time
+import json
+import configparser
 
-from pypet import Environment, cartesian_product, Parameter, PickleParameter
+from pypet import Environment, Parameter, PickleParameter, cartesian_product
 
-# Lets import the stuff we already have:
 import main as mn
 from od2trs import io as myio
-
-import settings
+from od2trs import utilities as utils
 
 
 def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
@@ -30,7 +17,7 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
     infldr = os.path.join(inputs_fldr, data_src, aggr_lvl, 'sample_perc_{}'.format(int(perc_sample_size * 100)))
 
-    files = ['od.csv', 'distances.csv', 'target_distr.csv']
+    files = ['od.csv', 'distances.csv', 'target_distr.csv', 'trs_obs_info.scv']
     for f in files:
         nf = os.path.join(infldr, f)
         print(nf)
@@ -39,11 +26,8 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
 def wrap_automaton(traj, single_run=True, export_flat=False):
     """ Simple wrapper function for compatibility with *pypet*.
-
     We will call the original simulation functions with data extracted from ``traj``.
-
     The resulting automaton patterns wil also be stored into the trajectory.
-
     :param traj: Trajectory container for data
 
     """
@@ -56,70 +40,109 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
         prepare_inputs(data_src, aggr_lvl, perc_sample_size)
 
     # Run simulation
+    start_time = time.time()
     results = mn.main(traj)
+    elapsed_time = time.time() - start_time
+
+    print('Complete!')
 
     if export_flat:
-        myio.export_results(results)
+        myio.export_results(results, traj.conf.filepaths)
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-
-    traj.f_add_result('od', od, comment='od_')
+    if od is not None:
+        traj.f_add_result('od', od, comment='od')
     traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
+    traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if target_distr is not None:
         traj.f_add_result('target_distr', target_distr, comment='target_distr')
 
 
-def prepare_traj_params(traj):
+def prepare_traj_params(traj, cfg):
 
-    settings.init()
+    filepaths = utils.prepare_filepaths_from_config(cfg)
 
-    params = settings.parameters
-    filepaths = settings.filepaths
+    explore = json.loads(cfg['TOURS']['explore'])
+    max_legs = json.loads(cfg['TOURS']['max_legs'])
+    include_loops = json.loads(cfg['TOURS']['include_loops'])
+    trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
+    distr_dims = json.loads(cfg['TOURS']['distr_dims'])
+    ordered_dts = json.loads(cfg['TOURS']['ordered_departtimes'])
+    distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
+    max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
+    excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
-    explore = params['explore']
+    d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
+
+    fh_directions = json.loads(cfg['TOURS']['fromhome_directions'])
+    th_directions = json.loads(cfg['TOURS']['tohome_directions'])
+    nh_directions = json.loads(cfg['TOURS']['nonhome_directions'])
+
+    dist_bins = json.loads(cfg['TOURS']['dist_bins'])
+    # TODO fix
+    if not dist_bins:
+        dist_bins_range = json.loads(cfg['TOURS']['dist_bins_range'])
+        if dist_bins_range:
+            dist_bins = list()
+            for r in dist_bins_range:
+                dist_bins.append(list(range(0, max(max_tr_dist), r)))
+
+    # optimisation config
+    run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
+    ncores = json.loads(cfg['DEFAULT']['ncores'])
+    submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
+    distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
+    distr_constr_enabled = json.loads(cfg['OPTIMISATION']['distribution_constraints_enabled'])
+    emphasis_mip = json.loads(cfg['OPTIMISATION']['emphasis mip'])
+    mip_tolerances_lowercutoff = json.loads(cfg['OPTIMISATION']['mip tolerances lowercutoff'])
+    timelimit = json.loads(cfg['OPTIMISATION']['timelimit'])
+    workmem = json.loads(cfg['OPTIMISATION']['work memory'])
+    mip_strategy_probe = json.loads(cfg['OPTIMISATION']['mip strategy probe'])
+    mip_strategy_file = json.loads(cfg['OPTIMISATION']['mip strategy file'])
 
     traj.f_add_parameter_group('trs', 'Parameter groups for trs')
     traj.f_add_parameter_group('optim', 'Parameter groups for optimisation')
-
-    traj.f_add_config('ncores', params['ncores'], 'Number of cores')
-
+    traj.f_add_config('ncores', ncores, 'Number of cores')
     traj.conf.filepaths = PickleParameter('filepaths', filepaths, comment='Filepaths')
-
-    traj.par.trs.max_legs = Parameter('max_legs', params['max_legs'][0], comment='Maximum number of legs in trs')
-
-    traj.par.trs.trips_thresh = Parameter('trips_thresh', params['trips_thresh'][0],
+    traj.par.trs.max_legs = Parameter('max_legs', max_legs[0], comment='Maximum number of legs in trs')
+    traj.par.trs.include_loops = Parameter('include_loops', include_loops[0], comment='Including loops or not')
+    traj.par.trs.trips_thresh = Parameter('trips_thresh', trips_thresh[0],
                                           comment='Minimum number of trips allowed in ODs')
 
-    traj.par.trs.distr_dims = PickleParameter('distr_dims', params['distr_dims'][0], comment='Distribution Dimensions')
+    if distr_dims is None:
+        traj.par.trs.distr_dims = PickleParameter('distr_dims', None, comment='Distribution Dimensions')
+    else:
+        traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
 
-    traj.par.trs.ordered_time_periods = Parameter('ordered_time_periods',
-                                                  params['ordered_time_periods'],
-                                                  comment='Distribution Dimensions')
+    traj.par.trs.ordered_dts = Parameter('ordered_dts', ordered_dts,
+                                         comment='Distribution Dimensions')
 
-    traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh',
-                                               params['distribution_percent_thresh'][0],
+    traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distr_perc_thresh[0],
                                                comment='Distribution Percentage Threshold')
 
-    traj.par.trs.max_tr_dist = Parameter('max_tr_dist', params['max_tr_dist'],
-                                         comment='Maximum allowed distance for trs')
+    traj.par.trs.max_tr_dist = Parameter('max_tr_dist', max_tr_dist[0], comment='Maximum allowed distance for trs')
 
-    traj.par.trs.dist_bins = Parameter('dist_bins', params['dist_bins'][0], comment='Distance bins')
+    if dist_bins is None:
+        traj.par.trs.dist_bins = Parameter('dist_bins', None, comment='Distance bins')
+    else:
+        traj.par.trs.dist_bins = Parameter('dist_bins', dist_bins[0], comment='Distance bins')
 
-    traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes',
-                                                  params['d_grp_purposes'],
+    traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
 
-    traj.f_add_parameter('trs.filter_dirs.from_home', params['origin_directions'],
+    traj.f_add_parameter('trs.filter_dirs.from_home', fh_directions,
                          comment='List of the directions to be filtered for the FH trips')
-
-    traj.f_add_parameter('trs.filter_dirs.to_home', params['destination_directions'],
+    traj.f_add_parameter('trs.filter_dirs.to_home', th_directions,
                          comment='List of the directions to be filtered for the TH trips')
-
-    traj.f_add_parameter('trs.filter_dirs.non_home', params['intermediate_directions'],
+    traj.f_add_parameter('trs.filter_dirs.non_home', nh_directions,
                          comment='List of the directions to be filtered for the NHB trips')
+
+    traj.par.trs.excl_edges_perc = Parameter('excl_edges_perc', excl_edges_perc[0],
+                                             comment='Percentage of nhb edges to exclude during tours identification')
+
 
     # Scenario specific params
     traj.par.trs.perc_sample_size = Parameter('perc_sample_size', 0.10, comment='Aggregation level')
@@ -127,42 +150,25 @@ def prepare_traj_params(traj):
     traj.par.trs.aggr_level = Parameter('aggr_level', '', comment='Aggregation level')
 
     # Optimisation parameters
-    traj.par.optim.run_optim = Parameter('run_optim', params['run_optimisation'],
-                                         comment='Run optimisation')
-
-    traj.par.optim.submit_to_neos = Parameter('submit_to_neos', params['submit_to_neos'],
-                                              comment='Submit to NEOS')
-
-    traj.par.optim.distr_perc_tolerance = Parameter('distr_perc_tolerance',
-                                                    params['optimisation']['distribution_percentage_tolerance'],
+    traj.par.optim.run_optim = Parameter('run_optim', run_optimisation, comment='Run optimisation')
+    traj.par.optim.submit_to_neos = Parameter('submit_to_neos', submit_to_neos, comment='Submit to NEOS')
+    traj.par.optim.distr_perc_tolerance = Parameter('distr_perc_tolerance', distr_perc_tolerance[0],
                                                     comment='Distance bins')
 
-    traj.par.optim.distr_constr_enabled = Parameter('distr_constr_enabled', params['distr_constr_enabled'][0],
+    traj.par.optim.distr_constr_enabled = Parameter('distr_constr_enabled', distr_constr_enabled[0],
                                                     comment='Distribution constraints enabled')
 
-    traj.par.optim.emphasis_mip = Parameter('emphasis_mip',
-                                            params['optimisation']['emphasis mip'],
-                                            comment='MIP emphasis')
-
-    traj.par.optim.mip_tolerances_lowercutoff = Parameter('mip_tolerances_lowercutoff',
-                                                          params['optimisation']['mip tolerances lowercutoff'],
+    traj.par.optim.emphasis_mip = Parameter('emphasis_mip', emphasis_mip, comment='MIP emphasis')
+    traj.par.optim.mip_tolerances_lowercutoff = Parameter('mip_tolerances_lowercutoff', mip_tolerances_lowercutoff,
                                                           comment='mip tolerances lowercutoff')
 
-    traj.par.optim.timelimit = Parameter('timelimit',
-                                         params['optimisation']['timelimit'],
-                                         comment='Maximum time to run optimisataion in seconds')
+    traj.par.optim.timelimit = Parameter('timelimit', timelimit, comment='Maximum time to run optimisation in seconds')
+    traj.par.optim.workmem = Parameter('workmem', workmem, comment='Maximum memory used for optimisation')
 
-    traj.par.optim.workmem = Parameter('workmem',
-                                       params['optimisation']['work memory'],
-                                       comment='Maximum memory for optimisation')
-
-    traj.par.optim.mip_strategy_probe = Parameter('mip_strategy_probe',
-                                                  params['optimisation']['mip strategy probe'],
+    traj.par.optim.mip_strategy_probe = Parameter('mip_strategy_probe', mip_strategy_probe,
                                                   comment='MIP strategy probe')
 
-    traj.par.optim.mip_strategy_file = Parameter('mip_strategy_file',
-                                                 params['optimisation']['mip strategy file'],
-                                                 comment='MIP strategy probe')
+    traj.par.optim.mip_strategy_file = Parameter('mip_strategy_file', mip_strategy_file, comment='MIP strategy probe')
 
     if explore:
         # TODO read exploration space from file
@@ -180,29 +186,31 @@ def prepare_traj_params(traj):
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
         """
-        explore_d = {'max_legs': [5], 'trips_thresh': [1]}
+        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dist': max_tr_dist,
+                     'dist_bins': dist_bins, 'distr_constr_enabled': distr_constr_enabled,
+                     'distr_perc_tolerance': distr_perc_tolerance, 'excl_edges_perc': excl_edges_perc}
 
-        explore_order = ('max_legs', 'trips_thresh')
-
-        explore_d = cartesian_product(explore_d, explore_order)
-
-        traj.f_explore(explore_d)
+        d_explore = {key: value for (key, value) in d_explore.items() if isinstance(value, list)}
+        explore_order = list(d_explore.keys())
+        d_explore = cartesian_product(d_explore, explore_order)
+        traj.f_explore(d_explore)
 
     return traj
 
 
-def main():
+def main(configpath=r'./config.ini'):
 
-    settings.init()
+    cfg = configparser.ConfigParser()
+    cfg.read(configpath)
+
     # do not explore solutions
-
-    export_flat = settings.parameters['export_flat']
+    export_flat = json.loads(cfg.get('DEFAULT', 'export_flat'))
 
     # Now let's make use of logging
     logger = logging.getLogger()
 
     # Create folders for data and plots
-    outfolder = os.path.join(os.getcwd(), settings.filepaths['outfolder'])
+    outfolder = os.path.join(os.getcwd(), cfg.get('FILEPATHS_OUT', 'outfolder'))
     myio.create_folders([outfolder])
     filename = os.path.join(outfolder, 'results.hdf5')
 
@@ -214,7 +222,7 @@ def main():
 
     # extract the trajectory
     traj = env.traj
-    traj = prepare_traj_params(traj)
+    traj = prepare_traj_params(traj, cfg)
 
     # Run the simulation
     logger.info('Starting Simulation')

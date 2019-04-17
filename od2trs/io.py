@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 
-import settings
 import od2trs.utilities as utils
 
 
@@ -11,9 +10,9 @@ def create_folders(folder_list):
             os.makedirs(folder)
 
 
-def fetch_target_distr(infilepath, distr_cols,
-                       interval_cols=None, seq_cols=None,
-                       percent_col='Percentage'):
+def read_target_distr(infilepath, distr_cols,
+                      interval_cols=None, seq_cols=None,
+                      percent_col='Percentage'):
 
     target_distr = pd.read_csv(infilepath)
 
@@ -25,14 +24,7 @@ def fetch_target_distr(infilepath, distr_cols,
 
     if seq_cols:
         for c in seq_cols:
-            target_distr[c] = (target_distr[c].
-                               str.replace(' ', '').
-                               str.replace('(', '').
-                               str.replace(')', '').
-                               str.replace(')', '').
-                               str.replace("'", '').
-                               str.split(','))
-            target_distr[c] = target_distr[c].apply(tuple)
+            target_distr[c] = utils.to_sequence(target_distr[c])
 
     target_distr = target_distr.groupby(distr_cols)[percent_col].sum()
 
@@ -43,38 +35,59 @@ def fetch_target_distr(infilepath, distr_cols,
     return target_distr
 
 
-def fetch_prepare_od(infilepath, trips_thresh, idx_cols):
+def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
     idx_cols = [str.capitalize(v) for v in idx_cols]
     od = (pd.read_csv(infilepath)
           .rename(columns=str.capitalize)
           .set_index(idx_cols)
           .squeeze())
-
     # TODO this must become more generic
-    grp_keys = [None, None, settings.parameters['d_grp_purposes'], None, None, None]
+    grp_keys = [None, None, grp_purposes, None, None, None]
     od = od.groupby(grp_keys, level=od.index.names).sum()
 
     od = od.reset_index()
-    od.index.name = 'Legid'
-    # Create a column called Legid / will be used to identify the OdPairs
+    od.index.name = 'Odpairid'
+    # Create a column called Odpairid / will be used to identify the OdPairs
     od = od.reset_index()
     od.set_index(idx_cols, inplace=True)
 
     # Reduce
+    sum_bef = od['Dailytrips'].sum()
+    print('before trips thresh filtering: {}'.format(sum_bef))
     od = od[od.Dailytrips >= trips_thresh]
     # Remove intrazonals
     mask = od.index.get_level_values('Source') != od.index.get_level_values('Target')
     od = od[mask]
+    sum_aft = od['Dailytrips'].sum()
+    print('after trips thresh filtering: {}'.format(sum_aft))
+    print(sum_aft/sum_bef)
     od.dropna(inplace=True)
 
     # Round
     od.Dailytrips = od.Dailytrips.round()
     od.Dailytrips = od.Dailytrips.astype(int)
 
-    # Make sure Legid is int
-    od.Legid = od.Legid.astype(int)
+    # Make sure Odpairid is int
+    od['Odpairid'] = od['Odpairid'].astype(int)
+    od.set_index('Odpairid', append=True, inplace=True)
+    od = od.squeeze()
+
+    # test to exclude all nhb >1
+    #ask = (od.index.get_level_values('Purpose') == 'NHB') & (od != 1)
+    #od.loc[mask] = None
+    #od.dropna(inplace=True)
 
     return od
+
+
+def read_obs_info(infilepath, seq_cols):
+    obs_info = pd.read_csv(infilepath, index_col=0)
+
+    if seq_cols:
+        for c in seq_cols:
+            obs_info[c] = utils.to_sequence(obs_info[c])
+
+    return obs_info
 
 
 def read_distances(infilepath):
@@ -93,18 +106,17 @@ def read_zones_info(infilepath):
     return df
 
 
-def export_results(results):
-
-    settings.init()
-    filepaths = settings.filepaths
+def export_results(results, filepaths):
 
     (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
 
-    od.to_csv(filepaths['od_out'], index=True)
-    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['trs_mdl_descr'], index=True)
-    trs_mdl_info.dropna(axis=1).to_csv(filepaths['trs_mdl_info'], index=True)
+    if od is not None:
+        od.to_csv(filepaths['out']['od'], header=True)
+
+    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_descr'], index=True)
+    trs_mdl_info.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_info'], index=True)
 
     if target_distr is not None:
-        target_distr.to_csv(os.path.join(filepaths['target_distr']), index=True)
+        target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)
 
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
