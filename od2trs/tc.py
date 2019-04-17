@@ -89,16 +89,16 @@ class TripChain:
         dg = _return_dist_grp(dist_bins)
         self.dist_grp = dg
 
-    def is_chron_ordered(self, departtimes_ordered):
-        if util.sequence_isunique(departtimes_ordered):
+    def is_chron_ordered(self, ordered_dts):
+        if util.sequence_isunique(ordered_dts):
             pass
         else:
-            raise TypeError('departtimes_ordered is not unique')
+            raise TypeError('ordered_dts is not unique')
 
         # list to store the timeperiods (as numbers) of each tc
         tc_departtimes_idxs = list()
         for leg in self.legs:
-            tc_departtimes_idxs.append(departtimes_ordered.index(leg.departtime))
+            tc_departtimes_idxs.append(ordered_dts.index(leg.departtime))
             # list to store the time periods as indices e.g [AM, IP, IP] --> [1, 2, 2]
 
         if util.is_ascending(tc_departtimes_idxs):

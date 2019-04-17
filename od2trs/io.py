@@ -35,15 +35,20 @@ def read_target_distr(infilepath, distr_cols,
     return target_distr
 
 
-def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes):
+def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=None):
     idx_cols = [str.capitalize(v) for v in idx_cols]
-    od = (pd.read_csv(infilepath)
-          .rename(columns=str.capitalize)
-          .set_index(idx_cols)
-          .squeeze())
+    cat_cols = [str.capitalize(v) for v in cat_cols]
+
+    od = pd.read_csv(infilepath).rename(columns=str.capitalize)
+
+    for c in cat_cols:
+        od[c] = od[c].astype('category')
+
+    od = od.set_index(idx_cols).squeeze()
+
     # TODO this must become more generic
     grp_keys = [None, None, grp_purposes, None, None, None]
-    od = od.groupby(grp_keys, level=od.index.names).sum()
+    od = od.groupby(grp_keys, level=od.index.names, observed=True).sum()
 
     od = od.reset_index()
     od.index.name = 'Odpairid'

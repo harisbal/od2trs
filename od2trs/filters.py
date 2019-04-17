@@ -3,6 +3,79 @@ import pandas as pd
 import networkx as nx
 
 
+def filter_2leg_trs(od, filter_dirs, ordered_dts):
+
+    print('Before 2-leg tours filtering: ', od['Dailytrips'].sum())
+    fh_names = list(filter_dirs.from_home)
+    th_names = list(filter_dirs.to_home)
+
+    idx_src_tgt_names = ['Source', 'Target']
+    grpby_lvls = idx_src_tgt_names + ['Departtime']
+
+    od_idx_names = od.index.names
+    # We need the Source of the from-home trips
+    fh = od.query('Direction in @fh_names')['Dailytrips'].squeeze()
+    fh.name = 'Fromhometrips'
+    fh_dt = fh.groupby(level=grpby_lvls).sum()
+    fh_dt_cumsum = (fh_dt.sort_index()
+                    .groupby(idx_src_tgt_names)
+                    .transform('cumsum'))
+
+    # We need the Target of the to-home trips
+    # swap levels and rename
+    do = od.swaplevel(idx_src_tgt_names[0], idx_src_tgt_names[1])
+    do.index.names = od_idx_names
+
+    th = do.query('Direction in @th_names')['Dailytrips'].squeeze()
+    th.name = 'Tohometrips'
+    th_dt = th.groupby(level=grpby_lvls).sum()
+
+    th_dt_cumsum = (th_dt.sort_index()
+                    .groupby(idx_src_tgt_names)
+                    .transform('cumsum'))
+
+    diff = pd.concat([fh_dt_cumsum, th_dt_cumsum], axis=1)
+
+    diff['Fromhometrips'] = diff['Fromhometrips'].ffill()
+    diff['Tohometrips'] = diff['Tohometrips'].fillna(0)
+
+    diff['Diff'] = diff['Fromhometrips'] - diff['Tohometrips']
+    returned_trips = diff[diff['Diff'] == 0]
+
+    # trips which can be excluded
+    # from-home trips originating from source, to-home trips ending at target
+    # for all dts up to max dt can be excluded
+    srcs = returned_trips.index.get_level_values('Source')
+    tgts = returned_trips.index.get_level_values('Target')
+    max_dts = returned_trips.index.get_level_values('Departtime')
+
+    combs = zip(srcs, tgts, max_dts)
+
+    to_drop = list()
+    excl_zones_seqs = set()
+    for s, t, max_dt in combs:
+        dts = [t for t in ordered_dts[:ordered_dts.index(max_dt) + 1]]
+        qry = od.query('Source==@s and Target==@t and Departtime in @dts')
+        idxs_drop = qry.index.get_level_values('Odpairid').tolist()
+        if idxs_drop:
+            excl_zones_seqs.add((s, t))
+            to_drop.extend(idxs_drop)
+
+    od = od.drop(to_drop, level='Odpairid').squeeze()
+    print('After 2-leg tours filtering: ', od['Dailytrips'].sum())
+
+    return od, excl_zones_seqs
+
+
+def filter_chron_possible_trs(trs, ordered_dts):
+    filtered_trs = list()
+    for tr in trs:
+        if tr.is_chron_ordered(ordered_dts):
+            filtered_trs.append(tr)
+
+    return filtered_trs
+
+
 def filter_trs_by_max_dist(trs, max_dist):
 
     filtered_trs = list()
@@ -64,6 +137,18 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
     if filter_trs:
         return filter_trs
+
+
+def filter_trs(trs, ordered_dts, max_tr_dist, target_distr, distr_dims, dist_bins):
+
+    if ordered_dts:
+        trs = filter_chron_possible_trs(trs, ordered_dts)
+    if max_tr_dist:
+        trs = filter_trs_by_max_dist(trs, max_tr_dist)
+    if target_distr is not None:
+        trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins)
+
+    return trs
 
 
 def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):

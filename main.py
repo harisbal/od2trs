@@ -1,4 +1,5 @@
 import od2trs.io as myio
+import od2trs.utilities as utils
 import od2trs.distributions as distrs
 import od2trs.converters as converters
 import od2trs.filters as filters
@@ -45,7 +46,7 @@ def main(traj):
     else:
         dist_bins.append(float('inf'))
         # Convert to pd.Interval
-        dist_bins = converters.list_to_interval(dist_bins)
+        dist_bins = utils.list_to_interval(dist_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -53,7 +54,12 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols, grp_purposes)
+    cat_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+    od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
+                              grp_purposes, cat_cols=cat_cols)
+
+    for c, order in [('Departtime', ordered_dts)]:
+        od = utils.reorder_idx_catcol(od, c, order)
 
     try:
         zones_info = myio.read_zones_info(filepaths['in']['zones_info'])

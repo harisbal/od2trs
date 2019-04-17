@@ -41,6 +41,11 @@ def is_ascending(lst):
     return True
 
 
+def list_to_interval(lst):
+    intervals = pd.IntervalIndex.from_breaks(lst)
+    return intervals
+
+
 def to_sequence(s):
     s = (s.str.replace(' ', '').
          str.replace('(', '').
@@ -51,6 +56,17 @@ def to_sequence(s):
     s = s.apply(tuple)
 
     return s
+
+
+def reorder_idx_catcol(df, idx_cat_col, order):
+    init_idx_order = list(df.index.names)
+    df = df.reset_index(level=idx_cat_col)
+    df[idx_cat_col] = df[idx_cat_col].cat.reorder_categories(order, ordered=True)
+    df.set_index(idx_cat_col, append=True, inplace=True)
+    # Restore the initial idx order
+    df.index = df.index.reorder_levels(init_idx_order)
+    df = df.squeeze()
+    return df
 
 
 def sequence_isunique(sequence):
