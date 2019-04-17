@@ -207,10 +207,12 @@ def results_to_od(descr, info, idx_cols):
 
 def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
                       max_legs, max_tr_dist, dist_attr, dist_bins,
-                      target_distr, distr_dims, excl_edges_perc):
+                      target_distr, distr_dims, include_loops,
+                      excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
-                                                        max_legs, max_tr_dist, dist_attr, excl_edges_perc)
+                                                        max_legs, max_tr_dist, dist_attr,
+                                                        include_loops, excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -320,6 +322,7 @@ def od2trs(od, max_legs=None, include_loops=False,
                             ordered_dts=ordered_dts,
                             target_distr=target_distr,
                             distr_dims=distr_dims,
+                            include_loops=include_loops,
                             excl_edges_perc=excl_edges_perc),
                             zones), total=len(zones)):
                 if trs:
