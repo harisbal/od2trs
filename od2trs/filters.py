@@ -147,20 +147,22 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
 
     """
 
-    dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
+    if src != tgt:
+        dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
+        # nodes are unique no need for set
+        to_rmv = list()
+        for n in g.nodes():
+            if (n == src) or (n == tgt):
+                continue
+            try:
+                dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
+                dist = dists_from_src[n] + dist_to_tgt
+                if dist > cutoff:
+                    to_rmv.append(n)
+            except (nx.NetworkXNoPath, KeyError):
+                continue
 
-    # nodes are unique no need for set
-    to_rmv = list()
-    for n in g.nodes():
-        try:
-            dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
-            dist = dists_from_src[n] + dist_to_tgt
-            if dist > cutoff:
-                to_rmv.append(n)
-        except (nx.NetworkXNoPath, KeyError):
-            continue
-
-    g.remove_nodes_from(to_rmv)
+        g.remove_nodes_from(to_rmv)
 
     return g
 
@@ -210,23 +212,24 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
     :return:
     """
 
-    # edge betweenness
-    eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], g.nodes(), weight=weight))
-    eb.name = 'bc'
+    if nexcl > 0:
+        # edge betweenness
+        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], g.nodes(), weight=weight))
+        eb.name = 'bc'
 
-    # Exclude connectors
-    filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
-    # Exclude hb trips
-    filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
-    # Focus on single trips
-    filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
-    eb.drop(set(filter_edges), inplace=True)
+        # Exclude connectors
+        filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
+        # Exclude hb trips
+        filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
+        # Focus on single trips
+        filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
+        eb.drop(set(filter_edges), inplace=True)
 
-    n = eb.nlargest(nexcl)
-    # exclude links with 0 eb
-    to_rmv = n[n != 0].index.tolist()
+        n = eb.nlargest(nexcl)
+        # exclude links with 0 eb
+        to_rmv = n[n != 0].index.tolist()
 
-    g.remove_edges_from(to_rmv)
+        g.remove_edges_from(to_rmv)
 
     return g
 

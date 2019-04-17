@@ -49,7 +49,8 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
 
 
 def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
-                                  max_tr_dist, dist_attr, excl_edges_perc):
+                                  max_tr_dist, dist_attr, include_loops,
+                                  excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -60,6 +61,17 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
     :param filter_edge_purpose_names: the name of the trip purposes to look for
     :return: potential_tripchains
     """
+    # TODO incorporate
+    def _include_loops(_zss, loops):
+        # loops should be a dict
+        zss_loops = _zss.copy()
+        for zs in _zss:
+            if len(zs) <= max_legs - 2:
+                # interm zones
+                zs_loop = [zl for z in zs[1:-1] for zl in list(loops.get(z, None))]
+                if (len(zs_loop) <= max_legs + extra_legs) and (None not in zs_loop):
+                    zss_loops.append(zs_loop)
+        return zs_loop
 
     def _path_exists(_g, _src, _tgt):
         try:
@@ -113,15 +125,15 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if src == tgt:
                 # Keep only edges in src_dt
                 gf = filters.filter_connectors(gf, keep=False)
-                limit = max_legs - 2
-                zs = identify_cycles(gf, src, tgt, limit=limit, weight=dist_attr,
-                                     maxdist=max_tr_dist)
+                cutoff_legs = max_legs
             else:
-                limit = max_legs - 2 + extra_legs
-                zs = identify_cycles(gf, src, tgt, limit=limit, weight=dist_attr,
-                                     maxdist=max_tr_dist)
+                cutoff_legs = max_legs + extra_legs
 
-            if zs:
-                zone_seqs.extend(zs)
+            zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
+
+            if zss:
+                #if loops:
+                #    zss = _include_loops(zss)
+                zone_seqs.extend(zss)
 
     return zone_seqs
