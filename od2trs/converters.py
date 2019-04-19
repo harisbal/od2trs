@@ -301,7 +301,6 @@ def od2trs(od, max_legs=None, include_loops=False,
         ezs.append(ezs[0])
 
         trs = zones_seq_to_trs(ezs, Ginit, filter_dirs)
-
         trs = filters.filter_trs(trs, ordered_dts, max_tr_dist, target_distr, distr_dims, dist_bins)
 
         if trs:
@@ -324,7 +323,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
-            for trs in tqdm(pool.imap_unordered(partial( multiproc_wrapper,
+            for trs in tqdm(pool.imap_unordered(partial(multiproc_wrapper,
                             max_legs=max_legs, max_tr_dist=max_tr_dist,
                             dist_attr=dist_attr, dist_bins=dist_bins,
                             filter_dirs=filter_dirs, ordered_dts=ordered_dts,

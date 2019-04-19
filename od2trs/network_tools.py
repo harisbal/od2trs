@@ -3,7 +3,7 @@ import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
-def identify_cycles(g, src, tgt, limit, weight, maxdist):
+def identify_same_dt_paths(g, src, tgt, cutoof_length, weight, cutoff_weight):
 
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
@@ -23,8 +23,8 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
     cycles = list()
     for succ in succs:
         excl_dist = dists_from_src[succ] + min_dist_to_tgt
-        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=limit,
-                                           weight=weight, cutoff_weight=maxdist - excl_dist)
+        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=cutoof_length,
+                                           weight=weight, cutoff_weight=cutoff_weight - excl_dist)
 
         for sp in simple_paths:
             sp.insert(0, src)
@@ -35,11 +35,11 @@ def identify_cycles(g, src, tgt, limit, weight, maxdist):
         for pred in preds:
             if succ == pred:
                 c = [src, succ, tgt]
-                if maxdist:
+                if cutoff_weight:
                     dist = 0
                     for u, v in utils.pairwise(c):
                         dist += g.get_edge_data(u, v)[weight]
-                    if dist <= maxdist:
+                    if dist <= cutoff_weight:
                         cycles.append(c)
 
     if cycles:
@@ -124,12 +124,13 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
             if src == tgt:
                 # Keep only edges in src_dt
-                gf = filters.filter_connectors(gf, keep=False)
+                #gf = filters.filter_connectors(gf, keep=False)
                 cutoff_legs = max_legs
+                zss = identify_same_dt_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist)
             else:
                 cutoff_legs = max_legs + extra_legs
-
-            zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
+                zss = list(nx.all_simple_paths(gf, src, tgt,
+                                               cutoff_legs, dist_attr, max_tr_dist))
 
             if zss:
                 #if loops:

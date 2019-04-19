@@ -53,6 +53,7 @@ def filter_2leg_trs(od, filter_dirs, ordered_dts):
 
     to_drop = list()
     excl_zones_seqs = set()
+    # TODO improve
     for s, t, max_dt in combs:
         dts = [t for t in ordered_dts[:ordered_dts.index(max_dt) + 1]]
         qry = od.query('Source==@s and Target==@t and Departtime in @dts')

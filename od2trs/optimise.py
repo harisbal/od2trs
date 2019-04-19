@@ -46,7 +46,7 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     if distr_constr_enabled:
         model.GrpIds = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
-        target_distr.set_index('Distrgroupid', inplace=True)
+        model.target_distr.set_index('Distrgroupid', inplace=True)
         d_distr_grp_percs = model.target_distr['Percentage'].to_dict()
         model.distr_group_percs = Param(model.GrpIds, initialize=d_distr_grp_percs, default=0)
         model.chains_distr_groups = Param(model.GrpIds, initialize=init_chain_distr_grps, default=None)
