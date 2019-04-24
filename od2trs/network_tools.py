@@ -73,11 +73,18 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                     zss_loops.append(zs_loop)
         return zs_loop
 
-    def _path_exists(_g, _src, _tgt, _cutoff):
-        length = nx.shortest_path_length(_g, src, _tgt)
-        if length <= _cutoff:
-            return True
-        else:
+    def _path_exists(_g, _src, _tgt, _weight=None, _cutoff=None):
+
+        if _cutoff is None:
+            _cutoff = float('inf')
+
+        try:
+            length = nx.shortest_path_length(_g, src, _tgt, weight=_weight)
+            if length <= _cutoff:
+                return True
+            else:
+                return False
+        except nx.NetworkXNoPath:
             return False
 
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
@@ -109,7 +116,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
             #gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
-            if not _path_exists(gf, src, tgt, cutoff_legs):
+            if not _path_exists(gf, src, tgt, _cutoff=max_legs+extra_legs):
+                continue
+
+            if not _path_exists(gf, src, tgt, _weight='Distance', _cutoff=max_tr_dist):
                 continue
 
             distance_filters = [(None, (max_legs + extra_legs)), ('Distance', max_tr_dist)]
