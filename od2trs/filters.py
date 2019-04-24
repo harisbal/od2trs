@@ -166,8 +166,10 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
 
         mask = tuple(mask)
 
-        # TODO must change to .at (fails for some reason)
-        perc = target_distr['Percentage'].loc[mask]
+        try:
+            perc = target_distr['Percentage'].loc[mask]
+        except KeyError:
+            perc = None
 
         if isinstance(perc, float):
             filter_trs.append(tr)
