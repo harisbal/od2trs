@@ -150,3 +150,98 @@ def collapse_tours_descr(trs_descr, descr_cols, drop_duplicates=False):
         trs_collapsed.drop_duplicates(inplace=True)
 
     return trs_collapsed
+
+def reduce_2leg_trs():
+
+    """
+    # We make sure to examine the max dt for each zone (this ensures that every tour has been completed)
+    fh_tot = fh.groupby(level=['Home', 'Departtime']).sum()
+    fh_cumsum = fh_tot.groupby(level='Home').cumsum()
+
+    th_tot = th.groupby(level=['Home', 'Departtime']).sum()
+    th_cumsum = th_tot.groupby(level='Home').cumsum()
+
+    trips_balance = fh_cumsum.to_frame().join(th_cumsum, how='outer')
+    trips_balance = midx_lvl_to_categorical(trips_balance, 'Departtime', ordered_dts)
+
+    trips_balance['Fromhometrips'] = trips_balance['Fromhometrips'].ffill()
+    trips_balance['Tohometrips'] = trips_balance['Tohometrips'].fillna(0)
+
+    # We can check for trip reductions everytime all trs have been completed (trips_balance=0)
+    returns_cntr = ((trips_balance['Fromhometrips'] == trips_balance['Tohometrips'])
+                    .groupby(level='Home')
+                    .cumsum())
+
+    fh_succs = (fh.reset_index(level='Other')
+                .groupby(level=['Home', 'Departtime'])['Other']
+                .agg(lambda x: list(x))) # .apply(destroys cat index)
+
+    fh_succs_cum = fh_succs.groupby(level='Home').apply(lambda x: x.cumsum()).apply(set)
+
+    th_preds = (th.reset_index(level='Other').
+               groupby(level=['Home', 'Departtime'])['Other'].
+               agg(lambda x: list(x)))
+
+    th_preds_cum = th_preds.groupby(level=['Home']).apply(lambda x: x.cumsum()).apply(set)
+
+    combs = pd.concat([fh_succs_cum, th_preds_cum], axis=1)
+
+    # concat and merge destroy cat index (actually the outer join is responsible for the break)
+    combs = midx_lvl_to_categorical(combs, 'Departtime', ordered_dts)
+    combs.columns = ['Succs', 'Preds']
+    combs['Succs'] = combs['Succs'].ffill()
+    # Fillna with empty set
+    combs['Preds'] = combs['Preds'].apply(lambda x: x if isinstance(x, set) else set())
+
+    # Idx of the zones and the dts that all trs have been completed
+    mask = trips_balance['Fromhometrips'] == trips_balance['Tohometrips']
+    trs_completed_idx = trips_balance[mask].index.tolist()
+
+    combs = combs.loc[trs_completed_idx]
+    # We are certain about a 2 leg tour only in cases of a single successor or
+    # a single predecessor. The filtering can take place iteratively between dts
+    succs_len = combs['Succs'].apply(len)
+    preds_len = combs['Preds'].apply(len)
+
+    combs = combs[(succs_len == 1) | (preds_len == 1)]
+    combs['Common'] = combs.apply(lambda x: x['Succs'] & x['Preds'], axis=1).copy()
+    combs = combs[combs['Common'].apply(len) == 1]
+
+    # get the zones that can be eliminated
+    pairs_to_reduce = combs['Common'].apply(list).apply(lambda x: x[0])
+    pairs_to_reduce.name = 'Other'
+    pairs_to_reduce = (pairs_to_reduce.to_frame().set_index('Other', append=True).
+                       reorder_levels(['Home', 'Other', 'Departtime']).index.tolist())
+
+    # we can reduce by the min number of trips for the identified pairs of from-home and to-home trips
+    reductions = pd.concat([fh.loc[fh.index.intersection(pairs_to_reduce)],
+                            th.loc[th.index.intersection(pairs_to_reduce)]],
+                           axis=1).min(axis=1)
+    reductions.name = 'Reductions'
+
+    # Reduce in both directions (from-home and to-home)
+    reductions_reversed = reductions.swaplevel('Home', 'Other')
+    reductions_reversed.index.names = reductions.index.names
+    reductions = pd.concat([reductions, reductions_reversed], axis=0)
+
+    od = od.join(reductions, how='left').fillna(0)
+    od['Dailytrips'] -= od['Reductions']
+    od.drop(columns=['Reductions'], inplace=True)
+    odf = od.loc[od['Dailytrips'] > 0]
+    odf.index.names = od_idx_names_init
+    print('After 2-leg tours filtering: ', odf['Dailytrips'].sum())
+
+    reduced_zones_seqs_fh = set(od.query('Dailytrips == 0 and Direction in @fh_name')
+                                .groupby(level=['Home', 'Other']).count()
+                                .index.tolist())
+
+    reduced_zones_seqs_th = set(od.query('Dailytrips == 0 and Direction in @th_name')
+                                .groupby(level=['Home', 'Other']).count()
+                                .index.tolist())
+
+    reduced_zones_seqs = list(reduced_zones_seqs_fh | reduced_zones_seqs_th)
+
+    if reduced_zones_seqs:
+        # tuples to lists
+        reduced_zones_seqs = [list(zs) for zs in reduced_zones_seqs]
+    """

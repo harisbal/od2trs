@@ -5,67 +5,105 @@ import networkx as nx
 
 def filter_2leg_trs(od, filter_dirs, ordered_dts):
 
-    print('Before 2-leg tours filtering: ', od['Dailytrips'].sum())
-    fh_names = list(filter_dirs.from_home)
-    th_names = list(filter_dirs.to_home)
+    def midx_lvl_to_categorical(df, idx_name, ordered_cats=None):
+        df.reset_index(level=idx_name, inplace=True)
+        s = df[idx_name].astype('category').copy()
+        if ordered_cats:
+            s = s.cat.reorder_categories(ordered_cats, ordered=True)
+        del df[idx_name]
+        df[idx_name] = s
+        df.set_index(idx_name, append=True, inplace=True)
+        df.sort_index(inplace=True)
+        return df
 
-    idx_src_tgt_names = ['Source', 'Target']
-    grpby_lvls = idx_src_tgt_names + ['Departtime']
+    print('Before 2-leg tours filtering: ', od['Dailytrips'].sum())
+    fh_name = filter_dirs.from_home
+    th_name = filter_dirs.to_home
+
+    # Check for od level_ordering (I'll use loc later so I need to know exact order)
+    idx_order = ['Source', 'Target', 'Purpose', 'Direction', 'Departtime']
+    od = od.reorder_levels(idx_order)
+
+    zones = (set(od.index.get_level_values('Source')) |
+             set(od.index.get_level_values('Target')))
+
+    grpby_lvls = ['Home', 'Other', 'Departtime']
 
     od_idx_names = od.index.names
     # We need the Source of the from-home trips
-    fh = od.query('Direction in @fh_names')['Dailytrips'].squeeze()
+    fh = od.query('Direction == @fh_name')['Dailytrips'].squeeze()
+    fh.index.rename(['Home', 'Other'], level=['Source', 'Target'], inplace=True)
+    fh = fh.groupby(level=grpby_lvls).sum()
     fh.name = 'Fromhometrips'
-    fh_dt = fh.groupby(level=grpby_lvls).sum()
-    fh_dt_cumsum = (fh_dt.sort_index()
-                    .groupby(idx_src_tgt_names)
-                    .transform('cumsum'))
 
-    # We need the Target of the to-home trips
+    # We need the Other of the to-home trips
     # swap levels and rename
-    do = od.swaplevel(idx_src_tgt_names[0], idx_src_tgt_names[1])
+    do = od.swaplevel('Source', 'Target')
     do.index.names = od_idx_names
 
-    th = do.query('Direction in @th_names')['Dailytrips'].squeeze()
+    th = do.query('Direction == @th_name')['Dailytrips'].squeeze()
+    th.index.rename(['Home', 'Other'], level=['Source', 'Target'], inplace=True)
+    th = th.groupby(level=grpby_lvls).sum()
     th.name = 'Tohometrips'
-    th_dt = th.groupby(level=grpby_lvls).sum()
 
-    th_dt_cumsum = (th_dt.sort_index()
-                    .groupby(idx_src_tgt_names)
-                    .transform('cumsum'))
+    eliminated_zone_pairs = set()
 
-    diff = pd.concat([fh_dt_cumsum, th_dt_cumsum], axis=1)
+    for z in zones:
+        tot_departs = 0
+        tot_returns = 0
+        succs = set()
+        preds = set()
 
-    diff['Fromhometrips'] = diff['Fromhometrips'].ffill()
-    diff['Tohometrips'] = diff['Tohometrips'].fillna(0)
+        idxslice = pd.IndexSlice
+        # list with the dts to be eliminated
+        dts = list()
 
-    diff['Diff'] = diff['Fromhometrips'] - diff['Tohometrips']
-    returned_trips = diff[diff['Diff'] == 0]
+        for dt in ordered_dts:
+            dts.append(dt)
+            try:
+                departs = fh.loc(axis=0)[z, :, dt].values.sum()
+                s = fh.loc(axis=0)[z, :, dt].index.get_level_values('Other').tolist()
+            except KeyError:
+                departs = 0
+                s = None
 
-    # trips which can be excluded
-    # from-home trips originating from source, to-home trips ending at target
-    # for all dts up to max dt can be excluded
-    srcs = returned_trips.index.get_level_values('Source')
-    tgts = returned_trips.index.get_level_values('Target')
-    max_dts = returned_trips.index.get_level_values('Departtime')
+            try:
+                returns = th.loc(axis=0)[z, :, dt].values.sum()
+                p = th.loc(axis=0)[z, :, dt].index.get_level_values('Other').tolist()
+            except KeyError:
+                returns = 0
+                p = None
 
-    combs = zip(srcs, tgts, max_dts)
+            tot_departs += departs
+            tot_returns += returns
 
-    to_drop = list()
-    excl_zones_seqs = set()
-    # TODO improve
-    for s, t, max_dt in combs:
-        dts = [t for t in ordered_dts[:ordered_dts.index(max_dt) + 1]]
-        qry = od.query('Source==@s and Target==@t and Departtime in @dts')
-        idxs_drop = qry.index.get_level_values('Odpairid').tolist()
-        if idxs_drop:
-            excl_zones_seqs.add((s, t))
-            to_drop.extend(idxs_drop)
+            if s:
+                succs.update(s)
+            if p:
+                preds.update(p)
 
-    od = od.drop(to_drop, level='Odpairid').squeeze()
-    print('After 2-leg tours filtering: ', od['Dailytrips'].sum())
+            if tot_returns == tot_departs:
+                if (len(succs) == 1) and (len(preds) == 1):
+                    common = preds & succs
+                    if common:
+                        common = list(common)[0]
+                        od.loc[idxslice[z, common, :, fh_name, dts], ['Dailytrips']] = 0
+                        od.loc[idxslice[common, z, :, th_name, dts], ['Dailytrips']] = 0
 
-    return od, excl_zones_seqs
+                        eliminated_zone_pairs.add((z, common))
+                        # reset the counters
+                        tot_departs = 0
+                        tot_returns = 0
+                        succs = set()
+                        preds = set()
+
+    if eliminated_zone_pairs:
+        # tuples to lists
+        eliminated_zone_pairs = [list(zs) for zs in eliminated_zone_pairs]
+        od = od[od['Dailytrips'] > 0]
+        print('After 2-leg tours filtering: ', od['Dailytrips'].sum())
+
+    return od, eliminated_zone_pairs
 
 
 def filter_chron_possible_trs(trs, ordered_dts):

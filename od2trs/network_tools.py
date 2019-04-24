@@ -93,6 +93,9 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if j < i:
                 continue
 
+            #if src != 'E01014440-IP':
+            #    continue
+
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
@@ -124,13 +127,13 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
             if src == tgt:
                 # Keep only edges in src_dt
-                #gf = filters.filter_connectors(gf, keep=False)
+                gf = filters.filter_connectors(gf, keep=False)
                 cutoff_legs = max_legs
                 zss = identify_same_dt_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist)
+                #zss = list(nx.simple_cycles_root(gf, src, cutoff_legs))
             else:
                 cutoff_legs = max_legs + extra_legs
-                zss = list(nx.all_simple_paths(gf, src, tgt,
-                                               cutoff_legs, dist_attr, max_tr_dist))
+                zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
 
             if zss:
                 #if loops:

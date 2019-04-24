@@ -77,9 +77,9 @@ def prepare_traj_params(traj, cfg):
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
-    fh_directions = json.loads(cfg['TOURS']['fromhome_directions'])
-    th_directions = json.loads(cfg['TOURS']['tohome_directions'])
-    nh_directions = json.loads(cfg['TOURS']['nonhome_directions'])
+    fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
+    th_direction = json.loads(cfg['TOURS']['tohome_direction'])
+    nh_direction = json.loads(cfg['TOURS']['nonhome_direction'])
 
     dist_bins = json.loads(cfg['TOURS']['dist_bins'])
     # TODO fix
@@ -133,11 +133,11 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
 
-    traj.f_add_parameter('trs.filter_dirs.from_home', fh_directions,
+    traj.f_add_parameter('trs.filter_dirs.from_home', fh_direction,
                          comment='List of the directions to be filtered for the FH trips')
-    traj.f_add_parameter('trs.filter_dirs.to_home', th_directions,
+    traj.f_add_parameter('trs.filter_dirs.to_home', th_direction,
                          comment='List of the directions to be filtered for the TH trips')
-    traj.f_add_parameter('trs.filter_dirs.non_home', nh_directions,
+    traj.f_add_parameter('trs.filter_dirs.non_home', nh_direction,
                          comment='List of the directions to be filtered for the NHB trips')
 
     traj.par.trs.excl_edges_perc = Parameter('excl_edges_perc', excl_edges_perc[0],

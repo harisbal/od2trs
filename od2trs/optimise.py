@@ -30,7 +30,7 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     model.distr_perc_tolerance = distr_perc_tolerance
 
-    model.OdPairIds = Set(initialize=model.od.index.unique('Odpairid').tolist())
+    model.OdPairIds = Set(initialize=model.od['Odpairid'].unique().tolist())
     model.ChainIds = Set(initialize=model.trs_info.index.unique().values.tolist())
 
     d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()

@@ -103,7 +103,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 def zones_seq_to_trs(zones_seq, G, filter_dirs):
 
     def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
-        leg_attrs = [la for la in leg_attrs if la['Direction'] in filter_directions]
+        leg_attrs = [la for la in leg_attrs if la['Direction'] == filter_directions]
         return leg_attrs
 
     def prepare_leg_attrs(G, source, target, filter_directions):
@@ -269,14 +269,13 @@ def od2trs(od, max_legs=None, include_loops=False,
            distances=None, dist_attr=None, max_tr_dist=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
-    od = od.to_frame()
     if distances is not None:
         od = od.join(distances)
         # TODO Drop missing values (could cause problems)
         od = od.dropna(axis=1)
 
     # The od can be simplified by excluding the 2 leg trs
-    odf, excl_zones_seqs = filters.filter_2leg_trs(od, filter_dirs, ordered_dts)
+    odf, excl_zones_seqs = filters.filter_2leg_trs(od.copy(), filter_dirs, ordered_dts)
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
 
@@ -297,7 +296,6 @@ def od2trs(od, max_legs=None, include_loops=False,
     tr_id = 1
     for ezs in excl_zones_seqs:
         # complete the tr
-        ezs = list(ezs)
         ezs.append(ezs[0])
 
         trs = zones_seq_to_trs(ezs, Ginit, filter_dirs)

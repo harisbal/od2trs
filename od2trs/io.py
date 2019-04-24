@@ -74,8 +74,9 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
 
     # Make sure Odpairid is int
     od['Odpairid'] = od['Odpairid'].astype(int)
-    od.set_index('Odpairid', append=True, inplace=True)
-    od = od.squeeze()
+
+    # Odpairid as column
+    # od.set_index('Odpairid', append=True, inplace=True)
 
     # test to exclude all nhb >1
     #ask = (od.index.get_level_values('Purpose') == 'NHB') & (od != 1)

@@ -54,7 +54,7 @@ def main(traj):
                                                                                 distr_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
-    cat_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+    cat_cols = idx_cols
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
