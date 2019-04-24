@@ -42,7 +42,7 @@ def prepare_model(trs, trs_info, od, target_distr,
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
-        model.cutoff = -mip_tolerances_lowercutoff * model.od.sum()
+        model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
         model.GrpIds = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())

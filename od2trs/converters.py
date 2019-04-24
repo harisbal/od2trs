@@ -73,7 +73,6 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
         # Set the node attributes
         d = {n: {'Zone': n.split('-', 1)[0], 'Departtime': n.split('-', 1)[1]} for n in g.nodes}
         nx.set_node_attributes(g, d)
-
         g = _add_chron_connectors(g, ordered_dts)
     else:
         # Set the node attributes
@@ -274,42 +273,17 @@ def od2trs(od, max_legs=None, include_loops=False,
         # TODO Drop missing values (could cause problems)
         od = od.dropna(axis=1)
 
-    # The od can be simplified by excluding the 2 leg trs
-    odf, excl_zones_seqs = filters.filter_2leg_trs(od.copy(), filter_dirs, ordered_dts)
-
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
-
     # we need the full graph for the identification of 2 leg tours (could be simplified)
-    Ginit = od_to_graph(od, src_col='Source', tgt_col='Target',
-                        ordered_dts=None,
-                        attr_cols=attr_cols, zones_info=zones_info)
 
-    G = od_to_graph(odf, src_col='Source', tgt_col='Target',
+    G = od_to_graph(od, src_col='Source', tgt_col='Target',
                     ordered_dts=ordered_dts,
                     attr_cols=attr_cols, zones_info=zones_info)
-
 
     descrs = list()
     infos = list()
     loops = dict()
-
     tr_id = 1
-    for ezs in excl_zones_seqs:
-        # complete the tr
-        ezs.append(ezs[0])
-
-        trs = zones_seq_to_trs(ezs, Ginit, filter_dirs)
-        trs = filters.filter_trs(trs, ordered_dts, max_tr_dist, target_distr, distr_dims, dist_bins)
-
-        if trs:
-            for tr in trs:
-                tr.id = tr_id
-                tr_id += 1
-
-            trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims)
-
-            descrs.append(trs_descr_df)
-            infos.append(trs_info_df)
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
