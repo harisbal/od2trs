@@ -96,6 +96,7 @@ def filter_2leg_trs(od, filter_dirs, ordered_dts):
                         tot_returns = 0
                         succs = set()
                         preds = set()
+                        dts.clear()
 
     if eliminated_zone_pairs:
         # tuples to lists
