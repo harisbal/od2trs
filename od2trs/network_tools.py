@@ -3,8 +3,9 @@ import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
-def identify_same_dt_paths(g, src, tgt, cutoof_length, weight, cutoff_weight):
+def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
 
+    tgt = src
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
 
@@ -23,7 +24,7 @@ def identify_same_dt_paths(g, src, tgt, cutoof_length, weight, cutoff_weight):
     cycles = list()
     for succ in succs:
         excl_dist = dists_from_src[succ] + min_dist_to_tgt
-        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=cutoof_length,
+        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=cutoff_length,
                                            weight=weight, cutoff_weight=cutoff_weight - excl_dist)
 
         for sp in simple_paths:
@@ -136,8 +137,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                 # Keep only edges in src_dt
                 gf = filters.filter_connectors(gf, keep=False)
                 cutoff_legs = max_legs
-                zss = identify_same_dt_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist)
-                #zss = list(nx.simple_cycles_root(gf, src, cutoff_legs))
+                zss = identify_cycles(gf, src, cutoff_legs, dist_attr, max_tr_dist)
             else:
                 cutoff_legs = max_legs + extra_legs
                 zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
