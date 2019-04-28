@@ -220,7 +220,7 @@ def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
             except nx.NetworkXNoPath:
                 nodes.remove(n)
 
-    return g.subgraph(nodes)
+    return g.subgraph(nodes).copy()
 
 
 def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thresh=1):

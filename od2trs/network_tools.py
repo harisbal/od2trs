@@ -100,9 +100,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if j < i:
                 continue
 
-            #if src != 'E01014440-IP':
-            #    continue
-
             src_dt = src.split('-', 1)[1]
             tgt_dt = tgt.split('-', 1)[1]
             extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
@@ -114,7 +111,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             # After this point the graph is not multilevel
             gf = nx.DiGraph(gf)
 
-            #gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
+            gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
 
             if not _path_exists(gf, src, tgt, _cutoff=max_legs+extra_legs):
                 continue
