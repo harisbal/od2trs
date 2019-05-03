@@ -61,8 +61,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_dts is not None:
-        od[src_col] = od[src_col] + '-' + od['Departtime'].astype(str)
-        od[tgt_col] = od[tgt_col] + '-' + od['Departtime'].astype(str)
+        od[src_col] = od[src_col].astype(str) + '-' + od['Departtime'].astype(str)
+        od[tgt_col] = od[tgt_col].astype(str) + '-' + od['Departtime'].astype(str)
 
     g = nx.from_pandas_edgelist(od.reset_index(),
                                 src_col, tgt_col,
