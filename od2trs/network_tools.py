@@ -24,7 +24,8 @@ def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
     cycles = list()
     for succ in succs:
         excl_dist = dists_from_src[succ] + min_dist_to_tgt
-        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)), succ, preds, cutoff_len=cutoff_length,
+        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)),
+                                           succ, preds, cutoff_len=cutoff_length,
                                            weight=weight, cutoff_weight=cutoff_weight - excl_dist)
 
         for sp in simple_paths:
@@ -127,9 +128,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             # Use edge betweeneess centrality to simplify the graph
             # TODO the number of nexcl_edges should be excluded from the optimisation
             # TODO the decision about the number of edges to be excluded should be automated
-            nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-            # edges_bef = gf.number_of_edges()
-            gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
+            if excl_edges_perc > 0:
+                nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
+                # edges_bef = gf.number_of_edges()
+                gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
                                                                weight=None, trips_thresh=1)
             # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
