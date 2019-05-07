@@ -113,8 +113,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             # After this point the graph is not multilevel
             gf = nx.DiGraph(gf)
 
-            gf = filters.filter_src_tgt_dt_nodes(gf, src, tgt, max_legs)
-
             if not _path_exists(gf, src, tgt, _cutoff=max_legs+extra_legs):
                 continue
 
@@ -130,10 +128,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             # TODO the decision about the number of edges to be excluded should be automated
             if excl_edges_perc > 0:
                 nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-                # edges_bef = gf.number_of_edges()
+                edges_bef = gf.number_of_edges()
                 gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
-                                                               weight=None, trips_thresh=1)
-            # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+                                                                   weight=None, trips_thresh=1)
+                #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
             if src == tgt:
                 # Keep only edges in src_dt

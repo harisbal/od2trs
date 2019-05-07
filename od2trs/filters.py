@@ -190,39 +190,6 @@ def filter_distant_nodes(g, src, tgt, weight, cutoff):
     return g
 
 
-def filter_src_tgt_dt_nodes(g, src, tgt, max_legs):
-
-    src_dt = src.split('-', 1)[1]
-    tgt_dt = tgt.split('-', 1)[1]
-
-    src_dt_nodes = set()
-    tgt_dt_nodes = set()
-
-    for n in g.nodes():
-        dt = n.split('-', 1)[1]
-        if dt == src_dt:
-            src_dt_nodes.add(n)
-        if dt == tgt_dt:
-            tgt_dt_nodes.add(n)
-
-    nodes = set(g.nodes())
-
-    for n in src_dt_nodes:
-        try:
-            nx.single_source_dijkstra(g, source=src, target=n, cutoff=max_legs-1)
-        except nx.NetworkXNoPath:
-            nodes.remove(n)
-
-    if src_dt != tgt_dt:
-        for n in tgt_dt_nodes:
-            try:
-                nx.single_source_dijkstra(g, source=n, target=tgt, cutoff=max_legs-1)
-            except nx.NetworkXNoPath:
-                nodes.remove(n)
-
-    return g.subgraph(nodes).copy()
-
-
 def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thresh=1):
 
     """
