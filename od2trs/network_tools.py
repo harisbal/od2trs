@@ -93,58 +93,48 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
     srcs = zones.copy()
-    tgts = zones.copy()
+    tgts = zones[1:]
 
-    zone_seqs = list()
+    zones_seqs = list()
 
-    for i, src in enumerate(srcs):
-        for j, tgt in enumerate(tgts):
-            if j < i:
-                continue
+    for src in srcs:
+        # get the maximum tgt_dt
+        src_dt = src.split('-', 1)[1]
+        tgt_dt_max = srcs[-1].split('-', 1)[1]
+        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
 
-            src_dt = src.split('-', 1)[1]
-            tgt_dt = tgt.split('-', 1)[1]
-            extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+        # Needs to be re-initialised at each iteration
+        gf = g.copy()
+        # This function also converts MultiDiGraph to DiGraph
+        gs = list()
+        for tgt in tgts:
+            gs.append(filters.filter_edges_by_direction(gf.copy(), src, tgt, filter_dirs))
+        gf = nx.compose_all(gs)
+        # After this point the graph is not multilevel
+        gf = nx.DiGraph(gf)
 
-            # Needs to be re-initialised at each iteration
-            gf = filters.filter_by_departtime(g.copy(), src_dt, tgt_dt, ordered_dts)
-            # This function also converts MultiDiGraph to DiGraph
-            gf = filters.filter_edges_by_direction(gf, src, tgt, filter_dirs)
-            # After this point the graph is not multilevel
-            gf = nx.DiGraph(gf)
+        # Use edge betweeneess centrality to simplify the graph
+        # TODO the number of nexcl_edges should be excluded from the optimisation
+        # TODO the decision about the number of edges to be excluded should be automated
+        if excl_edges_perc > 0:
+            nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
+            edges_bef = gf.number_of_edges()
+            gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
+                                                               weight=None, trips_thresh=1)
+            #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-            if not _path_exists(gf, src, tgt, _cutoff=max_legs+extra_legs):
-                continue
+        # cycles in same as src dt
+        zss = identify_cycles(gf, src, max_legs, dist_attr, max_tr_dist)
+        if zss:
+            zones_seqs.extend(zss)
 
-            if not _path_exists(gf, src, tgt, _weight='Distance', _cutoff=max_tr_dist):
-                continue
+        # rest of cycles
+        cutoff_legs = max_legs + extra_legs
+        zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
 
-            distance_filters = [(None, (max_legs + extra_legs)), ('Distance', max_tr_dist)]
-            for w, md in distance_filters:
-                gf = filters.filter_distant_nodes(gf, src, tgt, weight=w, cutoff=md)
+        if zss:
+            #if loops:
+            #    zss = _include_loops(zss)
+            zones_seqs.extend(zss)
 
-            # Use edge betweeneess centrality to simplify the graph
-            # TODO the number of nexcl_edges should be excluded from the optimisation
-            # TODO the decision about the number of edges to be excluded should be automated
-            if excl_edges_perc > 0:
-                nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-                edges_bef = gf.number_of_edges()
-                gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
-                                                                   weight=None, trips_thresh=1)
-                #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
-
-            if src == tgt:
-                # Keep only edges in src_dt
-                gf = filters.filter_connectors(gf, keep=False)
-                cutoff_legs = max_legs
-                zss = identify_cycles(gf, src, cutoff_legs, dist_attr, max_tr_dist)
-            else:
-                cutoff_legs = max_legs + extra_legs
-                zss = list(nx.all_simple_paths(gf, src, tgt, cutoff_legs, dist_attr, max_tr_dist))
-
-            if zss:
-                #if loops:
-                #    zss = _include_loops(zss)
-                zone_seqs.extend(zss)
-
-    return zone_seqs
+    return zones_seqs
