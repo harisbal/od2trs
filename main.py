@@ -1,3 +1,5 @@
+import pickle
+
 import od2trs.io as myio
 import od2trs.utilities as utils
 import od2trs.distributions as distrs
@@ -11,6 +13,7 @@ def main(traj):
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
 
+    run_trs_identification = traj.par.trs.run_trs_identification
     max_legs = traj.par.trs.max_legs
     include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
@@ -83,7 +86,7 @@ def main(traj):
 
         except FileNotFoundError:
             seq_cols = ['Departtimes']
-            obs_info = myio.read_obs_info(filepaths['in']['trs_obs_info'], seq_cols)
+            obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
                                                          dist_bins, max_legs,
                                                          max_tr_dist)
@@ -98,12 +101,19 @@ def main(traj):
     else:
         target_distr = None
 
-    trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
-                                            filter_dirs=filter_dirs, ordered_dts=ordered_dts,
-                                            distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
-                                            dist_bins=dist_bins, distr_dims=distr_dims,
-                                            target_distr=target_distr, excl_edges_perc=excl_edges_perc,
-                                            zones_info=zones_info, ncores=ncores)
+    if run_trs_identification:
+        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
+                                                filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                                distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
+                                                dist_bins=dist_bins, distr_dims=distr_dims,
+                                                target_distr=target_distr, excl_edges_perc=excl_edges_perc,
+                                                zones_info=zones_info, ncores=ncores)
+
+        pickle.dump(trs_descr, filepaths['out']['trs_mdl_descr_pcl'])
+        pickle.dump(trs_info, filepaths['out']['trs_mdl_info_pcl'])
+    else:
+        trs_descr = pickle.load(filepaths['in']['trs_mdl_descr'])
+        trs_info = pickle.load(filepaths['in']['trs_mdl_info'])
 
     od_out = None
     if run_optim:

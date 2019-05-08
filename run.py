@@ -64,7 +64,7 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
 def prepare_traj_params(traj, cfg):
 
     filepaths = utils.prepare_filepaths_from_config(cfg)
-
+    run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
     explore = json.loads(cfg['TOURS']['explore'])
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     include_loops = json.loads(cfg['TOURS']['include_loops'])
@@ -107,6 +107,10 @@ def prepare_traj_params(traj, cfg):
     traj.f_add_parameter_group('optim', 'Parameter groups for optimisation')
     traj.f_add_config('ncores', ncores, 'Number of cores')
     traj.conf.filepaths = PickleParameter('filepaths', filepaths, comment='Filepaths')
+
+    traj.par.trs.run_trs_identification = Parameter('run_trs_identification', run_trs_identification,
+                                                    comment='Run or not trs identification')
+
     traj.par.trs.max_legs = Parameter('max_legs', max_legs[0], comment='Maximum number of legs in trs')
     traj.par.trs.include_loops = Parameter('include_loops', include_loops[0], comment='Including loops or not')
     traj.par.trs.trips_thresh = Parameter('trips_thresh', trips_thresh[0],
