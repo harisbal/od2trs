@@ -88,7 +88,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if len(zs) <= max_legs - 2:
                 # interm zones
                 zs_loop = [zl for z in zs[1:-1] for zl in list(loops.get(z, None))]
-                if (len(zs_loop) <= max_legs + max_extra_legs) and (None not in zs_loop):
+                if (len(zs_loop) <= max_legs + extra_legs) and (None not in zs_loop):
                     zss_loops.append(zs_loop)
         return zs_loop
 
@@ -127,7 +127,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
         gf = duplicate_node(gf, src, suffix=new_src_suffix)
 
         src_dt = src.split('-', 1)[1]
-        max_extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
+        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
 
         src = src + new_src_suffix
         # This function also converts MultiDiGraph to DiGraph
@@ -150,8 +150,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                                                                weight=None, trips_thresh=1)
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        cutoff_legs = max_legs + max_extra_legs
+        cutoff_legs = max_legs + extra_legs
         zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
+
+        tgts.remove(src.replace(new_src_suffix, ''))
 
         if zss:
             # remove the src suffix
@@ -167,4 +169,5 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             #if loops:
             #    zss = _include_loops(zss)
 
+    print('len zones_seqs', len(zones_seqs))
     return zones_seqs
