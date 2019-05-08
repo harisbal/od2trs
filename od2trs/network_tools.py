@@ -146,7 +146,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
         if excl_edges_perc > 0:
             nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
             edges_bef = gf.number_of_edges()
-            gf = filters.filter_by_edge_betweenness_centrality(gf, src, nexcl_edges,
+            gf = filters.filter_by_edge_betweenness_centrality(gf, src, tgts, nexcl_edges,
                                                                weight=None, trips_thresh=1)
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 

@@ -151,7 +151,7 @@ def filter_connectors(g, keep=False):
     return g
 
 
-def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thresh=1):
+def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, weight=None, trips_thresh=1):
 
     """
 
@@ -165,7 +165,7 @@ def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thre
 
     if nexcl > 0:
         # edge betweenness
-        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], g.nodes(), weight=weight))
+        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], tgts, weight=weight))
         eb.name = 'bc'
 
         # Exclude connectors
