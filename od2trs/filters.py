@@ -151,45 +151,6 @@ def filter_connectors(g, keep=False):
     return g
 
 
-def filter_distant_nodes(g, src, tgt, weight, cutoff):
-    """
-
-    Parameters
-    ----------
-    g : NetworkX DiGraph
-       A directed graph
-    src : node
-      the node where cycles will originate from
-    cutoff : int
-      an integer specifying the maximum allowed length of cycles
-    Returns
-    -------
-    G : NetworkX DiGraph
-       A directed graph where cycles starting from source
-       cannot be longer than the limit
-
-    """
-
-    if src != tgt:
-        dists_from_src = dict(nx.single_source_shortest_path_length(g, src, cutoff))
-        # nodes are unique no need for set
-        to_rmv = list()
-        for n in g.nodes():
-            if (n == src) or (n == tgt):
-                continue
-            try:
-                dist_to_tgt = nx.shortest_path_length(g, source=n, target=tgt, weight=weight)
-                dist = dists_from_src[n] + dist_to_tgt
-                if dist > cutoff:
-                    to_rmv.append(n)
-            except (nx.NetworkXNoPath, KeyError):
-                continue
-
-        g.remove_nodes_from(to_rmv)
-
-    return g
-
-
 def filter_by_edge_betweenness_centrality(g, src, nexcl, weight=None, trips_thresh=1):
 
     """

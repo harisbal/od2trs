@@ -88,7 +88,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             if len(zs) <= max_legs - 2:
                 # interm zones
                 zs_loop = [zl for z in zs[1:-1] for zl in list(loops.get(z, None))]
-                if (len(zs_loop) <= max_legs + extra_legs) and (None not in zs_loop):
+                if (len(zs_loop) <= max_legs + max_extra_legs) and (None not in zs_loop):
                     zss_loops.append(zs_loop)
         return zs_loop
 
@@ -120,13 +120,14 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
     for src in srcs:
 
+        print(src)
         # Needs to be re-initialised at each iteration
         gf = g.copy()
         # add extra src (eliminates the need to search for loops in same dt)
         gf = duplicate_node(gf, src, suffix=new_src_suffix)
 
         src_dt = src.split('-', 1)[1]
-        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
+        max_extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
 
         src = src + new_src_suffix
         # This function also converts MultiDiGraph to DiGraph
@@ -136,6 +137,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
         gf = nx.compose_all(gs)
         # After this point the graph is not multilevel
         gf = nx.DiGraph(gf)
+
+        # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
         # Use edge betweeneess centrality to simplify the graph
         # TODO the number of nexcl_edges should be excluded from the optimisation
@@ -147,16 +150,21 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                                                                weight=None, trips_thresh=1)
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        # rest of cycles
-        cutoff_legs = max_legs + extra_legs
+        cutoff_legs = max_legs + max_extra_legs
         zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
 
         if zss:
             # remove the src suffix
             for zs in zss:
                 zs[0] = zs[0].replace(new_src_suffix, '')
+                zs_src_dt = zs[0].split('-', 1)[1]
+                zs_tgt_dt = zs[-1].split('-', 1)[1]
+                dt_legs = ordered_dts.index(zs_tgt_dt) - ordered_dts.index(zs_src_dt)
+                max_len = max_legs + dt_legs + 1
+                if len(zs) <= max_len:
+                    zones_seqs.append(zs)
+
             #if loops:
             #    zss = _include_loops(zss)
-            zones_seqs.extend(zss)
 
     return zones_seqs
