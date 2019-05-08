@@ -1,4 +1,4 @@
-import pickle
+import  pandas as pd
 
 import od2trs.io as myio
 import od2trs.utilities as utils
@@ -109,11 +109,12 @@ def main(traj):
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 
-        pickle.dump(trs_descr, filepaths['out']['trs_mdl_descr_pcl'])
-        pickle.dump(trs_info, filepaths['out']['trs_mdl_info_pcl'])
+        trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl'])
+        trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl'])
     else:
-        trs_descr = pickle.load(filepaths['in']['trs_mdl_descr'])
-        trs_info = pickle.load(filepaths['in']['trs_mdl_info'])
+        trs_descr = pd.read_pickle(filepaths['in']['trs_mdl_descr'])
+        trs_info = pd.read_pickle(filepaths['in']['trs_mdl_info'])
+        print('Number of tours read:', max(trs_info.index.unique()))
 
     od_out = None
     if run_optim:

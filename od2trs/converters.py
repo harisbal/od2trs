@@ -235,10 +235,12 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
 
 def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
                                 max_legs, max_tr_dist, dist_attr, dist_bins,
-                                target_distr, distr_dims, excl_edges_perc):
+                                target_distr, distr_dims, include_loops,
+                                excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
-                                                        max_legs, max_tr_dist, dist_attr, excl_edges_perc)
+                                                        max_legs, max_tr_dist, dist_attr,
+                                                        include_loops, excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -287,6 +289,8 @@ def od2trs(od, max_legs=None, include_loops=False,
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
 
+    #zones = zones[20:30]
+
     if not ncores:
         ncores = cpu_count() - 1
 
@@ -326,15 +330,11 @@ def od2trs(od, max_legs=None, include_loops=False,
         idx = zones.index('E01014387')
         zones = zones[idx:idx+2]
         for zone in tqdm(zones, total=len(zones)):
-            trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs,
-                                              max_tr_dist=max_tr_dist,
-                                              dist_attr=dist_attr,
-                                              dist_bins=dist_bins,
-                                              filter_dirs=filter_dirs,
-                                              ordered_dts=ordered_dts,
-                                              target_distr=target_distr,
-                                              distr_dims=distr_dims,
-                                              excl_edges_perc=excl_edges_perc)
+            trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dist,
+                                              dist_attr=dist_attr, dist_bins=dist_bins,
+                                              filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                              target_distr=target_distr, distr_dims=distr_dims,
+                                              include_loops=include_loops, excl_edges_perc=excl_edges_perc)
 
             if trs:
                 for tr in trs:

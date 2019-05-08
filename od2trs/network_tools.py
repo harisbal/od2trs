@@ -120,7 +120,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
     for src in srcs:
 
-        print(src)
+        #print(src)
         # Needs to be re-initialised at each iteration
         gf = g.copy()
         # add extra src (eliminates the need to search for loops in same dt)
