@@ -3,6 +3,23 @@ import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
+def duplicate_node(g, node, suffix='-dupl'):
+
+    gn = g.copy()
+    new_node = node + suffix
+    node_attrs = g.nodes[node]
+    for s, t, k, attrs in g.edges(data=True, keys=True):
+        if s == node:
+            gn.add_node(new_node, **node_attrs)
+            gn.add_edge(new_node, t, k, **attrs)
+
+        if t == node:
+            gn.add_node(new_node, **node_attrs)
+            gn.add_edge(s, new_node, k, **attrs)
+
+    return gn
+
+
 def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
 
     tgt = src
@@ -89,22 +106,29 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
         except nx.NetworkXNoPath:
             return False
 
+    new_src_suffix = '-src'
+
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
     srcs = zones.copy()
-    tgts = zones[1:]
+    tgts = zones.copy()
+    # get the maximum tgt_dt
+    tgt_dt_max = tgts[-1].split('-', 1)[1]
 
     zones_seqs = list()
 
     for src in srcs:
-        # get the maximum tgt_dt
-        src_dt = src.split('-', 1)[1]
-        tgt_dt_max = srcs[-1].split('-', 1)[1]
-        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
 
         # Needs to be re-initialised at each iteration
         gf = g.copy()
+        # add extra src (eliminates the need to search for loops in same dt)
+        gf = duplicate_node(gf, src, suffix=new_src_suffix)
+
+        src_dt = src.split('-', 1)[1]
+        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
+
+        src = src + new_src_suffix
         # This function also converts MultiDiGraph to DiGraph
         gs = list()
         for tgt in tgts:
@@ -123,16 +147,14 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                                                                weight=None, trips_thresh=1)
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        # cycles in same as src dt
-        zss = identify_cycles(gf, src, max_legs, dist_attr, max_tr_dist)
-        if zss:
-            zones_seqs.extend(zss)
-
         # rest of cycles
         cutoff_legs = max_legs + extra_legs
         zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
 
         if zss:
+            # remove the src suffix
+            for zs in zss:
+                zs[0] = zs[0].replace(new_src_suffix, '')
             #if loops:
             #    zss = _include_loops(zss)
             zones_seqs.extend(zss)

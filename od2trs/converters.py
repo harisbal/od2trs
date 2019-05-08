@@ -274,8 +274,6 @@ def od2trs(od, max_legs=None, include_loops=False,
         od = od.dropna(axis=1)
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
-    # we need the full graph for the identification of 2 leg tours (could be simplified)
-
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
                     ordered_dts=ordered_dts,
                     attr_cols=attr_cols, zones_info=zones_info)
