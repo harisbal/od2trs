@@ -103,7 +103,7 @@ def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
     return g
 
 
-def filter_edges_by_direction(g, src, tgts, filter_edge_dirs):
+def filter_edges_by_direction(g, srcs, tgts, filter_edge_dirs):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
@@ -113,7 +113,9 @@ def filter_edges_by_direction(g, src, tgts, filter_edge_dirs):
     th_names = filter_edge_dirs.to_home
     nhb_names = filter_edge_dirs.non_home
 
-    src_zone = g.nodes[src]['Zone']
+    src_zones = set()
+    for src in srcs:
+        src_zones.add(g.nodes[src]['Zone'])
 
     to_rmv = set()
     # Creates a graph that origins edges from and to
@@ -121,17 +123,17 @@ def filter_edges_by_direction(g, src, tgts, filter_edge_dirs):
         if not attrs['Connector']:
             if attrs['Direction'] in nhb_names:
                 # NHB trips should be removed from the src and in all dts
-                if (g.nodes[s]['Zone'] == src_zone) or (g.nodes[t]['Zone'] == src_zone):
+                if (g.nodes[s]['Zone'] in src_zones) or (g.nodes[t]['Zone'] in src_zones):
                     to_rmv.add((s, t, k))
             elif attrs['Direction'] in fh_names:
-                if not s == src:
+                if s not in srcs:
                     to_rmv.add((s, t, k))
             elif attrs['Direction'] in th_names:
                 if t not in tgts:
                     to_rmv.add((s, t, k))
         else:
             # Remove connectors linked to src_zone
-            if (g.nodes[s]['Zone'] == src_zone) or (g.nodes[t]['Zone'] == src_zone):
+            if (g.nodes[s]['Zone'] in src_zones) or (g.nodes[t]['Zone'] in src_zones):
                 to_rmv.add((s, t, k))
 
     g.remove_edges_from(to_rmv)

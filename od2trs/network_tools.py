@@ -3,19 +3,20 @@ import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
-def duplicate_node(g, node, suffix='-dupl'):
+def duplicate_nodes(g, nodes, suffix='-dupl'):
 
     gn = g.copy()
-    new_node = node + suffix
-    node_attrs = g.nodes[node]
-    for s, t, k, attrs in g.edges(data=True, keys=True):
-        if s == node:
-            gn.add_node(new_node, **node_attrs)
-            gn.add_edge(new_node, t, k, **attrs)
+    for node in nodes:
+        new_node = node + suffix
+        node_attrs = g.nodes[node]
+        for s, t, k, attrs in g.edges(data=True, keys=True):
+            if s == node:
+                gn.add_node(new_node, **node_attrs)
+                gn.add_edge(new_node, t, k, **attrs)
 
-        if t == node:
-            gn.add_node(new_node, **node_attrs)
-            gn.add_edge(s, new_node, k, **attrs)
+            if t == node:
+                gn.add_node(new_node, **node_attrs)
+                gn.add_edge(s, new_node, k, **attrs)
 
     return gn
 
@@ -118,25 +119,17 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
     zones_seqs = list()
 
+    #print(src)
+    # add extra src (eliminates the need to search for loops in same dt)
+    gf = duplicate_nodes(g.copy(), srcs, suffix=new_src_suffix)
+
+    srcs = [src+new_src_suffix for src in srcs]
+    gf = filters.filter_edges_by_direction(gf.copy(), srcs, tgts, filter_dirs)
+    gf = nx.DiGraph(gf)
+
+    # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
+
     for src in srcs:
-
-        #print(src)
-        # Needs to be re-initialised at each iteration
-        gf = g.copy()
-        # add extra src (eliminates the need to search for loops in same dt)
-        gf = duplicate_node(gf, src, suffix=new_src_suffix)
-
-        src_dt = src.split('-', 1)[1]
-        extra_legs = ordered_dts.index(tgt_dt_max) - ordered_dts.index(src_dt)
-
-        src = src + new_src_suffix
-        # This function also converts MultiDiGraph to DiGraph
-        gf = filters.filter_edges_by_direction(gf.copy(), src, tgts, filter_dirs)
-        # After this point the graph is not multilevel
-        gf = nx.DiGraph(gf)
-
-        # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
-
         # Use edge betweeneess centrality to simplify the graph
         # TODO the number of nexcl_edges should be excluded from the optimisation
         # TODO the decision about the number of edges to be excluded should be automated
@@ -147,8 +140,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                                                                weight=None, trips_thresh=1)
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        cutoff_legs = max_legs + extra_legs
-        #zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
         zss = list(nx.all_simple_paths(gf, src, tgts,
                                        weights=['len', 'Distance'],
                                        cutoff_weights=[max_legs, max_tr_dist]))
@@ -169,5 +160,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             #if loops:
             #    zss = _include_loops(zss)
 
-    print('len zones_seqs', len(zones_seqs))
+
+    # print('len zones_seqs', len(zones_seqs))
     return zones_seqs
