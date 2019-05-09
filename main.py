@@ -1,4 +1,4 @@
-import  pandas as pd
+import pandas as pd
 
 import od2trs.io as myio
 import od2trs.utilities as utils
@@ -109,8 +109,11 @@ def main(traj):
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 
-        trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl'])
-        trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl'])
+        try:
+            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl'])
+            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl'])
+        except KeyError:
+            pass
     else:
         trs_descr = pd.read_pickle(filepaths['in']['trs_mdl_descr'])
         trs_info = pd.read_pickle(filepaths['in']['trs_mdl_info'])

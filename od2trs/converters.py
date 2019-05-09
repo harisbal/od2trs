@@ -51,7 +51,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 g.add_edge(src_name, tgt_name,
                            Departtime=src_dt, Purpose='Connector',
                            Direction='Connector', Distance=0,
-                           Connector=True)
+                           Connector=True, len=0)
 
         return _g
 
@@ -68,6 +68,9 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                                 src_col, tgt_col,
                                 attr_cols,
                                 nx.MultiDiGraph())
+
+    # add an artificial length for edges (connectors will have 0)
+    nx.set_edge_attributes(g, 1, 'len')
 
     if ordered_dts:
         # Set the node attributes

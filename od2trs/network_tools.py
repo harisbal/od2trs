@@ -151,7 +151,10 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
         cutoff_legs = max_legs + extra_legs
-        zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
+        #zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
+        zss = list(nx.all_simple_paths(gf, src, tgts,
+                                       weights=['Distance', 'len'],
+                                       cutoff_weights=[max_legs, max_tr_dist]))
 
         tgts.remove(src.replace(new_src_suffix, ''))
 
