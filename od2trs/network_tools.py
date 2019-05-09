@@ -131,10 +131,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
         src = src + new_src_suffix
         # This function also converts MultiDiGraph to DiGraph
-        gs = list()
-        for tgt in tgts:
-            gs.append(filters.filter_edges_by_direction(gf.copy(), src, tgt, filter_dirs))
-        gf = nx.compose_all(gs)
+        gf = filters.filter_edges_by_direction(gf.copy(), src, tgts, filter_dirs)
         # After this point the graph is not multilevel
         gf = nx.DiGraph(gf)
 
@@ -153,8 +150,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
         cutoff_legs = max_legs + extra_legs
         #zss = list(nx.all_simple_paths(gf, src, tgts, cutoff_legs, dist_attr, max_tr_dist))
         zss = list(nx.all_simple_paths(gf, src, tgts,
-                                       weights=['Distance', 'len'],
-                                       cutoff_weights=[max_tr_dist, max_legs]))
+                                       weights=['len', 'Distance'],
+                                       cutoff_weights=[max_legs, max_tr_dist]))
 
         tgts.remove(src.replace(new_src_suffix, ''))
 
