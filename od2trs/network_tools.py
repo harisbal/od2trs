@@ -109,6 +109,9 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
     new_src_suffix = '-src'
 
+    #if src != 'E01014411':
+    #    return list()
+
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
 
@@ -130,6 +133,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
     # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
     for src in srcs:
+        #if src != 'E01014411-AM-src':
+        #    continue
         # Use edge betweeneess centrality to simplify the graph
         # TODO the number of nexcl_edges should be excluded from the optimisation
         # TODO the decision about the number of edges to be excluded should be automated
@@ -161,5 +166,5 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
             #    zss = _include_loops(zss)
 
 
-    # print('len zones_seqs', len(zones_seqs))
+    #print('len zones_seqs', len(zones_seqs))
     return zones_seqs

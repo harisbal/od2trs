@@ -230,7 +230,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
             filt_trs.extend(trs)
 
     if filt_trs:
-        print('filt zones', src_zone, len(filt_trs))
+        #print('filt zones', src_zone, len(filt_trs))
         return filt_trs
     else:
         return None
