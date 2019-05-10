@@ -74,6 +74,7 @@ def main(traj):
             distances = myio.read_distances(filepaths['in']['distances'])
             dist_attr = 'Distance'
         except FileNotFoundError:
+            print('File containing distances was not found')
             distances = None
             dist_attr = None
 
