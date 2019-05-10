@@ -297,6 +297,8 @@ def od2trs(od, max_legs=None, include_loops=False,
     if not ncores:
         ncores = cpu_count() - 1
 
+    print('Running on {} cpus'.format(ncores))
+
     profiling = False
 
     if not profiling:
