@@ -87,7 +87,8 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
 
 
 def read_trs_info(infilepath, seq_cols):
-    obs_info = pd.read_csv(infilepath, index_col=0)
+
+    obs_info = pd.read_csv(infilepath, index_col=0).rename(columns=str.capitalize)
 
     if seq_cols:
         for c in seq_cols:

@@ -53,9 +53,9 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
             tr.assign_dist_grp(dist_bins)
             d_dims['Distancegroup'] = tr.dist_grp
 
-        if 'Departtimes' in distr_dims:
+        if 'Timeperiods' in distr_dims:
             departtimes = tr.departtimes
-            d_dims['Departtimes'] = departtimes
+            d_dims['Timeperiods'] = departtimes
 
         mask = list()
         for dd in distr_dims:
@@ -95,7 +95,7 @@ def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
     tgt_dt_idx = ordered_dts.index(tgt_dt)
 
     to_rmn = set()
-    for s, t, dt in g.edges(data='Departtime'):
+    for s, t, dt in g.edges(data='Timeperiod'):
         if dt not in ordered_dts[src_dt_idx:tgt_dt_idx+1]:
             to_rmn.add((s, t))
 

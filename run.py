@@ -70,7 +70,7 @@ def prepare_traj_params(traj, cfg):
     include_loops = json.loads(cfg['TOURS']['include_loops'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
-    ordered_dts = json.loads(cfg['TOURS']['ordered_departtimes'])
+    ordered_dts = json.loads(cfg['TOURS']['ordered_timeperiods'])
     distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
     max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
@@ -181,7 +181,7 @@ def prepare_traj_params(traj, cfg):
         explore_d = {'data_source': ['tests'],
                      'aggr_level': ['aggrlvl'],
                      'perc_sample_size': [1.0],
-                     'distr_dims': [['Legs', 'Distancegroup'], ['Legs', 'Distancegroup', 'Departtimes']],
+                     'distr_dims': [['Legs', 'Distancegroup'], ['Legs', 'Distancegroup', 'Timeperiods']],
                      'max_legs': [5],
                      'trips_thresh': [50, 10, 5, 4, 3],
                      'distr_constr_enabled': [False]}

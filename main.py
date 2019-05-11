@@ -56,12 +56,12 @@ def main(traj):
                                                                                 trips_thresh,
                                                                                 distr_perc_thresh))
 
-    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
-    for c, order in [('Departtime', ordered_dts)]:
+    for c, order in [('Timeperiod', ordered_dts)]:
         od = utils.reorder_idx_catcol(od, c, order)
 
     try:
@@ -83,10 +83,10 @@ def main(traj):
             # TODO IMPROVE (not too generic)
             target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
                                                   interval_cols=['Distancegroup'],
-                                                  seq_cols=['Departtimes'])
+                                                  seq_cols=['Timeperiods'])
 
         except FileNotFoundError:
-            seq_cols = ['Departtimes']
+            seq_cols = ['Timeperiods']
             obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
                                                          dist_bins, max_legs,

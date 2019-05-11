@@ -147,7 +147,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
 
         zss = list(nx.all_simple_paths(gf, src, tgts,
                                        weights=['len', 'Distance'],
-                                       cutoff_weights=[max_legs, max_tr_dist]))
+                                       cutoffs=[max_legs, max_tr_dist]))
 
         tgts.remove(src.replace(new_src_suffix, ''))
 

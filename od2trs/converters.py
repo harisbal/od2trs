@@ -44,12 +44,12 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 if not tgt_name in _g.nodes():
                     _g.add_node(tgt_name)
                     _g.nodes[tgt_name]['Zone'] = z
-                    _g.nodes[tgt_name]['Departtime'] = tgt_dt
+                    _g.nodes[tgt_name]['Timeperiod'] = tgt_dt
 
                 _g.nodes[src_name]['Connector'] = True
                 _g.nodes[tgt_name]['Connector'] = True
                 g.add_edge(src_name, tgt_name,
-                           Departtime=src_dt, Purpose='Connector',
+                           Timeperiod=src_dt, Purpose='Connector',
                            Direction='Connector', Distance=0,
                            Connector=True, len=0)
 
@@ -61,8 +61,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_dts is not None:
-        od[src_col] = od[src_col].astype(str) + '-' + od['Departtime'].astype(str)
-        od[tgt_col] = od[tgt_col].astype(str) + '-' + od['Departtime'].astype(str)
+        od[src_col] = od[src_col].astype(str) + '-' + od['Timeperiod'].astype(str)
+        od[tgt_col] = od[tgt_col].astype(str) + '-' + od['Timeperiod'].astype(str)
 
     g = nx.from_pandas_edgelist(od.reset_index(),
                                 src_col, tgt_col,
@@ -74,7 +74,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     if ordered_dts:
         # Set the node attributes
-        d = {n: {'Zone': n.split('-', 1)[0], 'Departtime': n.split('-', 1)[1]} for n in g.nodes}
+        d = {n: {'Zone': n.split('-', 1)[0], 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
         nx.set_node_attributes(g, d)
         g = _add_chron_connectors(g, ordered_dts)
     else:
@@ -181,7 +181,7 @@ def trs_to_df(trs, target_distr, distr_dims):
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Distancegroup', 'Departtimes']
+    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Distancegroup', 'Timeperiods']
     vals = [ids, no_legs, loops_cnt, dists, dist_grps, departtimes]
 
     trs_info = dict(zip(keys, vals))

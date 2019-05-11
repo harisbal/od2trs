@@ -17,7 +17,7 @@ def test_simple_example():
 
     filepaths = utils.prepare_filepaths_from_config(cfg)
 
-    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Departtime']
+    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
     exp = pd.read_csv(filepaths['in']['od']).set_index(idx_cols).sort_index()
     res = pd.read_csv(filepaths['out']['od']).set_index(idx_cols).sort_index()
 

@@ -44,9 +44,9 @@ def create_trs_info(trs_descr, distr_dims,
         legs.name = 'Legs'
         aggr_dimensions.append(legs)
 
-    if 'Departtimes' in distr_dims:
-        dts = trs_descr['Departtime'].groupby(level='Tourid').apply(tuple)
-        dts.name = 'Departtimes'
+    if 'Timeperiods' in distr_dims:
+        dts = trs_descr['Timeperiod'].groupby(level='Tourid').apply(tuple)
+        dts.name = 'Timeperiods'
         aggr_dimensions.append(dts)
 
     # Add the grouping information
@@ -79,8 +79,8 @@ def get_observed_trs_info(infilepath, max_legs, index_col='Tourid'):
     observed_trs_info['Distancegroup'] = pd.cut(observed_trs_info['Distance'], settings.parameters['dist_bins'])
 
     # Convert the Timeperiod sequence to tuples
-    observed_trs_info['Departtimes'] = observed_trs_info['Departtimes'].str.split(',')
-    observed_trs_info['Departtimes'] = observed_trs_info['Departtimes'].apply(tuple)
+    observed_trs_info['Timeperiods'] = observed_trs_info['Timeperiods'].str.split(',')
+    observed_trs_info['Timeperiods'] = observed_trs_info['Timeperiods'].apply(tuple)
     return observed_trs_info
 
 def filter_trs_by_dict(trs_info_df, d_filters):
@@ -99,7 +99,7 @@ def prepare_od(trs_info, trs_descr, trips_thresh, idx_cols):
     trs_descr = trs_descr.loc(axis=0)[included_trs]
 
     od = trs_descr.groupby(['Source', 'Target', 'Purpose',
-                           'Direction', 'Departtime', 'Mode'])['Timesused'].sum()
+                           'Direction', 'Timeperiod', 'Mode'])['Timesused'].sum()
     od.name = 'Dailytrips'
     od = od.astype(int)
 
@@ -155,14 +155,14 @@ def reduce_2leg_trs():
 
     """
     # We make sure to examine the max dt for each zone (this ensures that every tour has been completed)
-    fh_tot = fh.groupby(level=['Home', 'Departtime']).sum()
+    fh_tot = fh.groupby(level=['Home', 'Timeperiod']).sum()
     fh_cumsum = fh_tot.groupby(level='Home').cumsum()
 
-    th_tot = th.groupby(level=['Home', 'Departtime']).sum()
+    th_tot = th.groupby(level=['Home', 'Timeperiod']).sum()
     th_cumsum = th_tot.groupby(level='Home').cumsum()
 
     trips_balance = fh_cumsum.to_frame().join(th_cumsum, how='outer')
-    trips_balance = midx_lvl_to_categorical(trips_balance, 'Departtime', ordered_dts)
+    trips_balance = midx_lvl_to_categorical(trips_balance, 'Timeperiod', ordered_dts)
 
     trips_balance['Fromhometrips'] = trips_balance['Fromhometrips'].ffill()
     trips_balance['Tohometrips'] = trips_balance['Tohometrips'].fillna(0)
@@ -173,13 +173,13 @@ def reduce_2leg_trs():
                     .cumsum())
 
     fh_succs = (fh.reset_index(level='Other')
-                .groupby(level=['Home', 'Departtime'])['Other']
+                .groupby(level=['Home', 'Timeperiod'])['Other']
                 .agg(lambda x: list(x))) # .apply(destroys cat index)
 
     fh_succs_cum = fh_succs.groupby(level='Home').apply(lambda x: x.cumsum()).apply(set)
 
     th_preds = (th.reset_index(level='Other').
-               groupby(level=['Home', 'Departtime'])['Other'].
+               groupby(level=['Home', 'Timeperiod'])['Other'].
                agg(lambda x: list(x)))
 
     th_preds_cum = th_preds.groupby(level=['Home']).apply(lambda x: x.cumsum()).apply(set)
@@ -187,7 +187,7 @@ def reduce_2leg_trs():
     combs = pd.concat([fh_succs_cum, th_preds_cum], axis=1)
 
     # concat and merge destroy cat index (actually the outer join is responsible for the break)
-    combs = midx_lvl_to_categorical(combs, 'Departtime', ordered_dts)
+    combs = midx_lvl_to_categorical(combs, 'Timeperiod', ordered_dts)
     combs.columns = ['Succs', 'Preds']
     combs['Succs'] = combs['Succs'].ffill()
     # Fillna with empty set
@@ -211,7 +211,7 @@ def reduce_2leg_trs():
     pairs_to_reduce = combs['Common'].apply(list).apply(lambda x: x[0])
     pairs_to_reduce.name = 'Other'
     pairs_to_reduce = (pairs_to_reduce.to_frame().set_index('Other', append=True).
-                       reorder_levels(['Home', 'Other', 'Departtime']).index.tolist())
+                       reorder_levels(['Home', 'Other', 'Timeperiod']).index.tolist())
 
     # we can reduce by the min number of trips for the identified pairs of from-home and to-home trips
     reductions = pd.concat([fh.loc[fh.index.intersection(pairs_to_reduce)],
