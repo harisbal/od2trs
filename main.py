@@ -18,7 +18,7 @@ def main(traj):
     include_loops = traj.par.trs.include_loops
     filter_dirs = traj.par.trs.filter_dirs
     grp_purposes = traj.par.trs.d_grp_purposes
-    ordered_dts = traj.par.ordered_dts
+    ordered_tps = traj.par.ordered_tps
     max_tr_dist = traj.par.trs.max_tr_dist
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
@@ -61,7 +61,7 @@ def main(traj):
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
-    for c, order in [('Timeperiod', ordered_dts)]:
+    for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
 
     try:
@@ -104,7 +104,7 @@ def main(traj):
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
-                                                filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                                filter_dirs=filter_dirs, ordered_tps=ordered_tps,
                                                 distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
                                                 dist_bins=dist_bins, distr_dims=distr_dims,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,

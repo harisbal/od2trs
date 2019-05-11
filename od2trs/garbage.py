@@ -162,7 +162,7 @@ def reduce_2leg_trs():
     th_cumsum = th_tot.groupby(level='Home').cumsum()
 
     trips_balance = fh_cumsum.to_frame().join(th_cumsum, how='outer')
-    trips_balance = midx_lvl_to_categorical(trips_balance, 'Timeperiod', ordered_dts)
+    trips_balance = midx_lvl_to_categorical(trips_balance, 'Timeperiod', ordered_tps)
 
     trips_balance['Fromhometrips'] = trips_balance['Fromhometrips'].ffill()
     trips_balance['Tohometrips'] = trips_balance['Tohometrips'].fillna(0)
@@ -187,7 +187,7 @@ def reduce_2leg_trs():
     combs = pd.concat([fh_succs_cum, th_preds_cum], axis=1)
 
     # concat and merge destroy cat index (actually the outer join is responsible for the break)
-    combs = midx_lvl_to_categorical(combs, 'Timeperiod', ordered_dts)
+    combs = midx_lvl_to_categorical(combs, 'Timeperiod', ordered_tps)
     combs.columns = ['Succs', 'Preds']
     combs['Succs'] = combs['Succs'].ffill()
     # Fillna with empty set

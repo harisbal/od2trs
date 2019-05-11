@@ -15,15 +15,15 @@ from od2trs.tc import Leg, TripChain
 
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,
-                ordered_dts=None,
+                ordered_tps=None,
                 zones_info=None, verbose=True):
 
-    def _add_chron_connectors(_g, _ordered_dts):
+    def _add_chron_connectors(_g, _ordered_tps):
 
         nx.set_edge_attributes(_g, False, 'Connector')
         nx.set_node_attributes(_g, False, 'Connector')
 
-        # dict with all the departtimes a trip begins from each node
+        # dict with all the timeperiods a trip begins from each node
         zone_dts = dict()
         for n, z in _g.nodes(data='Zone'):
             dt = n.split('-', 1)[1]
@@ -31,12 +31,12 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
         for z, zdt in zone_dts.items():
             zdt = list(zdt)
-            zdt.sort(key=lambda tp: _ordered_dts.index(tp))
-            earliest_dt_idx = _ordered_dts.index(zdt[0])
-            latest_dt_idx = _ordered_dts.index(zdt[-1])
+            zdt.sort(key=lambda tp: _ordered_tps.index(tp))
+            earliest_dt_idx = _ordered_tps.index(zdt[0])
+            latest_dt_idx = _ordered_tps.index(zdt[-1])
 
-            for src_dt, tgt_dt in utils.pairwise(_ordered_dts[earliest_dt_idx: latest_dt_idx + 1]):
-                # create the connections for all the subsequent departtimes
+            for src_dt, tgt_dt in utils.pairwise(_ordered_tps[earliest_dt_idx: latest_dt_idx + 1]):
+                # create the connections for all the subsequent timeperiods
                 src_name = '{}-{}'.format(z, src_dt)
                 tgt_name = '{}-{}'.format(z, tgt_dt)
 
@@ -60,7 +60,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     #od.dropna(axis=1, inplace=True)
 
     # Split the nodes of the networks in levels according to the time period of departure
-    if ordered_dts is not None:
+    if ordered_tps is not None:
         od[src_col] = od[src_col].astype(str) + '-' + od['Timeperiod'].astype(str)
         od[tgt_col] = od[tgt_col].astype(str) + '-' + od['Timeperiod'].astype(str)
 
@@ -72,11 +72,11 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     # add an artificial length for edges (connectors will have 0)
     nx.set_edge_attributes(g, 1, 'len')
 
-    if ordered_dts:
+    if ordered_tps:
         # Set the node attributes
         d = {n: {'Zone': n.split('-', 1)[0], 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
         nx.set_node_attributes(g, d)
-        g = _add_chron_connectors(g, ordered_dts)
+        g = _add_chron_connectors(g, ordered_tps)
     else:
         # Set the node attributes
         d = {n: {'Zone': n} for n in g.nodes}
@@ -104,15 +104,15 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
 def zones_seq_to_trs(zones_seq, G, filter_dirs):
 
-    def filter_leg_attrs_by_purpose(leg_attrs, filter_directions):
-        leg_attrs = [la for la in leg_attrs if la['Direction'] == filter_directions]
-        return leg_attrs
+    def filter_leg_attrs_by_purpose(_leg_attrs, filter_directions):
+        _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
+        return _leg_attrs
 
     def prepare_leg_attrs(G, source, target, filter_directions):
-        leg_attrs = G.get_edge_data(source, target).values()
-        leg_attrs = filter_leg_attrs_by_purpose(leg_attrs, filter_directions)
+        _leg_attrs = G.get_edge_data(source, target).values()
+        _leg_attrs = filter_leg_attrs_by_purpose(_leg_attrs, filter_directions)
 
-        return leg_attrs
+        return _leg_attrs
 
     filter_dir_orig = filter_dirs.from_home
     filter_dir_dest = filter_dirs.to_home
@@ -162,7 +162,7 @@ def trs_to_df(trs, target_distr, distr_dims):
 
     ids = list()
     no_legs = list()
-    departtimes = list()
+    timeperiods = list()
     loops_cnt = list()
     dists = list()
     dist_grps = list()
@@ -171,7 +171,7 @@ def trs_to_df(trs, target_distr, distr_dims):
     for tr in trs:
         ids.append(tr.id)
         no_legs.append(tr.no_legs)
-        departtimes.append(tr.departtimes)
+        timeperiods.append(tr.timeperiods)
         loops_cnt.append(tr.loops_cnt)
         dists.append(tr.distance)
 
@@ -182,7 +182,7 @@ def trs_to_df(trs, target_distr, distr_dims):
 
     idxcol = 'Tourid'
     keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Distancegroup', 'Timeperiods']
-    vals = [ids, no_legs, loops_cnt, dists, dist_grps, departtimes]
+    vals = [ids, no_legs, loops_cnt, dists, dist_grps, timeperiods]
 
     trs_info = dict(zip(keys, vals))
 
@@ -208,12 +208,12 @@ def results_to_od(descr, info, idx_cols):
     return od
 
 
-def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
+def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
                       max_legs, max_tr_dist, dist_attr, dist_bins,
                       target_distr, distr_dims, include_loops,
                       excl_edges_perc):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
+    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
                                                         max_legs, max_tr_dist, dist_attr,
                                                         include_loops, excl_edges_perc)
 
@@ -223,7 +223,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
     filt_trs = list()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_trs(trs, ordered_dts, max_tr_dist,
+        trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
                                  target_distr, distr_dims, dist_bins)
 
         if trs:
@@ -236,12 +236,12 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_dts,
         return None
 
 
-def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
+def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_tps,
                                 max_legs, max_tr_dist, dist_attr, dist_bins,
                                 target_distr, distr_dims, include_loops,
                                 excl_edges_perc):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_dts,
+    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
                                                         max_legs, max_tr_dist, dist_attr,
                                                         include_loops, excl_edges_perc)
 
@@ -251,7 +251,7 @@ def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_dts,
     filt_trs = list()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_trs(trs, ordered_dts, max_tr_dist,
+        trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
                                  target_distr, distr_dims, dist_bins)
 
         if trs:
@@ -269,7 +269,7 @@ def init_multiproc_wrapper(_G):
 
 
 def od2trs(od, max_legs=None, include_loops=False,
-           filter_dirs=None, ordered_dts=None,
+           filter_dirs=None, ordered_tps=None,
            target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, dist_attr=None, max_tr_dist=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
@@ -281,7 +281,7 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
-                    ordered_dts=ordered_dts,
+                    ordered_tps=ordered_tps,
                     attr_cols=attr_cols, zones_info=zones_info)
 
     descrs = list()
@@ -304,11 +304,11 @@ def od2trs(od, max_legs=None, include_loops=False,
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
             for trs in tqdm(pool.imap_unordered(partial(multiproc_wrapper,
-                            max_legs=max_legs, max_tr_dist=max_tr_dist,
-                            dist_attr=dist_attr, dist_bins=dist_bins,
-                            filter_dirs=filter_dirs, ordered_dts=ordered_dts,
-                            target_distr=target_distr, distr_dims=distr_dims,
-                            include_loops=include_loops, excl_edges_perc=excl_edges_perc),
+                                                        max_legs=max_legs, max_tr_dist=max_tr_dist,
+                                                        dist_attr=dist_attr, dist_bins=dist_bins,
+                                                        filter_dirs=filter_dirs, ordered_tps=ordered_tps,
+                                                        target_distr=target_distr, distr_dims=distr_dims,
+                                                        include_loops=include_loops, excl_edges_perc=excl_edges_perc),
                             zones), total=len(zones)):
                 if trs:
                     for tr in trs:
@@ -337,7 +337,7 @@ def od2trs(od, max_legs=None, include_loops=False,
         for zone in tqdm(zones, total=len(zones)):
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dist,
                                               dist_attr=dist_attr, dist_bins=dist_bins,
-                                              filter_dirs=filter_dirs, ordered_dts=ordered_dts,
+                                              filter_dirs=filter_dirs, ordered_tps=ordered_tps,
                                               target_distr=target_distr, distr_dims=distr_dims,
                                               include_loops=include_loops, excl_edges_perc=excl_edges_perc)
 

@@ -7,24 +7,14 @@ class Leg:
     """
     A leg is a trip between an Source and a Target
     """
-    def __init__(self, source, target,
-                 purpose=None, departtime=None,
-                 direction=None, distance=None, **kwargs):
+    def __init__(self, source, target, **kwargs):
 
-        attrs = ['source', 'target', 'purpose', 'odpairid',
-                 'direction', 'departtime', 'distance']
         # Tours deriving from multilevel graphs include the time level in the name
         self.source = source.split('-', 1)[0]
         self.target = target.split('-', 1)[0]
-        self.purpose = purpose
-        self.direction = direction
-        self.departtime = departtime
-        self.distance = distance
-        self.odpairid = None
 
         for key in kwargs:
-            if key.lower() in attrs:
-                setattr(self, key.lower(), kwargs[key])
+            setattr(self, key.lower(), kwargs[key])
 
 
 class TripChain:
@@ -56,7 +46,7 @@ class TripChain:
         self.distr_group_id = None
         self.dist_grp = None
         self.distance = self.calculate_distance()
-        self.departtimes = self.create_departtimes_seq()
+        self.timeperiods = self.create_timeperiods_seq()
 
     def create_zones_seq(self):
         zones = [l.source for l in self.legs]
@@ -89,28 +79,28 @@ class TripChain:
         dg = _return_dist_grp(dist_bins)
         self.dist_grp = dg
 
-    def is_chron_ordered(self, ordered_dts):
-        if util.sequence_isunique(ordered_dts):
+    def is_chron_ordered(self, ordered_tps):
+        if util.sequence_isunique(ordered_tps):
             pass
         else:
-            raise TypeError('ordered_dts is not unique')
+            raise TypeError('ordered_tps is not unique')
 
         # list to store the timeperiods (as numbers) of each tc
-        tc_departtimes_idxs = list()
+        tc_tps_idxs = list()
         for leg in self.legs:
-            tc_departtimes_idxs.append(ordered_dts.index(leg.departtime))
+            tc_tps_idxs.append(ordered_tps.index(leg.timeperiod))
             # list to store the time periods as indices e.g [AM, IP, IP] --> [1, 2, 2]
 
-        if util.is_ascending(tc_departtimes_idxs):
+        if util.is_ascending(tc_tps_idxs):
             return True
         else:
             return False
 
-    def create_departtimes_seq(self):
+    def create_timeperiods_seq(self):
         tps = list()
         for leg in self.legs:
-            if leg.departtime:
-                tps.append(leg.departtime)
+            if leg.timeperiod:
+                tps.append(leg.timeperiod)
             else:
                 return None
 

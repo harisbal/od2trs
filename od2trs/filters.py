@@ -3,10 +3,10 @@ import pandas as pd
 import networkx as nx
 
 
-def filter_chron_possible_trs(trs, ordered_dts):
+def filter_chron_possible_trs(trs, ordered_tps):
     filtered_trs = list()
     for tr in trs:
-        if tr.is_chron_ordered(ordered_dts):
+        if tr.is_chron_ordered(ordered_tps):
             filtered_trs.append(tr)
 
     return filtered_trs
@@ -54,8 +54,7 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
             d_dims['Distancegroup'] = tr.dist_grp
 
         if 'Timeperiods' in distr_dims:
-            departtimes = tr.departtimes
-            d_dims['Timeperiods'] = departtimes
+            d_dims['Timeperiods'] = tr.timeperiods
 
         mask = list()
         for dd in distr_dims:
@@ -77,10 +76,10 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
         return filter_trs
 
 
-def filter_trs(trs, ordered_dts, max_tr_dist, target_distr, distr_dims, dist_bins):
+def filter_trs(trs, ordered_tps, max_tr_dist, target_distr, distr_dims, dist_bins):
 
-    if ordered_dts:
-        trs = filter_chron_possible_trs(trs, ordered_dts)
+    if ordered_tps:
+        trs = filter_chron_possible_trs(trs, ordered_tps)
     if max_tr_dist:
         trs = filter_trs_by_max_dist(trs, max_tr_dist)
     if target_distr is not None:
@@ -89,14 +88,14 @@ def filter_trs(trs, ordered_dts, max_tr_dist, target_distr, distr_dims, dist_bin
     return trs
 
 
-def filter_by_departtime(g, src_dt, tgt_dt, ordered_dts):
+def filter_by_departtimeperiod(g, src_dt, tgt_dt, ordered_tps):
 
-    src_dt_idx = ordered_dts.index(src_dt)
-    tgt_dt_idx = ordered_dts.index(tgt_dt)
+    src_dt_idx = ordered_tps.index(src_dt)
+    tgt_dt_idx = ordered_tps.index(tgt_dt)
 
     to_rmn = set()
     for s, t, dt in g.edges(data='Timeperiod'):
-        if dt not in ordered_dts[src_dt_idx:tgt_dt_idx+1]:
+        if dt not in ordered_tps[src_dt_idx:tgt_dt_idx + 1]:
             to_rmn.add((s, t))
 
     g.remove_edges_from(to_rmn)
@@ -186,12 +185,12 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, weight=None, trip
     return g
 
 
-def filter_by_dt_max_legs(zones_seqs, max_legs, ordered_dts):
+def filter_by_dt_max_legs(zones_seqs, max_legs, ordered_tps):
     filt_zones_seqs = list()
     for zs in zones_seqs:
         src_dt = zs[0].split('-', 1)[1]
         tgt_dt = zs[-1].split('-', 1)[1]
-        extra_legs = ordered_dts.index(tgt_dt) - ordered_dts.index(src_dt)
+        extra_legs = ordered_tps.index(tgt_dt) - ordered_tps.index(src_dt)
         if len(zs) - 1 <= max_legs + extra_legs:
             filt_zones_seqs.append(zs)
 

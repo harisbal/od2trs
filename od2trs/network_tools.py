@@ -68,7 +68,7 @@ def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
         return None
 
 
-def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
+def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps, max_legs,
                                   max_tr_dist, dist_attr, include_loops,
                                   excl_edges_perc):
     """
@@ -113,7 +113,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
     #    return list()
 
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
-    zones.sort(key=lambda z: ordered_dts.index(z.split('-', 1)[1]))
+    zones.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
     srcs = zones.copy()
     tgts = zones.copy()
@@ -157,7 +157,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_dts, max_legs,
                 zs[0] = zs[0].replace(new_src_suffix, '')
                 zs_src_dt = zs[0].split('-', 1)[1]
                 zs_tgt_dt = zs[-1].split('-', 1)[1]
-                dt_legs = ordered_dts.index(zs_tgt_dt) - ordered_dts.index(zs_src_dt)
+                dt_legs = ordered_tps.index(zs_tgt_dt) - ordered_tps.index(zs_src_dt)
                 max_len = max_legs + dt_legs + 1
                 if len(zs) <= max_len:
                     zones_seqs.append(zs)
