@@ -10,11 +10,11 @@ class Leg:
     """
     def __init__(self, source, target, **kwargs):
 
-        allowed_attrs = ['purpose', 'direction', 'timeperiod',
-                         'distance', 'traveltime',
-                         'odpairid']
+        allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
+                         'distance', 'traveltime', 'odpairid']
 
         # Tours deriving from multilevel graphs include the time level in the name
+        # TODO rethink about the split technique
         self.source = source.split('-', 1)[0]
         self.target = target.split('-', 1)[0]
 
@@ -49,6 +49,7 @@ class TripChain:
         self.chron_ordered = None
 
         self.zones = self.create_zones_seq()
+        self.purposes = None
         self.timeperiods = self.create_seq('timeperiod')
         self.departtimes = None
 
@@ -131,17 +132,6 @@ class TripChain:
                 return None
         return round(length, 3)
 
-    def to_dict(self):
-        d_tc = dict()
-        for idx_leg, leg in enumerate(self.legs):
-            d_tc[(self.id, idx_leg)] = vars(leg)
-        return d_tc
-
-    def to_df(self):
-        df = pd.DataFrame.from_dict(self.to_dict(),
-                                    orient='index')
-        return df
-
     def assign_departtimes(self, tps_durs):
         # based on critical path method
         tps = list(self.timeperiods)
@@ -189,6 +179,21 @@ class TripChain:
 
         dts.sort()
 
+        # assign the departtimes to the tour's legs
+        for leg, dt in zip(self.legs, dts):
+            leg.departtime = dt
+
         self.departtimes = dts
 
         return dts
+
+    def to_dict(self):
+        d_tc = dict()
+        for idx_leg, leg in enumerate(self.legs):
+            d_tc[(self.id, idx_leg)] = vars(leg)
+        return d_tc
+
+    def to_df(self):
+        df = pd.DataFrame.from_dict(self.to_dict(),
+                                    orient='index')
+        return df

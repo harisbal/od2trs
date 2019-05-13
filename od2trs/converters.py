@@ -171,14 +171,17 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims):
     timeperiods = list()
     loops_cnt = list()
     dists = list()
+    purposes = list()
     traveltimes = list()
     departtimes = list()
     dist_grps = list()
+
     trs_decr = dict()
 
     for tr in trs:
         ids.append(tr.id)
         no_legs.append(tr.no_legs)
+        purposes.append(tr.create_seq('purpose'))
         timeperiods.append(tr.create_seq('timeperiod'))
         loops_cnt.append(tr.loops_cnt)
         dists.append(tr.distance)
@@ -190,8 +193,8 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims):
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Traveltime', 'Timeperiods', 'Distancegroup']
-    vals = [ids, no_legs, loops_cnt, dists, traveltimes, timeperiods, dist_grps]
+    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Traveltime', 'Timeperiods', 'Departtimes', 'Distancegroup']
+    vals = [ids, no_legs, loops_cnt, dists, traveltimes, timeperiods, departtimes, dist_grps]
 
     trs_info = dict(zip(keys, vals))
 
