@@ -13,20 +13,6 @@ def filter_chron_possible_trs(trs, ordered_tps):
     return filtered_trs
 
 
-def filter_trs_by_max_dist(trs, max_dist):
-
-    filtered_trs = list()
-    for tr in trs:
-        dist = tr.distance
-        if dist:
-            if dist > max_dist:
-                continue
-
-        filtered_trs.append(tr)
-
-    return filtered_trs
-
-
 def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
     # TODO I can improve it so it picks the right combination to maintain the specified threshold
@@ -99,8 +85,6 @@ def filter_trs(trs, ordered_tps, compats, target_distr, distr_dims, dist_bins):
 
     if ordered_tps:
         trs = filter_chron_possible_trs(trs, ordered_tps)
-    #if max_tr_dist:
-    #    trs = filter_trs_by_max_dist(trs, max_tr_dist)
 
     if compats:
         trs = filter_by_compatibilities(trs, compats)

@@ -1,6 +1,7 @@
 import os
 import itertools
 import re
+import numpy as np
 import pandas as pd
 
 
@@ -116,62 +117,3 @@ def calculate_excluded_trips(trs_info):
     trs_info = trs_info[trs_info['Inlowfreqgrp']]
     excluded_trips = trs_info[['Legs', 'Timesused']].product(axis=1).sum()
     return excluded_trips
-
-
-def add_departtimes(tc, tps_durs):
-    # based on critical path method
-
-    tps = tc.timeperiods
-
-    tc_tps = tc.groupby(level=0)['TimePeriod'].apply(list).values
-    tc_tts = tc.groupby(level=0)['TravelTime_s'].apply(list).values
-    tcs_dtps_tts = zip(tc_tps, tc_tts)
-
-    tc_dts = list()
-    for i, tc in enumerate(tcs_dtps_tts):
-
-        # find the earliest and latest starts
-        ess = list()
-        lss = list()
-
-        dtps, tts = tc
-
-        # Find the earliest starts
-        es = -float('inf')
-        for dtp, tt in zip(dtps, tts):
-            es = max(pd.to_timedelta(tps_durs[dtp][0]).total_seconds(),
-                     es + tt)
-            ess.append(es)
-
-        # Find the latest starts
-        dtps.reverse()
-        tts.reverse()
-        ls = None
-        for dtp, tt in zip(dtps, tts):
-            if not ls:
-                lf = pd.to_timedelta(tps_durs[dtp][1]).total_seconds()
-                ls = lf - tt
-            else:
-                ls = min(pd.to_timedelta(tps_durs[dtp][1]).total_seconds() - tt,
-                         ls - tt)
-            lss.append(ls)
-        lss.reverse()
-
-        dts = list()
-        # print(i, tc, ess, lss)
-        for low, high in zip(ess, lss):
-            try:
-                dt = np.random.randint(low, high)
-            except ValueError:
-                # Not in chronological order
-                dt = 0
-
-            str_dt = str(pd.to_timedelta(dt, unit='s')).rsplit(' ', 1)[1]
-            dts.append(str_dt)
-        dts.sort()
-
-        tc_dts.extend(dts)
-
-    tc['Departtimes'] = tc_dts
-
-    return tc

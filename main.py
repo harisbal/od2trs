@@ -19,6 +19,7 @@ def main(traj):
     filter_dirs = traj.par.trs.filter_dirs
     grp_purposes = traj.par.trs.d_grp_purposes
     ordered_tps = traj.par.ordered_tps
+    tps_durs = traj.par.tps_durs
     max_tr_dists = traj.par.trs.max_tr_dists
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
@@ -72,11 +73,9 @@ def main(traj):
     if 'Distancegroup' in distr_dims:
         try:
             distances = myio.read_distances(filepaths['in']['distances'])
-            dist_attr = 'Distance'
         except FileNotFoundError:
             print('File containing distances was not found')
             distances = None
-            dist_attr = None
 
     if distr_constr_enabled:
         try:
@@ -88,6 +87,7 @@ def main(traj):
         except FileNotFoundError:
             seq_cols = ['Timeperiods']
             obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
+            # TODO allow for multiple distances (not sure if that's possible)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
                                                          dist_bins, max_legs,
                                                          max_tr_dists)
@@ -104,7 +104,7 @@ def main(traj):
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
-                                                compats=compats, ordered_tps=ordered_tps,
+                                                compats=compats, ordered_tps=ordered_tps, tps_durs=tps_durs,
                                                 distances=distances, max_tr_dists=max_tr_dists,
                                                 dist_bins=dist_bins, distr_dims=distr_dims,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,

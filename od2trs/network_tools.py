@@ -36,16 +36,14 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
 
     src_suffix = '-src'
 
-    if src != 'E01014411':
-        return list()
+    #if src != 'E01014411':
+    #    return list()
 
     zones = [n for n, z in g.nodes(data='Zone') if z == src]
     zones.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
     srcs = zones.copy()
     tgts = zones.copy()
-    # get the maximum tgt_dt
-    tgt_dt_max = tgts[-1].split('-', 1)[1]
 
     zones_seqs = list()
 

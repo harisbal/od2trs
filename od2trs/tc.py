@@ -1,4 +1,5 @@
 import collections
+import numpy as np
 import pandas as pd
 import od2trs.utilities as util
 
@@ -44,16 +45,20 @@ class TripChain:
         self.id = None
         self.no_legs = len(legs)
         self.tour = self.is_tour()
-        self.zones = self.create_zones_seq()
         self.loops_cnt = self.count_loops()
         self.chron_ordered = None
-        self.no_external_zones = None
+
+        self.zones = self.create_zones_seq()
+        self.timeperiods = self.create_seq('timeperiod')
+        self.departtimes = None
+
+        self.distance = self.calculate_length('distance')
+        self.duration = None
+        self.traveltime = None
+
         self.distr_group_id = None
         self.dist_grp = None
-        self.timeperiods = self.create_seq('timeperiod')
-        self.distance = self.calculate_length('distance')
-        self.duration = self.calculate_length('duration')
-        self.traveltime = self.calculate_length('traveltime')
+
         #self.purposes = self.create_seq('purpose')
 
     def is_tour(self):
@@ -137,3 +142,53 @@ class TripChain:
                                     orient='index')
         return df
 
+    def assign_departtimes(self, tps_durs):
+        # based on critical path method
+        tps = list(self.timeperiods)
+        tts = list()
+
+        for leg in self.legs:
+            tts.append(leg.traveltime)
+
+        # find the earliest and latest starts
+        ess = list()
+        lss = list()
+
+        # Find the earliest starts
+        es = -float('inf')
+        for tp, tt in zip(tps, tts):
+            es = max(pd.to_timedelta(tps_durs[tp][0]).total_seconds(),
+                     es + tt)
+            ess.append(es)
+
+        # Find the latest starts
+        tps.reverse()
+        tts.reverse()
+        ls = None
+        for tp, tt in zip(tps, tts):
+            if not ls:
+                lf = pd.to_timedelta(tps_durs[tp][1]).total_seconds()
+                ls = lf - tt
+            else:
+                ls = min(pd.to_timedelta(tps_durs[tp][1]).total_seconds() - tt,
+                         ls - tt)
+            lss.append(ls)
+        lss.reverse()
+
+        dts = list()
+        # print(i, tc, ess, lss)
+        for low, high in zip(ess, lss):
+            try:
+                dt = np.random.randint(low, high)
+            except ValueError:
+                # Not in chronological order
+                dt = 0
+
+            str_dt = str(pd.to_timedelta(dt, unit='s')).rsplit(' ', 1)[1]
+            dts.append(str_dt)
+
+        dts.sort()
+
+        self.departtimes = dts
+
+        return dts

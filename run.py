@@ -72,6 +72,7 @@ def prepare_traj_params(traj, cfg):
     compats = json.loads(cfg['TOURS']['compatibilities'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
+    tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
     distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
     max_tr_dists = json.loads(cfg['TOURS']['max_tr_dists'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
@@ -126,6 +127,9 @@ def prepare_traj_params(traj, cfg):
 
     traj.par.trs.ordered_tps = Parameter('ordered_tps', ordered_tps,
                                          comment='Distribution Dimensions')
+
+    traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs,
+                                            comment='Duration of timeperiods')
 
     traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distr_perc_thresh[0],
                                                comment='Distribution Percentage Threshold')

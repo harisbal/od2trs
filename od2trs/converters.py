@@ -112,7 +112,10 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
         return _leg_attrs
 
     def prepare_leg_attrs(G, source, target, filter_directions):
-        _leg_attrs = G.get_edge_data(source, target).values()
+        try:
+            _leg_attrs = G.get_edge_data(source, target).values()
+        except:
+            a=1
         _leg_attrs = filter_leg_attrs_by_purpose(_leg_attrs, filter_directions)
 
         return _leg_attrs
@@ -161,13 +164,15 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
     return trs
 
 
-def trs_to_df(trs, target_distr, distr_dims):
+def trs_to_df(trs, tps_durs, target_distr, distr_dims):
 
     ids = list()
     no_legs = list()
     timeperiods = list()
     loops_cnt = list()
     dists = list()
+    traveltimes = list()
+    departtimes = list()
     dist_grps = list()
     trs_decr = dict()
 
@@ -177,15 +182,16 @@ def trs_to_df(trs, target_distr, distr_dims):
         timeperiods.append(tr.create_seq('timeperiod'))
         loops_cnt.append(tr.loops_cnt)
         dists.append(tr.distance)
-
+        traveltimes.append(tr.calculate_length('traveltime'))
+        departtimes.append(tr.assign_departtimes(tps_durs))
         if 'Distancegroup' in distr_dims:
             dist_grps.append(tr.dist_grp)
 
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Distancegroup', 'Timeperiods']
-    vals = [ids, no_legs, loops_cnt, dists, dist_grps, timeperiods]
+    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Traveltime', 'Timeperiods', 'Distancegroup']
+    vals = [ids, no_legs, loops_cnt, dists, traveltimes, timeperiods, dist_grps]
 
     trs_info = dict(zip(keys, vals))
 
@@ -269,7 +275,7 @@ def init_multiproc_wrapper(_G):
     G = _G
 
 
-def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
+def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
            compats=None, target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, max_tr_dists=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
@@ -320,7 +326,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
                         tr.id = tr_id
                         tr_id += 1
 
-                    trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims)
+                    trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs, target_distr, distr_dims)
                     descrs.append(trs_descr_df)
                     infos.append(trs_info_df)
 
