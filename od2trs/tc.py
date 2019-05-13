@@ -48,7 +48,7 @@ class TripChain:
         self.distr_group_id = None
         self.dist_grp = None
         self.distance = self.calculate_distance()
-        #self.timeperiods = self.create_seq('timeperiod')
+        self.timeperiods = self.create_seq('timeperiod')
         #self.purposes = self.create_seq('purpose')
 
     def is_tour(self):

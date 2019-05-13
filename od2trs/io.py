@@ -42,6 +42,7 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     od = pd.read_csv(infilepath).rename(columns=str.capitalize)
 
     for c in cat_cols:
+        c = c.capitalize()
         od[c] = od[c].astype('category')
 
     od = od.set_index(idx_cols).squeeze()
