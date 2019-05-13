@@ -63,7 +63,7 @@ class TripChain:
 
     def count_loops(self):
         # Tours deriving from multilevel graphs include the time level in the name
-        zns = [z.split('-')[0] for z in self.zones]
+        zns = [z.split('-')[0] for z in self.zones][:-1]  # to avoid counting the src twice
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 
