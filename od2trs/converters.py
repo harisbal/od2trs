@@ -15,18 +15,18 @@ from od2trs.tc import Leg, TripChain
 
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,
-                ordered_tps=None,
+                ordered_tps=None, distances=None,
                 zones_info=None, verbose=True):
 
     def _add_chron_connectors(_g, _ordered_tps):
 
         nx.set_edge_attributes(_g, False, 'Connector')
-        nx.set_node_attributes(_g, False, 'Connector')
+        #nx.set_node_attributes(_g, False, 'Connector')
 
         # dict with all the timeperiods a trip begins from each node
         zone_dts = dict()
         for n, z in _g.nodes(data='Zone'):
-            dt = n.split('-', 1)[1]
+            dt = _g.nodes[n]['Timeperiod']
             zone_dts.setdefault(z, set()).update([dt])
 
         for z, zdt in zone_dts.items():
@@ -46,18 +46,21 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                     _g.nodes[tgt_name]['Zone'] = z
                     _g.nodes[tgt_name]['Timeperiod'] = tgt_dt
 
-                _g.nodes[src_name]['Connector'] = True
-                _g.nodes[tgt_name]['Connector'] = True
+                #_g.nodes[src_name]['Connector'] = True
+                #_g.nodes[tgt_name]['Connector'] = True
+                _d = dict(zip(distances.columns,
+                              len(distances.columns)*[0]))
+
                 g.add_edge(src_name, tgt_name,
-                           Timeperiod=src_dt, Purpose='Connector',
-                           Direction='Connector', Distance=0,
-                           Connector=True, Length=0)
+                           Connector=True,
+                           Direction='Connector',
+                           Length=0, **_d)
 
         return _g
 
     od = od.reset_index()
     od = od[[src_col, tgt_col] + attr_cols]
-    #od.dropna(axis=1, inplace=True)
+    # od.dropna(axis=1, inplace=True)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_tps is not None:
@@ -209,14 +212,11 @@ def results_to_od(descr, info, idx_cols):
 
 
 def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
-                      max_legs, max_tr_dist, compats,
-                      dist_attr, dist_bins,
-                      target_distr, distr_dims,
-                      excl_edges_perc):
+                      max_legs, max_tr_dists, compats, dist_bins,
+                      target_distr, distr_dims, excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
-                                                        max_legs, max_tr_dist, dist_attr,
-                                                        excl_edges_perc)
+                                                        max_legs, max_tr_dists, excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -271,7 +271,7 @@ def init_multiproc_wrapper(_G):
 
 def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
            compats=None, target_distr=None, distr_dims=None, dist_bins=None,
-           distances=None, dist_attr=None, max_tr_dist=None,
+           distances=None, max_tr_dists=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
     if distances is not None:
@@ -281,8 +281,8 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
-                    ordered_tps=ordered_tps, attr_cols=attr_cols,
-                    zones_info=zones_info)
+                    ordered_tps=ordered_tps, distances=distances,
+                    attr_cols=attr_cols, zones_info=zones_info)
 
     descrs = list()
     infos = list()
@@ -293,10 +293,12 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
 
     if ncores == 0:
         ncores = cpu_count()
-    elif ncores is None:
+    elif isinstance(ncores, int):
+        pass
+    elif ncores.f_is_empty():
         ncores = cpu_count() - 1
 
-    print('Running on {} cpus'.format(ncores))
+    print('Running on {} cores'.format(ncores))
 
     profiling = False
 
@@ -306,9 +308,8 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
                                                         filter_dirs=filter_dirs,
                                                         ordered_tps=ordered_tps,
                                                         max_legs=max_legs,
-                                                        max_tr_dist=max_tr_dist,
+                                                        max_tr_dists=max_tr_dists,
                                                         compats=compats,
-                                                        dist_attr=dist_attr,
                                                         dist_bins=dist_bins,
                                                         target_distr=target_distr,
                                                         distr_dims=distr_dims,
@@ -339,7 +340,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
         idx = zones.index('E01014387')
         zones = zones[idx:idx+2]
         for zone in tqdm(zones, total=len(zones)):
-            trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dist,
+            trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dists,
                                               dist_attr=dist_attr, dist_bins=dist_bins,
                                               filter_dirs=filter_dirs, ordered_tps=ordered_tps,
                                               target_distr=target_distr, distr_dims=distr_dims,

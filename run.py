@@ -73,7 +73,7 @@ def prepare_traj_params(traj, cfg):
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
     distr_perc_thresh = json.loads(cfg['TOURS']['distribution_percent_thresh'])
-    max_tr_dist = json.loads(cfg['TOURS']['max_tr_dist'])
+    max_tr_dists = json.loads(cfg['TOURS']['max_tr_dists'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
@@ -89,7 +89,7 @@ def prepare_traj_params(traj, cfg):
         if dist_bins_range:
             dist_bins = list()
             for r in dist_bins_range:
-                dist_bins.append(list(range(0, max(max_tr_dist), r)))
+                dist_bins.append(list(range(0, max(max_tr_dists['Distance']), r)))
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
@@ -130,7 +130,7 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.distr_perc_thresh = Parameter('distr_perc_thresh', distr_perc_thresh[0],
                                                comment='Distribution Percentage Threshold')
 
-    traj.par.trs.max_tr_dist = Parameter('max_tr_dist', max_tr_dist[0], comment='Maximum allowed distance for trs')
+    traj.par.trs.max_tr_dists = PickleParameter('max_tr_dists', max_tr_dists, comment='Maximum allowed distance for trs')
 
     if dist_bins is None:
         traj.par.trs.dist_bins = Parameter('dist_bins', None, comment='Distance bins')
@@ -193,7 +193,11 @@ def prepare_traj_params(traj, cfg):
                          'trips_thresh', 'perc_sample_size', 'distr_dims',
                          'distr_constr_enabled')
         """
-        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dist': max_tr_dist,
+
+        # create a list of dictionaries based on the input values
+        max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
+
+        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dists': max_trs_dists_combs,
                      'dist_bins': dist_bins, 'distr_constr_enabled': distr_constr_enabled,
                      'distr_perc_tolerance': distr_perc_tolerance, 'excl_edges_perc': excl_edges_perc}
 

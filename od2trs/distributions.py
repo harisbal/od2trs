@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdist=None):
+def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdists=None):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the
@@ -11,8 +11,10 @@ def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdi
     if max_legs:
         obs_info = obs_info[obs_info['Legs'] <= max_legs]
 
-    if maxdist:
-        obs_info = obs_info[obs_info['Distance'] <= maxdist]
+    if maxdists:
+        for md in maxdists:
+            if md in obs_info:
+                obs_info = obs_info[obs_info[md] <= maxdists[md]]
 
     distgrps = pd.cut(obs_info['Distance'], dist_bins)
     obs_info.loc[:, 'Distancegroup'] = distgrps

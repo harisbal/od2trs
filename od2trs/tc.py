@@ -9,7 +9,10 @@ class Leg:
     """
     def __init__(self, source, target, **kwargs):
 
-        allowed_attrs = ['purpose', 'direction', 'timeperiod', 'distance', 'odpairid']
+        allowed_attrs = ['purpose', 'direction', 'timeperiod',
+                         'distance', 'traveltime',
+                         'odpairid']
+
         # Tours deriving from multilevel graphs include the time level in the name
         self.source = source.split('-', 1)[0]
         self.target = target.split('-', 1)[0]
@@ -47,8 +50,10 @@ class TripChain:
         self.no_external_zones = None
         self.distr_group_id = None
         self.dist_grp = None
-        self.distance = self.calculate_distance()
         self.timeperiods = self.create_seq('timeperiod')
+        self.distance = self.calculate_length('distance')
+        self.duration = self.calculate_length('duration')
+        self.traveltime = self.calculate_length('traveltime')
         #self.purposes = self.create_seq('purpose')
 
     def is_tour(self):
@@ -110,15 +115,16 @@ class TripChain:
 
         return tuple(seq)
 
-    def calculate_distance(self):
-        distance = 0
+    def calculate_length(self, length_name='distance'):
+        length = 0
         for leg in self.legs:
-            if leg.distance:
-                distance += leg.distance
+            leg_length = getattr(leg, length_name)
+            if leg_length:
+                length += leg_length
             else:
-                print('leg distance not defined, returning None')
+                print('leg {} not defined, returning None'.format(length_name))
                 return None
-        return round(distance, 3)
+        return round(length, 3)
 
     def to_dict(self):
         d_tc = dict()

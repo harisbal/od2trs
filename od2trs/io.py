@@ -98,12 +98,13 @@ def read_trs_info(infilepath, seq_cols):
     return obs_info
 
 
-def read_distances(infilepath):
-    sr = pd.read_csv(infilepath, index_col=[0, 1], squeeze=True)
-    sr = sr.astype(float)
-    sr.index.names = ['Source', 'Target']
-    sr.name = 'Distance'
-    return sr
+def read_distances(infilepath, dist_types=['Distance', 'Traveltime']):
+    # can contain all types of distances such as km distance, travel time, etc
+    dists = pd.read_csv(infilepath, index_col=[0, 1])
+    dists = dists[dist_types]
+    dists = dists.astype(float)
+    dists.index.names = ['Source', 'Target']
+    return dists
 
 
 def read_zones_info(infilepath):

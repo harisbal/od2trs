@@ -19,7 +19,7 @@ def main(traj):
     filter_dirs = traj.par.trs.filter_dirs
     grp_purposes = traj.par.trs.d_grp_purposes
     ordered_tps = traj.par.ordered_tps
-    max_tr_dist = traj.par.trs.max_tr_dist
+    max_tr_dists = traj.par.trs.max_tr_dists
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
     excl_edges_perc = traj.par.trs.excl_edges_perc
@@ -90,7 +90,7 @@ def main(traj):
             obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
                                                          dist_bins, max_legs,
-                                                         max_tr_dist)
+                                                         max_tr_dists)
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
@@ -98,14 +98,14 @@ def main(traj):
         # We can get the maximum distance and legs after filtering
         maxdist = target_distr.index.get_level_values('Distancegroup').max().right
         if maxdist != float('inf'):
-            max_tr_dist = maxdist
+            max_tr_dists = maxdist
     else:
         target_distr = None
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
                                                 compats=compats, ordered_tps=ordered_tps,
-                                                distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
+                                                distances=distances, max_tr_dists=max_tr_dists,
                                                 dist_bins=dist_bins, distr_dims=distr_dims,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
