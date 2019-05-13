@@ -291,7 +291,9 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
 
-    if not ncores:
+    if ncores == 0:
+        ncores = cpu_count()
+    elif ncores is None:
         ncores = cpu_count() - 1
 
     print('Running on {} cpus'.format(ncores))
