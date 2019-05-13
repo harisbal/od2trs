@@ -15,7 +15,7 @@ def main(traj):
 
     run_trs_identification = traj.par.trs.run_trs_identification
     max_legs = traj.par.trs.max_legs
-    include_loops = traj.par.trs.include_loops
+    compats = traj.par.trs.compats
     filter_dirs = traj.par.trs.filter_dirs
     grp_purposes = traj.par.trs.d_grp_purposes
     ordered_tps = traj.par.ordered_tps
@@ -103,8 +103,8 @@ def main(traj):
         target_distr = None
 
     if run_trs_identification:
-        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, include_loops=include_loops,
-                                                filter_dirs=filter_dirs, ordered_tps=ordered_tps,
+        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
+                                                compats=compats, ordered_tps=ordered_tps,
                                                 distances=distances, max_tr_dist=max_tr_dist, dist_attr=dist_attr,
                                                 dist_bins=dist_bins, distr_dims=distr_dims,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
@@ -142,7 +142,8 @@ def main(traj):
             trs_info = trs_info.join(trs_mdl_times_used)
             trs_info.fillna({'Timesused': 0}, inplace=True)
             trs_info['Timesused'] = trs_info['Timesused'].astype(int)
-            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'DepartTime']
+
+            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     results = [od_out, trs_descr, trs_info, target_distr]

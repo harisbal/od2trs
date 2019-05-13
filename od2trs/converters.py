@@ -51,7 +51,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 g.add_edge(src_name, tgt_name,
                            Timeperiod=src_dt, Purpose='Connector',
                            Direction='Connector', Distance=0,
-                           Connector=True, len=0)
+                           Connector=True, Length=0)
 
         return _g
 
@@ -70,7 +70,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                                 nx.MultiDiGraph())
 
     # add an artificial length for edges (connectors will have 0)
-    nx.set_edge_attributes(g, 1, 'len')
+    nx.set_edge_attributes(g, 1, 'Length')
 
     if ordered_tps:
         # Set the node attributes
@@ -171,7 +171,7 @@ def trs_to_df(trs, target_distr, distr_dims):
     for tr in trs:
         ids.append(tr.id)
         no_legs.append(tr.no_legs)
-        timeperiods.append(tr.timeperiods)
+        timeperiods.append(tr.create_seq('timeperiod'))
         loops_cnt.append(tr.loops_cnt)
         dists.append(tr.distance)
 
@@ -209,13 +209,14 @@ def results_to_od(descr, info, idx_cols):
 
 
 def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
-                      max_legs, max_tr_dist, dist_attr, dist_bins,
-                      target_distr, distr_dims, include_loops,
+                      max_legs, max_tr_dist, compats,
+                      dist_attr, dist_bins,
+                      target_distr, distr_dims,
                       excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
                                                         max_legs, max_tr_dist, dist_attr,
-                                                        include_loops, excl_edges_perc)
+                                                        excl_edges_perc)
 
     if not zones_seqs:
         return None
@@ -223,7 +224,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
     filt_trs = list()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
+        trs = filters.filter_trs(trs, ordered_tps, compats,
                                  target_distr, distr_dims, dist_bins)
 
         if trs:
@@ -268,9 +269,8 @@ def init_multiproc_wrapper(_G):
     G = _G
 
 
-def od2trs(od, max_legs=None, include_loops=False,
-           filter_dirs=None, ordered_tps=None,
-           target_distr=None, distr_dims=None, dist_bins=None,
+def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None,
+           compats=None, target_distr=None, distr_dims=None, dist_bins=None,
            distances=None, dist_attr=None, max_tr_dist=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
@@ -281,18 +281,15 @@ def od2trs(od, max_legs=None, include_loops=False,
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
-                    ordered_tps=ordered_tps,
-                    attr_cols=attr_cols, zones_info=zones_info)
+                    ordered_tps=ordered_tps, attr_cols=attr_cols,
+                    zones_info=zones_info)
 
     descrs = list()
     infos = list()
-    loops = dict()
     tr_id = 1
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
-
-    #zones = zones[20:30]
 
     if not ncores:
         ncores = cpu_count() - 1
@@ -304,11 +301,16 @@ def od2trs(od, max_legs=None, include_loops=False,
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
             for trs in tqdm(pool.imap_unordered(partial(multiproc_wrapper,
-                                                        max_legs=max_legs, max_tr_dist=max_tr_dist,
-                                                        dist_attr=dist_attr, dist_bins=dist_bins,
-                                                        filter_dirs=filter_dirs, ordered_tps=ordered_tps,
-                                                        target_distr=target_distr, distr_dims=distr_dims,
-                                                        include_loops=include_loops, excl_edges_perc=excl_edges_perc),
+                                                        filter_dirs=filter_dirs,
+                                                        ordered_tps=ordered_tps,
+                                                        max_legs=max_legs,
+                                                        max_tr_dist=max_tr_dist,
+                                                        compats=compats,
+                                                        dist_attr=dist_attr,
+                                                        dist_bins=dist_bins,
+                                                        target_distr=target_distr,
+                                                        distr_dims=distr_dims,
+                                                        excl_edges_perc=excl_edges_perc),
                             zones), total=len(zones)):
                 if trs:
                     for tr in trs:

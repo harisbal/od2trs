@@ -21,56 +21,8 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
     return gn
 
 
-def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
-
-    tgt = src
-    succs = list(g.successors(src))
-    preds = list(g.predecessors(tgt))
-
-    dists_from_src = nx.shortest_path_length(g, source=src, weight=weight)
-    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight=weight)
-
-    # we do not know the exact predecessor in nx.all_simple_paths
-    # Nonetheless, we can exclude the minimum distance from all predecessors
-    dists_preds_to_tgt = {n: dists_to_tgt[n] for n in preds}
-
-    if dists_preds_to_tgt:
-        min_dist_to_tgt = min(dists_preds_to_tgt.values())
-    else:
-        min_dist_to_tgt = 0
-
-    cycles = list()
-    for succ in succs:
-        excl_dist = dists_from_src[succ] + min_dist_to_tgt
-        simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)),
-                                           succ, preds, cutoff_len=cutoff_length,
-                                           weight=weight, cutoff_weight=cutoff_weight - excl_dist)
-
-        for sp in simple_paths:
-            sp.insert(0, src)
-            sp.append(tgt)
-            cycles.append(sp)
-
-        # append the case where succ == pred
-        for pred in preds:
-            if succ == pred:
-                c = [src, succ, tgt]
-                if cutoff_weight:
-                    dist = 0
-                    for u, v in utils.pairwise(c):
-                        dist += g.get_edge_data(u, v)[weight]
-                    if dist <= cutoff_weight:
-                        cycles.append(c)
-
-    if cycles:
-        return cycles
-    else:
-        return None
-
-
-def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps, max_legs,
-                                  max_tr_dist, dist_attr, include_loops,
-                                  excl_edges_perc):
+def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
+                                  max_legs, max_tr_dist, dist_attr, excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -146,7 +98,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps, max_legs,
             #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
         zss = list(nx.all_simple_paths(gf, src, tgts,
-                                       weight=['len', 'Distance'],
+                                       weight=['Length', dist_attr],
                                        cutoff=[max_legs, max_tr_dist]))
 
         tgts.remove(src.replace(new_src_suffix, ''))

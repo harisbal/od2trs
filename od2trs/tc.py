@@ -9,12 +9,14 @@ class Leg:
     """
     def __init__(self, source, target, **kwargs):
 
+        allowed_attrs = ['purpose', 'direction', 'timeperiod', 'distance', 'odpairid']
         # Tours deriving from multilevel graphs include the time level in the name
         self.source = source.split('-', 1)[0]
         self.target = target.split('-', 1)[0]
 
         for key in kwargs:
-            setattr(self, key.lower(), kwargs[key])
+            if key.lower() in allowed_attrs:
+                setattr(self, key.lower(), kwargs[key])
 
 
 class TripChain:
@@ -46,12 +48,8 @@ class TripChain:
         self.distr_group_id = None
         self.dist_grp = None
         self.distance = self.calculate_distance()
-        self.timeperiods = self.create_timeperiods_seq()
-
-    def create_zones_seq(self):
-        zones = [l.source for l in self.legs]
-        zones.append(self.legs[-1].target)
-        return zones
+        #self.timeperiods = self.create_seq('timeperiod')
+        #self.purposes = self.create_seq('purpose')
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -66,7 +64,7 @@ class TripChain:
     def count_loops(self):
         # Tours deriving from multilevel graphs include the time level in the name
         zns = [z.split('-')[0] for z in self.zones]
-        loops_cnt = max(collections.Counter(zns).values())
+        loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 
     def assign_dist_grp(self, dist_bins):
@@ -96,15 +94,21 @@ class TripChain:
         else:
             return False
 
-    def create_timeperiods_seq(self):
-        tps = list()
+    def create_zones_seq(self):
+        zones = [l.source for l in self.legs]
+        zones.append(self.legs[-1].target)
+        return zones
+
+    def create_seq(self, seq_name):
+        seq = list()
         for leg in self.legs:
-            if leg.timeperiod:
-                tps.append(leg.timeperiod)
+            attr = getattr(leg, seq_name)
+            if attr:
+                seq.append(attr)
             else:
                 return None
 
-        return tuple(tps)
+        return tuple(seq)
 
     def calculate_distance(self):
         distance = 0

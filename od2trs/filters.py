@@ -2,6 +2,7 @@ import re
 import pandas as pd
 import networkx as nx
 
+import od2trs.utilities as utils
 
 def filter_chron_possible_trs(trs, ordered_tps):
     filtered_trs = list()
@@ -76,12 +77,34 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
         return filter_trs
 
 
-def filter_trs(trs, ordered_tps, max_tr_dist, target_distr, distr_dims, dist_bins):
+def filter_by_compatibilities(trs, compats):
+
+    filt_trs = list()
+    for tr in trs:
+        add_tr = True
+        for c in compats:
+            seq = tr.create_seq(c.lower())
+            for u, v in utils.pairwise(seq):
+                if not [u, v] in compats[c]:
+                    add_tr = False
+                    break
+
+        if add_tr:
+            filt_trs.append(tr)
+
+    return filt_trs
+
+
+def filter_trs(trs, ordered_tps, compats, target_distr, distr_dims, dist_bins):
 
     if ordered_tps:
         trs = filter_chron_possible_trs(trs, ordered_tps)
-    if max_tr_dist:
-        trs = filter_trs_by_max_dist(trs, max_tr_dist)
+    #if max_tr_dist:
+    #    trs = filter_trs_by_max_dist(trs, max_tr_dist)
+
+    if compats:
+        trs = filter_by_compatibilities(trs, compats)
+
     if target_distr is not None:
         trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins)
 
