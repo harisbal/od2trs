@@ -44,7 +44,7 @@ def main(traj):
     mip_strategy_probe = traj.par.optim.mip_strategy_probe
     mip_strategy_file = traj.par.optim.mip_strategy_file
 
-    dist_bins = traj.par.trs.dist_bins
+    dist_bins = traj.par.trs.dist_bins.copy()
     if not isinstance(dist_bins, list):
         dist_bins = None
     else:
