@@ -11,7 +11,8 @@ class Leg:
     def __init__(self, source, target, **kwargs):
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
-                         'distance', 'traveltime', 'odpairid']
+                         'distance', 'traveltime', 'odpairid',
+                         'SourceXY', 'TargetXY']
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique

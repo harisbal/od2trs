@@ -96,9 +96,9 @@ def main(traj):
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
         max_legs = target_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering
-        maxdist = target_distr.index.get_level_values('Distancegroup').max().right
-        if maxdist != float('inf'):
-            max_tr_dists = maxdist
+        #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
+        #if maxdist != float('inf'):
+        #    max_tr_dists = maxdist
     else:
         target_distr = None
 
@@ -145,6 +145,9 @@ def main(traj):
 
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
+
+    if 'Coords' in zones_info:
+        trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
     results = [od_out, trs_descr, trs_info, target_distr]
 
