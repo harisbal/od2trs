@@ -182,9 +182,6 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
         for k in keys:
             attr = getattr(tr, k.lower(), None)
-            if attr is None:
-                attr = getattr(tr, k.lower())
-
             d_trs_info[k].append(attr)
 
         trs_decr.update(tr.to_dict())

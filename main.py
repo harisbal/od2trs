@@ -153,8 +153,9 @@ def main(traj):
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
-    if 'Coords' in zones_info:
-        trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
+    if zones_info is not None:
+        if 'Coords' in zones_info:
+            trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
     results = [od_out, trs_descr, trs_info, target_distr]
 

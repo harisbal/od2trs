@@ -120,7 +120,7 @@ class TripChain:
     def calculate_cost(self, cost_name, round_prec=3):
         cost = 0
         for leg in self.legs:
-            leg_cost = getattr(leg, cost_name)
+            leg_cost = getattr(leg, cost_name, None)
             if leg_cost:
                 cost += leg_cost
             else:
