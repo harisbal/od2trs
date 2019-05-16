@@ -79,11 +79,11 @@ def prepare_comparison(types,
         # split in X, Y cols
         coords = pd.DataFrame(coords.tolist(), index=coords.index, columns=['X', 'Y'])
 
-        trs_comp[['SourceX', 'SourceY']] = pd.merge(trs_comp, coords,
+        trs_comp[['Xsource', 'Ysource']] = pd.merge(trs_comp, coords,
                                                     left_on=['Source'],
                                                     right_index=True)[coords.columns]
 
-        trs_comp[['TargetX', 'TargetY']] = pd.merge(trs_comp, coords,
+        trs_comp[['Xtarget', 'Ytarget']] = pd.merge(trs_comp, coords,
                                                     left_on=['Target'],
                                                     right_index=True)[coords.columns]
 
