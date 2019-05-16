@@ -12,7 +12,7 @@ class Leg:
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
                          'gencost', 'distance', 'traveltime', 'odpairid',
-                         'SourceXY', 'TargetXY']
+                         'XsourceY', 'XtargetY']
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique
