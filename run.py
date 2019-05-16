@@ -202,8 +202,10 @@ def prepare_traj_params(traj, cfg):
         max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
 
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dists': max_trs_dists_combs,
-                     'dist_bins': dist_bins, 'distr_constr_enabled': distr_constr_enabled,
-                     'distr_perc_tolerance': distr_perc_tolerance, 'excl_edges_perc': excl_edges_perc}
+                     'dist_bins': dist_bins,
+                     'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
+                     'distr_perc_tolerance': distr_perc_tolerance,
+                     'excl_edges_perc': excl_edges_perc}
 
         d_explore = {key: value for (key, value) in d_explore.items() if isinstance(value, list)}
         explore_order = list(d_explore.keys())
