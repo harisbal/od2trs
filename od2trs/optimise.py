@@ -74,17 +74,21 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def distr_rule_low(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
-                         * _model.total_chains)
+            lower_lim = int(round(((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
+                            * _model.total_chains), 0))
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+
+            #if lower_lim <= 0:
+            #    lower_lim = 0
+
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
     def distr_rule_high(_model, g_id):
         if _model.chains_distr_groups[g_id]:
-            upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
-                         * _model.total_chains)
+            upper_lim = int(round(((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
+                            * _model.total_chains), 0))
             expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
             return expr <= upper_lim
         else:
