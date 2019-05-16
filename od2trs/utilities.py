@@ -117,3 +117,15 @@ def calculate_excluded_trips(trs_info):
     trs_info = trs_info[trs_info['Inlowfreqgrp']]
     excluded_trips = trs_info[['Legs', 'Timesused']].product(axis=1).sum()
     return excluded_trips
+
+
+def add_coords(df, coords):
+    # Split the tuple (XY columns)
+    coords = pd.DataFrame(coords.to_list(), columns=['X', 'Y'], index=coords.index)
+
+    df['SourceX'] = pd.merge(df['Source'], coords, left_on='Source', right_index=True)['X']
+    df['SourceY'] = pd.merge(df['Source'], coords, left_on='Source', right_index=True)['Y']
+
+    df['TargetX'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['X']
+    df['TargetY'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['Y']
+    return df

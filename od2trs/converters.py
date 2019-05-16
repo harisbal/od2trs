@@ -21,7 +21,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     def _add_chron_connectors(_g, _ordered_tps):
 
         nx.set_edge_attributes(_g, False, 'Connector')
-        #nx.set_node_attributes(_g, False, 'Connector')
+        # nx.set_node_attributes(_g, False, 'Connector')
 
         # dict with all the timeperiods a trip begins from each node
         zone_dts = dict()
@@ -112,10 +112,7 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
         return _leg_attrs
 
     def prepare_leg_attrs(G, source, target, filter_directions):
-        try:
-            _leg_attrs = G.get_edge_data(source, target).values()
-        except:
-            a=1
+        _leg_attrs = G.get_edge_data(source, target).values()
         _leg_attrs = filter_leg_attrs_by_purpose(_leg_attrs, filter_directions)
 
         return _leg_attrs
