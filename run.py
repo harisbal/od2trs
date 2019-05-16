@@ -193,7 +193,7 @@ def prepare_traj_params(traj, cfg):
         explore_d = {'data_source': ['tests'],
                      'aggr_level': ['aggrlvl'],
                      'perc_sample_size': [1.0],
-                     'distr_dims': [['Legs', 'Distancegroup'], ['Legs', 'Distancegroup', 'Timeperiods']],
+                     'distr_dims': [['Legs', 'Gencostgrp'], ['Legs', 'Distancegroup', 'Timeperiods']],
                      'max_legs': [5],
                      'trips_thresh': [50, 10, 5, 4, 3],
                      'distr_constr_enabled': [False]}

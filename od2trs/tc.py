@@ -11,7 +11,7 @@ class Leg:
     def __init__(self, source, target, **kwargs):
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
-                         'cost', 'distance', 'traveltime', 'odpairid',
+                         'gencost', 'distance', 'traveltime', 'odpairid',
                          'SourceXY', 'TargetXY']
 
         # Tours deriving from multilevel graphs include the time level in the name
@@ -35,7 +35,7 @@ class TripChain:
         """
 
         seqs = ['purpose', 'direction', 'timeperiod']
-        costs = ['cost', 'distance', 'traveltime']
+        costs = ['gencost', 'distance', 'traveltime']
 
         if len(legs) >= 2:
             self.legs = legs
@@ -76,12 +76,12 @@ class TripChain:
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 
-    def assign_cost_grp(self, bins):
-        cost = self.cost
-        self.costgroup = None
+    def assign_gencost_grp(self, bins):
+        gencost = self.gencost
+        self.gencostgrp = None
         for b in bins:
-            if cost in b:
-                self.costgroup = b
+            if gencost in b:
+                self.gencostgrp = b
                 return b
 
     def is_chron_ordered(self, ordered_tps):

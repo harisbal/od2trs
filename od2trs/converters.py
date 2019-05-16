@@ -164,10 +164,10 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Cost'] + list(max_tr_dists.keys())
+    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost'] + list(max_tr_dists.keys())
 
-    if 'Distancegroup' in distr_dims:
-        keys.append('Distancegroup')
+    if 'Gencostgrp' in distr_dims:
+        keys.append('Gencostgrp')
 
     d_trs_info = dict()
     for k in keys:
@@ -183,11 +183,7 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
         for k in keys:
             attr = getattr(tr, k.lower(), None)
             if attr is None:
-                try:
-                    tr.calculate_cost(k)
-                    attr = getattr(tr, k.lower())
-                except AttributeError:
-                    pass
+                attr = getattr(tr, k.lower())
 
             d_trs_info[k].append(attr)
 
@@ -196,7 +192,8 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
     idxcol = 'Tourid'
 
     trs_info_df = pd.DataFrame(d_trs_info)
-    trs_info_df.set_index(idxcol, inplace=True)
+    trs_info_df.set_index('Id', inplace=True)
+    trs_info_df.index.name = idxcol
 
     if target_distr is not None:
         trs_info_df = distrs.assign_distr_group(trs_info_df, target_distr, distr_dims)

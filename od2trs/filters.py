@@ -42,11 +42,11 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
         nolegs = tr.nolegs
         d_dims['Nolegs'] = nolegs
 
-        if 'Distancegroup' in distr_dims:
+        if 'Gencostgrp' in distr_dims:
             if cost_bins is None:
                 raise ValueError('Cost_bins cannot be empty when distance group is required')
-            tr.assign_cost_grp(cost_bins)
-            d_dims['Distancegroup'] = tr.costgroup
+            tr.assign_gencost_grp(cost_bins)
+            d_dims['Gencostgrp'] = tr.gencostgrp
 
         if 'Timeperiods' in distr_dims:
             d_dims['Timeperiods'] = tr.timeperiods

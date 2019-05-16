@@ -131,7 +131,7 @@ def add_coords(df, coords):
     return df
 
 
-def append_cost(df, weights, func=None, cost_name='Cost'):
+def append_gencost(df, weights, func=None, cost_name='Gencost'):
 
     """
     Expecting a dictionary with the weights of each distance type

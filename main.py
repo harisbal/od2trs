@@ -71,13 +71,13 @@ def main(traj):
     except FileNotFoundError:
         zones_info = None
 
-    if 'Distancegroup' in distr_dims:
+    if 'Gencostgrp' in distr_dims:
         try:
             dists = myio.read_distances(filepaths['in']['distances'],
                                         dist_types=max_tr_dists.keys())
 
             cost_weights = {k: v['weight'] for k, v in dists_info.items()}
-            dists = utils.append_cost(dists, weights=cost_weights)
+            dists = utils.append_gencost(dists, weights=cost_weights)
 
         except FileNotFoundError:
             print('File containing distances was not found')
@@ -88,7 +88,7 @@ def main(traj):
             # TODO IMPROVE (not too generic)
             # TODO filter according to max_legs and max dists
             target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
-                                                  interval_cols=['Distancegroup'],
+                                                  interval_cols=['Gencostgrp'],
                                                   seq_cols=['Timeperiods'])
 
         except FileNotFoundError:
