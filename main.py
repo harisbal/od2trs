@@ -80,6 +80,7 @@ def main(traj):
     if distr_constr_enabled:
         try:
             # TODO IMPROVE (not too generic)
+            # TODO filter according to max_legs and max dists
             target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
                                                   interval_cols=['Distancegroup'],
                                                   seq_cols=['Timeperiods'])
@@ -94,7 +95,7 @@ def main(traj):
 
         # Filter the low freq distr groups
         target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
-        max_legs = target_distr.index.get_level_values('Legs').max()
+        # max_legs = target_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering
         #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
         #if maxdist != float('inf'):

@@ -12,9 +12,9 @@ def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdi
         obs_info = obs_info[obs_info['Legs'] <= max_legs]
 
     if maxdists:
-        for md in maxdists:
-            if md in obs_info:
-                obs_info = obs_info[obs_info[md] <= maxdists[md]]
+        for mxd in maxdists:
+            if mxd in obs_info:
+                obs_info = obs_info[obs_info[mxd] <= maxdists[mxd]]
 
     distgrps = pd.cut(obs_info['Distance'], dist_bins)
     obs_info.loc[:, 'Distancegroup'] = distgrps
