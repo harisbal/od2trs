@@ -129,3 +129,27 @@ def add_coords(df, coords):
     df['TargetX'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['X']
     df['TargetY'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['Y']
     return df
+
+
+def append_cost(df, weights, func=None, cost_name='Cost'):
+
+    """
+    Expecting a dictionary with the weights of each distance type
+    :param df:
+    :param weights:
+    :param func:
+    :param cost_name:
+
+    :return:
+    """
+
+    dist_types = list(weights.keys())
+
+    if func is None:
+        cost = 0
+        for dist_type in dist_types:
+            cost += df[dist_type] * weights[dist_type]
+
+    df[cost_name] = cost
+
+    return df

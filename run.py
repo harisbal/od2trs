@@ -74,7 +74,7 @@ def prepare_traj_params(traj, cfg):
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
     od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
-    max_tr_dists = json.loads(cfg['TOURS']['max_tr_dists'])
+    dists_info = json.loads(cfg['TOURS']['distances_info'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
@@ -83,14 +83,17 @@ def prepare_traj_params(traj, cfg):
     th_direction = json.loads(cfg['TOURS']['tohome_direction'])
     nh_direction = json.loads(cfg['TOURS']['nonhome_direction'])
 
-    dist_bins = json.loads(cfg['TOURS']['dist_bins'])
+    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
+
+    max_tr_dists = {k: v['thresh'] for k, v in dists_info.items()}
+
     # TODO fix
-    if not dist_bins:
-        dist_bins_range = json.loads(cfg['TOURS']['dist_bins_range'])
-        if dist_bins_range:
-            dist_bins = list()
-            for r in dist_bins_range:
-                dist_bins.append(list(range(0, max(max_tr_dists['Distance']), r)))
+    if not cost_bins:
+        cost_bins_range = json.loads(cfg['TOURS']['cost_bins_range'])
+        if cost_bins_range:
+            cost_bins = list()
+            for r in cost_bins_range:
+                cost_bins.append(list(range(0, max(max_tr_dists['Distance']), r)))
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
@@ -132,14 +135,16 @@ def prepare_traj_params(traj, cfg):
                                             comment='Duration of timeperiods')
 
     traj.par.trs.od_perc_thresh = Parameter('od_perc_thresh', od_perc_thresh[0],
-                                               comment='Distribution Percentage Threshold')
+                                            comment='Distribution Percentage Threshold')
+
+    traj.par.trs.dists_info = PickleParameter('dists_info', dists_info, comment='Information regarding distances')
 
     traj.par.trs.max_tr_dists = PickleParameter('max_tr_dists', max_tr_dists, comment='Maximum allowed distance for trs')
 
-    if dist_bins is None:
-        traj.par.trs.dist_bins = Parameter('dist_bins', None, comment='Distance bins')
+    if cost_bins is None:
+        traj.par.trs.cost_bins = Parameter('cost_bins', None, comment='Distance bins')
     else:
-        traj.par.trs.dist_bins = Parameter('dist_bins', dist_bins[0], comment='Distance bins')
+        traj.par.trs.cost_bins = Parameter('cost_bins', cost_bins[0], comment='Distance bins')
 
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
@@ -202,7 +207,7 @@ def prepare_traj_params(traj, cfg):
         max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
 
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dists': max_trs_dists_combs,
-                     'dist_bins': dist_bins,
+                     'cost_bins': cost_bins,
                      'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
                      'distr_perc_tolerance': distr_perc_tolerance,
                      'excl_edges_perc': excl_edges_perc}

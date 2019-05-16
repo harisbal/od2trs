@@ -11,7 +11,7 @@ class Leg:
     def __init__(self, source, target, **kwargs):
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
-                         'distance', 'traveltime', 'odpairid',
+                         'cost', 'distance', 'traveltime', 'odpairid',
                          'SourceXY', 'TargetXY']
 
         # Tours deriving from multilevel graphs include the time level in the name
@@ -29,39 +29,36 @@ class TripChain:
     A TripChain is a sequence of legs
     """
     def __init__(self, legs):
+
         """
         :param legs: list of Leg
         """
+
+        seqs = ['purpose', 'direction', 'timeperiod']
+        costs = ['cost', 'distance', 'traveltime']
+
         if len(legs) >= 2:
             self.legs = legs
-
-            zones = list()
-            for leg in legs:
-                zones.append(leg.source)
-            self.zones = zones
-
+            self.zones = self.create_zones_seq()
         else:
             raise ValueError('Less than 2 legs found')
 
         self.id = None
-        self.no_legs = len(legs)
+        self.nolegs = len(legs)
         self.tour = self.is_tour()
-        self.loops_cnt = self.count_loops()
+        self.loopscnt = self.count_loops()
         self.chron_ordered = None
 
-        self.zones = self.create_zones_seq()
-        self.purposes = None
-        self.timeperiods = self.create_seq('timeperiod')
-        self.departtimes = None
+        for seq in seqs:
+            setattr(self, seq+'s', self.create_seq(seq))
 
-        self.distance = self.calculate_length('distance')
-        self.duration = None
-        self.traveltime = None
+        for cost in costs:
+            setattr(self, cost, self.calculate_cost(cost))
 
-        self.distr_group_id = None
         self.dist_grp = None
 
-        #self.purposes = self.create_seq('purpose')
+        self.duration = None
+        self.distr_group_id = None
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -79,15 +76,13 @@ class TripChain:
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 
-    def assign_dist_grp(self, dist_bins):
-        def _return_dist_grp(_dist_bins):
-            dist = self.distance
-            for _db in dist_bins:
-                if dist in _db:
-                    return _db
-
-        dg = _return_dist_grp(dist_bins)
-        self.dist_grp = dg
+    def assign_cost_grp(self, bins):
+        cost = self.cost
+        self.costgroup = None
+        for b in bins:
+            if cost in b:
+                self.costgroup = b
+                return b
 
     def is_chron_ordered(self, ordered_tps):
         if util.sequence_isunique(ordered_tps):
@@ -122,16 +117,16 @@ class TripChain:
 
         return tuple(seq)
 
-    def calculate_length(self, length_name='distance'):
-        length = 0
+    def calculate_cost(self, cost_name, round_prec=3):
+        cost = 0
         for leg in self.legs:
-            leg_length = getattr(leg, length_name)
-            if leg_length:
-                length += leg_length
+            leg_cost = getattr(leg, cost_name)
+            if leg_cost:
+                cost += leg_cost
             else:
-                print('leg {} not defined, returning None'.format(length_name))
+                print('leg {} not defined, returning None'.format(cost_name))
                 return None
-        return round(length, 3)
+        return round(cost, round_prec)
 
     def assign_departtimes(self, tps_durs):
         # based on critical path method

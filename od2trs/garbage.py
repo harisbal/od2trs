@@ -27,13 +27,13 @@ def dict_split(d, chunk_size=1):
 
 
 def create_trs_info(trs_descr, distr_dims,
-                    dist_bins=None, distances=None):
+                    cost_bins=None, distances=None):
     """
     Function to return info for each chain
 
     :param trs_descr: df
     :param distr_dims: list
-    :param dist_bins: list
+    :param cost_bins: list
     :param distances: pd.Series
     :return: Dataframe with the tripchains info (distance, Legs, etc)
     """
@@ -50,13 +50,13 @@ def create_trs_info(trs_descr, distr_dims,
         aggr_dimensions.append(dts)
 
     # Add the grouping information
-    if dist_bins:
+    if cost_bins:
         # Join legs with distances
         trs_descr = pd.merge(trs_descr, distances.to_frame(), left_on=['Source', 'Target'], right_index=True)
         distances = trs_descr['Distance'].groupby(level='Tourid').sum()
         aggr_dimensions.append(distances)
 
-        distance_grps = pd.cut(distances, bins=settings.parameters['dist_bins'])
+        distance_grps = pd.cut(distances, bins=settings.parameters['cost_bins'])
         distance_grps.name = 'Distancegroup'
         aggr_dimensions.append(distance_grps)
 
@@ -73,10 +73,10 @@ def get_observed_trs_info(infilepath, max_legs, index_col='Tourid'):
     mask = observed_trs_info['Legs'] <= max_legs
     observed_trs_info = observed_trs_info.loc[mask]
 
-    # To kms (dist_bins in kms)
+    # To kms (cost_bins in kms)
     # observed_trs_info.Distance /= 1000
 
-    observed_trs_info['Distancegroup'] = pd.cut(observed_trs_info['Distance'], settings.parameters['dist_bins'])
+    observed_trs_info['Distancegroup'] = pd.cut(observed_trs_info['Distance'], settings.parameters['cost_bins'])
 
     # Convert the Timeperiod sequence to tuples
     observed_trs_info['Timeperiods'] = observed_trs_info['Timeperiods'].str.split(',')

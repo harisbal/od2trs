@@ -161,41 +161,41 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
     return trs
 
 
-def trs_to_df(trs, tps_durs, target_distr, distr_dims):
+def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
-    ids = list()
-    no_legs = list()
-    timeperiods = list()
-    loops_cnt = list()
-    dists = list()
-    purposes = list()
-    traveltimes = list()
-    departtimes = list()
-    dist_grps = list()
+    # the first keys are always set
+    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Cost'] + list(max_tr_dists.keys())
+
+    if 'Distancegroup' in distr_dims:
+        keys.append('Distancegroup')
+
+    d_trs_info = dict()
+    for k in keys:
+        d_trs_info[k] = list()
 
     trs_decr = dict()
 
     for tr in trs:
-        ids.append(tr.id)
-        no_legs.append(tr.no_legs)
-        purposes.append(tr.create_seq('purpose'))
-        timeperiods.append(tr.create_seq('timeperiod'))
-        loops_cnt.append(tr.loops_cnt)
-        dists.append(tr.distance)
-        traveltimes.append(tr.calculate_length('traveltime'))
-        departtimes.append(tr.assign_departtimes(tps_durs))
-        if 'Distancegroup' in distr_dims:
-            dist_grps.append(tr.dist_grp)
+        if 'Traveltime' in max_tr_dists:
+            if tps_durs:
+                tr.assign_departtimes(tps_durs)
+
+        for k in keys:
+            attr = getattr(tr, k.lower(), None)
+            if attr is None:
+                try:
+                    tr.calculate_cost(k)
+                    attr = getattr(tr, k.lower())
+                except AttributeError:
+                    pass
+
+            d_trs_info[k].append(attr)
 
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-    keys = [idxcol, 'Legs', 'Loopscnt', 'Distance', 'Traveltime', 'Timeperiods', 'Departtimes', 'Distancegroup']
-    vals = [ids, no_legs, loops_cnt, dists, traveltimes, timeperiods, departtimes, dist_grps]
 
-    trs_info = dict(zip(keys, vals))
-
-    trs_info_df = pd.DataFrame(trs_info)
+    trs_info_df = pd.DataFrame(d_trs_info)
     trs_info_df.set_index(idxcol, inplace=True)
 
     if target_distr is not None:
@@ -203,7 +203,7 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims):
 
     trs_descr_df = pd.DataFrame.from_dict(trs_decr, orient='index')
     trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
-    trs_descr_df.index.names = ['Tourid', 'Legseqidx']
+    trs_descr_df.index.names = [idxcol, 'Legseqidx']
     trs_descr_df.dropna(axis=1, inplace=True)
 
     return trs_descr_df, trs_info_df
@@ -218,7 +218,7 @@ def results_to_od(descr, info, idx_cols):
 
 
 def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
-                      max_legs, max_tr_dists, compats, dist_bins,
+                      max_legs, max_tr_dists, compats, cost_bins,
                       target_distr, distr_dims, excl_edges_perc):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
@@ -231,7 +231,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
         trs = filters.filter_trs(trs, compats,
-                                 target_distr, distr_dims, dist_bins)
+                                 target_distr, distr_dims, cost_bins)
 
         if trs:
             filt_trs.extend(trs)
@@ -244,7 +244,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
 
 
 def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_tps,
-                                max_legs, max_tr_dist, dist_attr, dist_bins,
+                                max_legs, max_tr_dist, dist_attr, cost_bins,
                                 target_distr, distr_dims, include_loops,
                                 excl_edges_perc):
 
@@ -259,7 +259,7 @@ def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_tps,
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
         trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
-                                 target_distr, distr_dims, dist_bins)
+                                 target_distr, distr_dims, cost_bins)
 
         if trs:
             filt_trs.extend(trs)
@@ -276,7 +276,7 @@ def init_multiproc_wrapper(_G):
 
 
 def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
-           compats=None, target_distr=None, distr_dims=None, dist_bins=None,
+           compats=None, target_distr=None, distr_dims=None, cost_bins=None,
            distances=None, max_tr_dists=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
@@ -316,7 +316,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
                                                         max_legs=max_legs,
                                                         max_tr_dists=max_tr_dists,
                                                         compats=compats,
-                                                        dist_bins=dist_bins,
+                                                        cost_bins=cost_bins,
                                                         target_distr=target_distr,
                                                         distr_dims=distr_dims,
                                                         excl_edges_perc=excl_edges_perc),
@@ -326,7 +326,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
                         tr.id = tr_id
                         tr_id += 1
 
-                    trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs, target_distr, distr_dims)
+                    trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists)
                     descrs.append(trs_descr_df)
                     infos.append(trs_info_df)
 
@@ -347,7 +347,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
         zones = zones[idx:idx+2]
         for zone in tqdm(zones, total=len(zones)):
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dists,
-                                              dist_attr=dist_attr, dist_bins=dist_bins,
+                                              dist_attr=dist_attr, cost_bins=cost_bins,
                                               filter_dirs=filter_dirs, ordered_tps=ordered_tps,
                                               target_distr=target_distr, distr_dims=distr_dims,
                                               include_loops=include_loops, excl_edges_perc=excl_edges_perc)

@@ -18,7 +18,7 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
     filter_col = 'Odpercentage'
     # Get the contribution of tours to the od (we know the number of legs thus the trips in od)
-    od_perc = distr.index.get_level_values('Legs') * distr['Percentage']
+    od_perc = distr.index.get_level_values('Nolegs') * distr['Percentage']
     od_perc /= od_perc.sum()
     distr[filter_col] = od_perc
     distr = distr.sort_values(filter_col, ascending=False)
@@ -32,21 +32,21 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
     return distr
 
 
-def filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins=None):
+def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
 
     filter_trs = list()
 
     for tr in trs:
         d_dims = dict()
 
-        no_legs = tr.no_legs
-        d_dims['Legs'] = no_legs
+        nolegs = tr.nolegs
+        d_dims['Nolegs'] = nolegs
 
         if 'Distancegroup' in distr_dims:
-            if dist_bins is None:
-                raise ValueError('dist_bins cannot be empty when distance group is required')
-            tr.assign_dist_grp(dist_bins)
-            d_dims['Distancegroup'] = tr.dist_grp
+            if cost_bins is None:
+                raise ValueError('Cost_bins cannot be empty when distance group is required')
+            tr.assign_cost_grp(cost_bins)
+            d_dims['Distancegroup'] = tr.costgroup
 
         if 'Timeperiods' in distr_dims:
             d_dims['Timeperiods'] = tr.timeperiods
@@ -89,13 +89,13 @@ def filter_by_compatibilities(trs, compats):
     return filt_trs
 
 
-def filter_trs(trs, compats, target_distr, distr_dims, dist_bins):
+def filter_trs(trs, compats, target_distr, distr_dims, cost_bins):
 
     if compats:
         trs = filter_by_compatibilities(trs, compats)
 
     if target_distr is not None:
-        trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, dist_bins)
+        trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins)
 
     return trs
 

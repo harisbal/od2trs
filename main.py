@@ -21,6 +21,7 @@ def main(traj):
     ordered_tps = traj.par.ordered_tps
     tps_durs = traj.par.tps_durs
     max_tr_dists = traj.par.trs.max_tr_dists
+    dists_info = traj.par.trs.dists_info
     trips_thresh = traj.par.trs.trips_thresh
     distr_dims = traj.par.trs.distr_dims
     excl_edges_perc = traj.par.trs.excl_edges_perc
@@ -44,13 +45,13 @@ def main(traj):
     mip_strategy_probe = traj.par.optim.mip_strategy_probe
     mip_strategy_file = traj.par.optim.mip_strategy_file
 
-    dist_bins = traj.par.trs.dist_bins.copy()
-    if not isinstance(dist_bins, list):
-        dist_bins = None
+    cost_bins = traj.par.trs.cost_bins.copy()
+    if not isinstance(cost_bins, list):
+        cost_bins = None
     else:
-        dist_bins.append(float('inf'))
+        cost_bins.append(float('inf'))
         # Convert to pd.Interval
-        dist_bins = utils.list_to_interval(dist_bins)
+        cost_bins = utils.list_to_interval(cost_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
@@ -72,10 +73,15 @@ def main(traj):
 
     if 'Distancegroup' in distr_dims:
         try:
-            distances = myio.read_distances(filepaths['in']['distances'])
+            dists = myio.read_distances(filepaths['in']['distances'],
+                                        dist_types=max_tr_dists.keys())
+
+            cost_weights = {k: v['weight'] for k, v in dists_info.items()}
+            dists = utils.append_cost(dists, weights=cost_weights)
+
         except FileNotFoundError:
             print('File containing distances was not found')
-            distances = None
+            dists = None
 
     if distr_constr_enabled:
         try:
@@ -90,7 +96,7 @@ def main(traj):
             obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
             # TODO allow for multiple distances (not sure if that's possible)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
-                                                         dist_bins, max_legs,
+                                                         cost_bins, max_legs,
                                                          max_tr_dists)
 
         # Filter the low freq distr groups
@@ -106,8 +112,8 @@ def main(traj):
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
                                                 compats=compats, ordered_tps=ordered_tps, tps_durs=tps_durs,
-                                                distances=distances, max_tr_dists=max_tr_dists,
-                                                dist_bins=dist_bins, distr_dims=distr_dims,
+                                                distances=dists, max_tr_dists=max_tr_dists,
+                                                cost_bins=cost_bins, distr_dims=distr_dims,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 

@@ -9,7 +9,7 @@ def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdi
     """
 
     if max_legs:
-        obs_info = obs_info[obs_info['Legs'] <= max_legs]
+        obs_info = obs_info[obs_info['Nolegs'] <= max_legs]
 
     if maxdists:
         for mxd in maxdists:
@@ -17,6 +17,7 @@ def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdi
                 obs_info = obs_info[obs_info[mxd] <= maxdists[mxd]]
 
     distgrps = pd.cut(obs_info['Distance'], dist_bins)
+    # TODO 'Distancegroup' must be renamed Gencostgrp or Costgrp
     obs_info.loc[:, 'Distancegroup'] = distgrps
     sizes = obs_info.groupby(distr_dims)['Timesused'].sum()
     sizes.name = 'Size'
