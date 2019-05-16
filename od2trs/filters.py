@@ -4,6 +4,7 @@ import networkx as nx
 
 import od2trs.utilities as utils
 
+
 def filter_chron_possible_trs(trs, ordered_tps):
     filtered_trs = list()
     for tr in trs:
@@ -15,11 +16,18 @@ def filter_chron_possible_trs(trs, ordered_tps):
 
 def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
-    # TODO I can improve it so it picks the right combination to maintain the specified threshold
-    distr = distr.sort_values(percent_col)
-    distr = distr[distr[percent_col].cumsum() >= 1 - thresh]
+    filter_col = 'Odpercentage'
+    # Get the contribution of tours to the od (we know the number of legs thus the trips in od)
+    od_perc = distr.index.get_level_values('Legs') * distr['Percentage']
+    od_perc /= od_perc.sum()
+    distr[filter_col] = od_perc
+    distr = distr.sort_values(filter_col, ascending=False)
+    distr = distr[distr[filter_col].cumsum() <= thresh]
     # Re-calculate the percentage
     distr.loc(axis=1)[percent_col] /= distr[percent_col].sum()
+
+    # Drop the filter column
+    distr.drop(columns=filter_col, inplace=True)
 
     return distr
 
@@ -81,10 +89,7 @@ def filter_by_compatibilities(trs, compats):
     return filt_trs
 
 
-def filter_trs(trs, ordered_tps, compats, target_distr, distr_dims, dist_bins):
-
-    if ordered_tps:
-        trs = filter_chron_possible_trs(trs, ordered_tps)
+def filter_trs(trs, compats, target_distr, distr_dims, dist_bins):
 
     if compats:
         trs = filter_by_compatibilities(trs, compats)

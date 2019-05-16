@@ -25,7 +25,7 @@ def main(traj):
     distr_dims = traj.par.trs.distr_dims
     excl_edges_perc = traj.par.trs.excl_edges_perc
 
-    distr_perc_thresh = traj.par.trs.distr_perc_thresh
+    od_perc_thresh = traj.par.trs.od_perc_thresh
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
     distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
 
@@ -55,7 +55,7 @@ def main(traj):
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
                                                                                 max_legs,
                                                                                 trips_thresh,
-                                                                                distr_perc_thresh))
+                                                                                od_perc_thresh))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
@@ -94,7 +94,7 @@ def main(traj):
                                                          max_tr_dists)
 
         # Filter the low freq distr groups
-        target_distr = filters.filter_lowpercent_distr_groups(target_distr, distr_perc_thresh)
+        target_distr = filters.filter_lowpercent_distr_groups(target_distr, od_perc_thresh)
         # max_legs = target_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering
         #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
