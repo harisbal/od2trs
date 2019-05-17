@@ -124,7 +124,7 @@ class TripChain:
             if leg_cost:
                 cost += leg_cost
             else:
-                print('leg {} not defined, returning None'.format(cost_name))
+                # print('leg {} not defined, returning None'.format(cost_name))
                 return None
         return round(cost, round_prec)
 

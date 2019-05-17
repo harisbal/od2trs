@@ -32,10 +32,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
         for z, zdt in zone_dts.items():
             zdt = list(zdt)
             zdt.sort(key=lambda tp: _ordered_tps.index(tp))
-            earliest_dt_idx = _ordered_tps.index(zdt[0])
-            latest_dt_idx = _ordered_tps.index(zdt[-1])
 
-            for src_dt, tgt_dt in utils.pairwise(_ordered_tps[earliest_dt_idx: latest_dt_idx + 1]):
+            for src_dt, tgt_dt in utils.pairwise(zdt):
                 # create the connections for all the subsequent timeperiods
                 src_name = '{}-{}'.format(z, src_dt)
                 tgt_name = '{}-{}'.format(z, tgt_dt)
