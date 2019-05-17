@@ -53,10 +53,8 @@ def main(traj):
         # Convert to pd.Interval
         cost_bins = utils.list_to_interval(cost_bins)
 
-    print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}'.format(distr_dims,
-                                                                                max_legs,
-                                                                                trips_thresh,
-                                                                                od_perc_thresh))
+    print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
+          .format(distr_dims, max_legs, trips_thresh, od_perc_thresh,excl_edges_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
