@@ -70,7 +70,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                                                             hb_purps=hb_purps,
                                                             trips_thresh=1,
                                                             weight=None)
-        print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+        # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
         zss = list(nx.all_simple_paths(gff, src, tgts,
                                        weight=['Length'] + list(max_tr_dists.keys()),
