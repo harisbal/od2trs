@@ -37,7 +37,7 @@ def prepare_model(trs, trs_info, od, target_distr,
     model.trips = Param(model.OdPairIds, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.chains_descr = Param(model.OdPairIds, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=1)
+    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=0)
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.ChainIds)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
