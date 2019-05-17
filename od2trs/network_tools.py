@@ -36,6 +36,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
 
     src_suffix = '-src'
 
+    hb_purps = [filter_dirs.from_home] + [filter_dirs.to_home]
+
     #if src != 'E01014411':
     #    return list()
 
@@ -62,14 +64,15 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
         # Use edge betweeneess centrality to simplify the graph
         # TODO the number of nexcl_edges should be excluded from the optimisation
         # TODO the decision about the number of edges to be excluded should be automated
-        if excl_edges_perc > 0:
-            nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-            edges_bef = gf.number_of_edges()
-            gf = filters.filter_by_edge_betweenness_centrality(gf, src, tgts, nexcl_edges,
-                                                               weight=None, trips_thresh=1)
-            #print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+        nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
+        edges_bef = gf.number_of_edges()
+        gff = filters.filter_by_edge_betweenness_centrality(gf.copy(), src, tgts, nexcl_edges,
+                                                            hb_purps=hb_purps,
+                                                            trips_thresh=1,
+                                                            weight=None)
+        print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        zss = list(nx.all_simple_paths(gf, src, tgts,
+        zss = list(nx.all_simple_paths(gff, src, tgts,
                                        weight=['Length'] + list(max_tr_dists.keys()),
                                        cutoff=[max_legs] + list(max_tr_dists.values())))
 
