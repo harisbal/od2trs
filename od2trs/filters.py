@@ -163,7 +163,7 @@ def filter_connectors(g, keep=False):
     return g
 
 
-def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, weight=None, trips_thresh=1):
+def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, trips_thresh=1, weight=None):
 
     """
 
@@ -183,14 +183,13 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, weight=None, trip
         # Exclude connectors
         filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
         # Exclude hb trips
-        filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr == 'HB']
+        filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr in hb_purps]
         # Focus on single trips
         filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
         eb.drop(set(filter_edges), inplace=True)
 
-        n = eb.nlargest(nexcl)
-        # exclude links with 0 eb
-        to_rmv = n[n != 0].index.tolist()
+        n = eb.nsmallest(nexcl)
+        to_rmv = n.index.tolist()
 
         g.remove_edges_from(to_rmv)
 
