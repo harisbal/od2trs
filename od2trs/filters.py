@@ -196,16 +196,38 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, tr
     return g
 
 
-def filter_by_dt_max_legs(zones_seqs, max_legs, ordered_tps):
-    filt_zones_seqs = list()
-    for zs in zones_seqs:
-        src_dt = zs[0].split('-', 1)[1]
-        tgt_dt = zs[-1].split('-', 1)[1]
-        extra_legs = ordered_tps.index(tgt_dt) - ordered_tps.index(src_dt)
-        if len(zs) - 1 <= max_legs + extra_legs:
-            filt_zones_seqs.append(zs)
+def filter_nodes_by_dist(g, src, tgt, weight, cutoff):
 
-    return filt_zones_seqs
+    if not isinstance(tgt, list):
+        tgts = [tgt]
+    else:
+        tgts = tgt
+
+    weights_cutoffs = list(zip(weight, cutoff))
+
+    to_rmv = set()
+
+    for w, c in weights_cutoffs:
+        from_src = nx.shortest_path_length(g, source=src, target=None, weight=w)
+
+        to_tgts = dict()
+        for tgt in tgts:
+            to_tgts[tgt] = nx.shortest_path_length(g, source=None, target=tgt, weight=w)
+
+        for n in (g.nodes() - ([src] + tgts)):
+            rmv = True
+            for tgt in tgts:
+                dist = from_src.get(n, float('inf')) + to_tgts[tgt].get(n, float('inf'))
+                if dist <= c:
+                    rmv = False
+                    break
+
+            if rmv:
+                to_rmv.add(n)
+
+    g.remove_nodes_from(to_rmv)
+
+    return g
 
 
 def extract_tour_times_used(optim_results):
