@@ -38,11 +38,13 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 src_name = '{}-{}'.format(z, src_dt)
                 tgt_name = '{}-{}'.format(z, tgt_dt)
 
+                """
                 # the tgt vertex may be missing
                 if not tgt_name in _g.nodes():
                     _g.add_node(tgt_name)
                     _g.nodes[tgt_name]['Zone'] = z
                     _g.nodes[tgt_name]['Timeperiod'] = tgt_dt
+                """
 
                 #_g.nodes[src_name]['Connector'] = True
                 #_g.nodes[tgt_name]['Connector'] = True
