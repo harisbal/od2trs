@@ -58,7 +58,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
     gf = filters.filter_edges_by_direction(gf.copy(), srcs, tgts, filter_dirs)
     gf = nx.DiGraph(gf)
 
-    nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
+    # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
     for src in srcs:
         # Use edge betweeneess centrality to simplify the graph
