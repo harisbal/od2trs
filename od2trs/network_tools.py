@@ -75,7 +75,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
         weights = ['Length'] + list(max_tr_dists.keys())
         cutoffs = [max_legs] + list(max_tr_dists.values())
 
-        gff = filters.filter_nodes_by_dist(gf, src, tgts, weights, cutoffs)
+        gff = filters.filter_nodes_by_dist(gff, src, tgts, weights, cutoffs)
 
         zss = list(nx.all_simple_paths(gff, src, tgts,
                                        weight=weights,
