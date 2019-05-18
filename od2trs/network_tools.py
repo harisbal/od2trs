@@ -66,15 +66,20 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
         # TODO the decision about the number of edges to be excluded should be automated
         nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
         edges_bef = gf.number_of_edges()
-        gff = filters.filter_by_edge_betweenness_centrality(gf.copy(), src, tgts, nexcl_edges,
+        gff = filters.filter_by_edge_betweenness_centrality(gf.copy(), srcs, tgts, nexcl_edges,
                                                             hb_purps=hb_purps,
                                                             trips_thresh=1,
-                                                            weight=None)
+                                                            weight='Length')
         # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
+        weights = ['Length'] + list(max_tr_dists.keys())
+        cutoffs = [max_legs] + list(max_tr_dists.values())
+
+        gff = filters.filter_nodes_by_dist(gff, src, tgts, weights, cutoffs)
+
         zss = list(nx.all_simple_paths(gff, src, tgts,
-                                       weight=['Length'] + list(max_tr_dists.keys()),
-                                       cutoff=[max_legs] + list(max_tr_dists.values())))
+                                       weight=weights,
+                                       cutoff=cutoffs))
 
         tgts.remove(src.replace(src_suffix, ''))
 
