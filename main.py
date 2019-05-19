@@ -30,6 +30,8 @@ def main(traj):
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
     distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
 
+    cost_bins = traj.par.trs.cost_bins
+
     run_optim = traj.par.optim.run_optim
     submit_to_neos = traj.par.optim.submit_to_neos
     #emphasis_mip = traj.par.optim.emphasis_mip
@@ -45,13 +47,14 @@ def main(traj):
     mip_strategy_probe = traj.par.optim.mip_strategy_probe
     mip_strategy_file = traj.par.optim.mip_strategy_file
 
-    cost_bins = traj.par.trs.cost_bins.copy()
-    if not isinstance(cost_bins, list):
-        cost_bins = None
-    else:
-        cost_bins.append(float('inf'))
-        # Convert to pd.Interval
-        cost_bins = utils.list_to_interval(cost_bins)
+    if cost_bins:
+        cost_bins = traj.par.trs.cost_bins.copy()
+        if not isinstance(cost_bins, list):
+            cost_bins = None
+        else:
+            cost_bins.append(float('inf'))
+            # Convert to pd.Interval
+            cost_bins = utils.list_to_interval(cost_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
           .format(distr_dims, max_legs, trips_thresh, od_perc_thresh,excl_edges_perc))
@@ -69,17 +72,20 @@ def main(traj):
     except FileNotFoundError:
         zones_info = None
 
-    if 'Gencostgrp' in distr_dims:
-        try:
-            dists = myio.read_distances(filepaths['in']['distances'],
-                                        dist_types=max_tr_dists.keys())
+    if distr_dims:
+        if 'Gencostgrp' in distr_dims:
+            try:
+                dists = myio.read_distances(filepaths['in']['distances'],
+                                            dist_types=max_tr_dists.keys())
 
-            cost_weights = {k: v['weight'] for k, v in dists_info.items()}
-            dists = utils.append_gencost(dists, weights=cost_weights)
+                cost_weights = {k: v['weight'] for k, v in dists_info.items()}
+                dists = utils.append_gencost(dists, weights=cost_weights)
 
-        except FileNotFoundError:
-            print('File containing distances was not found')
-            dists = None
+            except FileNotFoundError:
+                print('File containing distances was not found')
+                dists = None
+    else:
+        dists = None
 
     if distr_constr_enabled:
         try:

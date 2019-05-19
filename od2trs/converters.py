@@ -15,7 +15,7 @@ from od2trs.tc import Leg, TripChain
 
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,
-                ordered_tps=None, distances=None,
+                ordered_tps=None, dists=None,
                 zones_info=None, verbose=True):
 
     def _add_chron_connectors(_g, _ordered_tps):
@@ -46,10 +46,10 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                     _g.nodes[tgt_name]['Timeperiod'] = tgt_dt
                 """
 
-                #_g.nodes[src_name]['Connector'] = True
-                #_g.nodes[tgt_name]['Connector'] = True
-                _d = dict(zip(distances.columns,
-                              len(distances.columns)*[0]))
+                _d = dict()
+                if dists is not None:
+                    _d = dict(zip(dists.columns,
+                                  len(dists.columns) * [0]))
 
                 g.add_edge(src_name, tgt_name,
                            Connector=True,
@@ -164,10 +164,14 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost'] + list(max_tr_dists.keys())
+    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost']
 
-    if 'Gencostgrp' in distr_dims:
-        keys.append('Gencostgrp')
+    if max_tr_dists:
+        keys += list(max_tr_dists.keys())
+
+    if distr_dims:
+        if 'Gencostgrp' in distr_dims:
+            keys.append('Gencostgrp')
 
     d_trs_info = dict()
     for k in keys:
@@ -176,9 +180,10 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
     trs_decr = dict()
 
     for tr in trs:
-        if 'Traveltime' in max_tr_dists:
-            if tps_durs:
-                tr.assign_departtimes(tps_durs)
+        if max_tr_dists:
+            if 'Traveltime' in max_tr_dists:
+                if tps_durs:
+                    tr.assign_departtimes(tps_durs)
 
         for k in keys:
             attr = getattr(tr, k.lower(), None)
@@ -281,7 +286,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
-                    ordered_tps=ordered_tps, distances=distances,
+                    ordered_tps=ordered_tps, dists=distances,
                     attr_cols=attr_cols, zones_info=zones_info)
 
     descrs = list()

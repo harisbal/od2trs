@@ -72,8 +72,12 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                                                             weight='Length')
         # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-        weights = ['Length'] + list(max_tr_dists.keys())
-        cutoffs = [max_legs] + list(max_tr_dists.values())
+        weights = ['Length']
+        cutoffs = [max_legs]
+
+        if max_tr_dists:
+            weights += list(max_tr_dists.keys())
+            cutoffs += list(max_tr_dists.values())
 
         gff = filters.filter_nodes_by_dist(gff, src, tgts, weights, cutoffs)
 

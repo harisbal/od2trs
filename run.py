@@ -85,7 +85,10 @@ def prepare_traj_params(traj, cfg):
 
     cost_bins = json.loads(cfg['TOURS']['cost_bins'])
 
-    max_tr_dists = {k: v['thresh'] for k, v in dists_info.items()}
+    if dists_info:
+        max_tr_dists = {k: v['thresh'] for k, v in dists_info.items()}
+    else:
+        max_tr_dists = None
 
     # TODO fix
     if not cost_bins:
@@ -204,7 +207,10 @@ def prepare_traj_params(traj, cfg):
         """
 
         # create a list of dictionaries based on the input values
-        max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
+        if max_tr_dists:
+            max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
+        else:
+            max_trs_dists_combs = None
 
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dists': max_trs_dists_combs,
                      'cost_bins': cost_bins,
@@ -220,7 +226,7 @@ def prepare_traj_params(traj, cfg):
     return traj
 
 
-def main(configpath=r'./config.ini'):
+def main(configpath=r'./tests/config_test_small.ini'):
 
     cfg = configparser.ConfigParser()
     cfg.read(configpath)
