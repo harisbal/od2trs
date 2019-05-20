@@ -180,7 +180,7 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, tr
 
     if nexcl > 0:
         # edge betweenness
-        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, [src], tgts, weight=weight))
+        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, src, tgts, weight=weight))
         eb.name = 'bc'
 
         # Exclude connectors
