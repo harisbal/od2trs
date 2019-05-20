@@ -108,7 +108,7 @@ def filter_by_max_dist(trs, max_dists):
     filtered_trs = list()
     for tr in trs:
         for w in max_dists:
-            dist = getattr(tr, w)
+            dist = getattr(tr, w.lower())
             if dist:
                 if dist > max_dists[w]:
                     break

@@ -64,9 +64,11 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
             predecessors = list()
             for tgt in tgts:
                 preds = list(g_hb_nhb.predecessors(tgt))
-                predecessors.extend(preds)
                 if succ in preds:
                     zones_seqs.append([src, succ, tgt])
+                    preds.remove(succ)
+                # If succ in predecessors all_simple_paths returns []
+                predecessors.extend(preds)
 
             gf = g_nhb
 
