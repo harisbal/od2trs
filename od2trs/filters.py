@@ -89,7 +89,10 @@ def filter_by_compatibilities(trs, compats):
     return filt_trs
 
 
-def filter_trs(trs, compats, target_distr, distr_dims, cost_bins):
+def filter_trs(trs, max_tr_dists, compats, target_distr, distr_dims, cost_bins):
+
+    if max_tr_dists:
+        trs = filter_by_max_dist(trs, max_tr_dists)
 
     if compats:
         trs = filter_by_compatibilities(trs, compats)
@@ -98,6 +101,21 @@ def filter_trs(trs, compats, target_distr, distr_dims, cost_bins):
         trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins)
 
     return trs
+
+
+def filter_by_max_dist(trs, max_dists):
+
+    filtered_trs = list()
+    for tr in trs:
+        for w in max_dists:
+            dist = getattr(tr, w)
+            if dist:
+                if dist > max_dists[w]:
+                    break
+
+        filtered_trs.append(tr)
+
+    return filtered_trs
 
 
 def filter_by_departtimeperiod(g, src_dt, tgt_dt, ordered_tps):

@@ -229,7 +229,7 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
     filt_trs = list()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, filter_dirs)
-        trs = filters.filter_trs(trs, compats,
+        trs = filters.filter_trs(trs, max_tr_dists, compats,
                                  target_distr, distr_dims, cost_bins)
 
         if trs:
