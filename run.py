@@ -68,7 +68,6 @@ def prepare_traj_params(traj, cfg):
     explore = json.loads(cfg['TOURS']['explore'])
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
-
     compats = json.loads(cfg['TOURS']['compatibilities'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])

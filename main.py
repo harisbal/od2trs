@@ -139,6 +139,7 @@ def main(traj):
                                  target_distr=target_distr,
                                  distr_constr_enabled=distr_constr_enabled,
                                  distr_perc_tolerance=distr_perc_tolerance,
+                                 prepare_init_results=True,
                                  workmem=workmem,
                                  timelimit=timelimit,
                                  mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
