@@ -114,7 +114,7 @@ def filter_by_departtimeperiod(g, src_dt, tgt_dt, ordered_tps):
     return g
 
 
-def filter_edges_by_direction(g, srcs, tgts, filter_edge_dirs):
+def filter_prepare_graph(g, srcs, tgts, filter_edge_dirs):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
@@ -150,6 +150,19 @@ def filter_edges_by_direction(g, srcs, tgts, filter_edge_dirs):
     g.remove_edges_from(to_rmv)
 
     return g
+
+
+def filter_edges_by_direction(g, filt_direction, keep_connectors=True):
+
+    gf = g.copy()
+    for u, v, direction in g.edges(data='Direction'):
+        if (direction == 'Connector') and keep_connectors:
+            continue
+
+        if direction != filt_direction:
+            gf.remove_edge(u, v)
+
+    return gf
 
 
 def filter_connectors(g, keep=False):

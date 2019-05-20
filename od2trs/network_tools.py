@@ -1,6 +1,7 @@
+from itertools import product
+
 import networkx as nx
 import od2trs.filters as filters
-import od2trs.utilities as utils
 
 
 def duplicate_nodes(g, nodes, suffix='-dupl'):
@@ -34,68 +35,88 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
     :return: potential_tripchains
     """
 
-    src_suffix = '-src'
-
     hb_purps = [filter_dirs.from_home] + [filter_dirs.to_home]
 
     #if src != 'E01014411':
     #    return list()
 
-    zones = [n for n, z in g.nodes(data='Zone') if z == src]
-    zones.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
+    srcs = [n for n, z in g.nodes(data='Zone') if z == src]
+    srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
-    srcs = zones.copy()
-    tgts = zones.copy()
-
+    tgts = srcs.copy()
     zones_seqs = list()
 
-    #print(src)
-    # add extra src (eliminates the need to search for cycles in same dt)
-    # TODO I still need to include loops
-    gf = duplicate_nodes(g.copy(), srcs, suffix=src_suffix)
-
-    srcs = [src+src_suffix for src in srcs]
-    gf = filters.filter_edges_by_direction(gf.copy(), srcs, tgts, filter_dirs)
+    gf = filters.filter_prepare_graph(g.copy(), srcs, tgts, filter_dirs)
     gf = nx.DiGraph(gf)
 
     # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
+    gff = gf.copy()
+    # keep only the nhb trips
+    gff = filters.filter_edges_by_direction(gff, filter_dirs.non_home,
+                                            keep_connectors=True)
+
     for src in srcs:
-        # Use edge betweeneess centrality to simplify the graph
-        # TODO the number of nexcl_edges should be excluded from the optimisation
-        # TODO the decision about the number of edges to be excluded should be automated
-        nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-        edges_bef = gf.number_of_edges()
-        gff = filters.filter_by_edge_betweenness_centrality(gf.copy(), srcs, tgts, nexcl_edges,
-                                                            hb_purps=hb_purps,
-                                                            trips_thresh=1,
-                                                            weight='Length')
-        # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+        #if src != 'Z-IP':
+        #    continue
 
-        weights = ['Length']
-        cutoffs = [max_legs]
+        src_dt_idx = ordered_tps.index(g.nodes[src]['Timeperiod'])
+        for tgt in tgts:
+            tgt_dt_idx = ordered_tps.index(g.nodes[tgt]['Timeperiod'])
 
-        if max_tr_dists:
-            weights += list(max_tr_dists.keys())
-            cutoffs += list(max_tr_dists.values())
+            if src_dt_idx > tgt_dt_idx:
+                continue
 
-        gff = filters.filter_nodes_by_dist(gff, src, tgts, weights, cutoffs)
+            successors = list(gf.successors(src))
+            predecessors = list(gf.predecessors(tgt))
 
-        zss = list(nx.all_simple_paths(gff, src, tgts,
-                                       weight=weights,
-                                       cutoff=cutoffs))
+            for succ, pred in list(product(successors, predecessors)):
 
-        tgts.remove(src.replace(src_suffix, ''))
+                if succ == pred:
+                    zones_seqs.append([src, succ, tgt])
+                    continue
 
-        if zss:
-            # remove the src suffix
-            for zs in zss:
-                zs[0] = zs[0].replace(src_suffix, '')
-                zones_seqs.append(zs)
+                # Use edge betweeneess centrality to simplify the graph
+                # TODO the number of nexcl_edges should be excluded from the optimisation
+                # TODO the decision about the number of edges to be excluded should be automated
+                # edges_bef = gf.number_of_edges()
+                nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
+                gff = filters.filter_by_edge_betweenness_centrality(gff, succ, predecessors, nexcl_edges,
+                                                                    hb_purps=hb_purps,
+                                                                    trips_thresh=1,
+                                                                    weight='Length')
+                # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-            # TODO I still need to include loops
-            #if loops:
-            #    zss = _include_loops(zss)
+                weights = ['Length']
+                cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
+
+                if max_tr_dists:
+                    for w, v in list(max_tr_dists.items()):
+                        weights.append(w)
+                        dist_src_to_succ = gf[src][succ][w]
+                        dist_pred_to_tgt = gf[pred][tgt][w]
+                        cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
+
+                    #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
+
+                zss = list(nx.all_simple_paths(gff, succ, pred,
+                                               weight=weights,
+                                               cutoff=cutoffs))
+
+                if zss:
+                    # remove the src suffix
+                    for zs in zss:
+                        # prepend and append src
+                        zs.insert(0, src)
+                        zs.append(tgt)
+
+                    zones_seqs.extend(zss)
+
+                # TODO I still need to include loops
+                # if loops:
+                #    zss = _include_loops(zss)
+
+        tgts.remove(src)
 
 
     #print('len zones_seqs', len(zones_seqs))
