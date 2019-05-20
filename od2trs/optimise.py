@@ -1,3 +1,4 @@
+import re
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
@@ -22,20 +23,26 @@ def prepare_model(trs, trs_info, od, target_distr,
 
         return d_distr_grps
 
-    def init_solution(_model, tc_id):
+    def init_solution(_model, _tcid):
         if _model.init_results is None:
             return 0
         else:
-            init_sol = _model.init_results['Solution'][0]['Variable']
-
-            return _model.init_results[tc_id]
+            return _model.init_results.get(_tcid, 0)
 
     model = ConcreteModel()
     model.od = od
     model.trs = trs
     model.trs_info = trs_info
     model.target_distr = target_distr
-    model.init_results = init_results
+
+    if init_results is not None:
+        rs = init_results['Solution'][0]['Variable']
+        tcids = [int(s) for r in list(rs.keys()) for s in re.match(".*\[(\d+)\]", r).groups()]
+        timesused = [int(round(v['Value'], 0)) for v in rs.values()]
+        init_results = dict(zip(tcids, timesused))
+        model.init_results = init_results
+    else:
+        model.init_results = init_results
 
     model.distr_perc_tolerance = distr_perc_tolerance
 
@@ -47,7 +54,7 @@ def prepare_model(trs, trs_info, od, target_distr,
     model.chains_descr = Param(model.OdPairIds, initialize=init_chains_descr, default=None)
 
     model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=init_solution)
-    model.total_chains = sum(model.nchains[tc_id] for tc_id in model.ChainIds)
+    model.total_chains = sum(model.nchains[tcid] for tcid in model.ChainIds)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
@@ -69,22 +76,22 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def maximise_used_trips(_model):
         return sum(
-               (sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
-               if _model.chains_descr[leg_id] else 0) - _model.trips[leg_id] for leg_id in _model.OdPairIds)
+               (sum(_model.nchains[tcid] for tcid in _model.chains_descr[legid])
+               if _model.chains_descr[legid] else 0) - _model.trips[legid] for legid in _model.OdPairIds)
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def trips_rule(_model, leg_id):
-        if _model.chains_descr[leg_id]:
-            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_descr[leg_id])
-            return (0, expr, model.trips[leg_id])
+    def trips_rule(_model, legid):
+        if _model.chains_descr[legid]:
+            expr = sum(_model.nchains[tcid] for tcid in _model.chains_descr[legid])
+            return (0, expr, model.trips[legid])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.OdPairIds, rule=trips_rule)
 
-    def distr_rule_low(_model, g_id):
-        if _model.chains_distr_groups[g_id]:
+    def distr_rule_low(_model, grpid):
+        if _model.chains_distr_groups[grpid]:
 
-            lower_lim = ((_model.distr_group_percs[g_id] - _model.distr_perc_tolerance)
+            lower_lim = ((_model.distr_group_percs[grpid] - _model.distr_perc_tolerance)
                          * _model.total_chains)
             """
             if value(lower_lim) < 1:
@@ -94,16 +101,16 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             #lower_lim = int(round(value(lower_lim), 0))
             """
 
-            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+            expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
 
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
-    def distr_rule_high(_model, g_id):
-        if _model.chains_distr_groups[g_id]:
+    def distr_rule_high(_model, grpid):
+        if _model.chains_distr_groups[grpid]:
 
-            upper_lim = ((_model.distr_group_percs[g_id] + _model.distr_perc_tolerance)
+            upper_lim = ((_model.distr_group_percs[grpid] + _model.distr_perc_tolerance)
                          * _model.total_chains)
 
             """
@@ -113,7 +120,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             
             #upper_lim = int(round(value(upper_lim), 0))
             """
-            expr = sum(_model.nchains[tc_id] for tc_id in _model.chains_distr_groups[g_id])
+            expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
             return expr <= upper_lim
         else:
             return Constraint.Skip
@@ -160,16 +167,16 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def prepare_init_scenario(trs_descr, trs_info, target_distr, init_sol_legs=3):
+    def prepare_init_scenario(_trs_descr, _trs_info, _target_distr, init_sol_legs=3):
 
-        trs_info = trs_info.loc[trs_info['Nolegs'] <= init_sol_legs]
-        trs_descr = trs_descr.loc[trs_info.index]
+        _trs_info = _trs_info.loc[_trs_info['Nolegs'] <= init_sol_legs].copy()
+        _trs_descr = _trs_descr.loc[_trs_info.index].copy()
 
-        if target_distr is not None:
-            mask = target_distr.index.get_level_values('Nolegs') <= init_sol_legs
-            target_distr = target_distr.loc[mask]
+        if _target_distr is not None:
+            mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
+            _target_distr = _target_distr.loc[mask].copy()
 
-        return [trs_descr, trs_info, target_distr]
+        return [_trs_descr, _trs_info, _target_distr]
 
     results = None
     if prepare_init_results:
