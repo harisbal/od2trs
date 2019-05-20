@@ -51,9 +51,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
 
     # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
-    g_nhb = g_hb_nhb.copy()
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_nhb, filter_dirs.non_home,
+    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, filter_dirs.non_home,
                                               keep_connectors=True)
 
     for src in srcs:
