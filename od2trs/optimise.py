@@ -22,20 +22,20 @@ def prepare_model(trs, trs_info, od, target_distr,
 
         return d_distr_grps
 
-    def init_results(_model):
+    def init_solution(_model, tc_id):
         if _model.init_results is None:
             return 0
         else:
-            
+            init_sol = _model.init_results['Solution'][0]['Variable']
+
+            return _model.init_results[tc_id]
 
     model = ConcreteModel()
     model.od = od
     model.trs = trs
     model.trs_info = trs_info
     model.target_distr = target_distr
-
-    if init_results is not None:
-        model.init_results = init_results
+    model.init_results = init_results
 
     model.distr_perc_tolerance = distr_perc_tolerance
 
@@ -46,7 +46,7 @@ def prepare_model(trs, trs_info, od, target_distr,
     model.trips = Param(model.OdPairIds, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.chains_descr = Param(model.OdPairIds, initialize=init_chains_descr, default=None)
 
-    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=init_results)
+    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=init_solution)
     model.total_chains = sum(model.nchains[tc_id] for tc_id in model.ChainIds)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
@@ -160,7 +160,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def prepare_init_solution(trs_descr, trs_info, target_distr, init_sol_legs=3):
+    def prepare_init_scenario(trs_descr, trs_info, target_distr, init_sol_legs=3):
 
         trs_info = trs_info.loc[trs_info['Nolegs'] <= init_sol_legs]
         trs_descr = trs_descr.loc[trs_info.index]
@@ -173,7 +173,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
 
     results = None
     if prepare_init_results:
-        res = prepare_init_solution(trs_descr, trs_info, target_distr)
+        res = prepare_init_scenario(trs_descr, trs_info, target_distr)
         trs_descr_init, trs_info_init, target_distr_init = res
 
         mymodel = prepare_model(trs_descr_init, trs_info_init, od, target_distr_init,
@@ -184,12 +184,13 @@ def main(trs_descr, trs_info, od, target_distr=None,
                             workmem, mip_strategy_file, mip_strategy_probe,
                             mip_tolerances_lowercutoff, timelimit)
 
-    mymodel = prepare_model(trs_descr_init, trs_info_init, od, target_distr_init,
+    mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
                             distr_constr_enabled, distr_perc_tolerance,
-                            mip_tolerances_lowercutoff, init_sol=results)
+                            mip_tolerances_lowercutoff, init_results=results)
 
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                         workmem, mip_strategy_file, mip_strategy_probe,
                         mip_tolerances_lowercutoff, timelimit)
 
+    results
     return results
