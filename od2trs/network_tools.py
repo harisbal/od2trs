@@ -46,15 +46,15 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = list()
 
-    gf = filters.filter_prepare_graph(g.copy(), srcs, tgts, filter_dirs)
-    gf = nx.DiGraph(gf)
+    g_hb_nhb = filters.filter_prepare_graph(g.copy(), srcs, tgts, filter_dirs)
+    g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
     # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
-    gff = gf.copy()
+    g_nhb = g_hb_nhb.copy()
     # keep only the nhb trips
-    gff = filters.filter_edges_by_direction(gff, filter_dirs.non_home,
-                                            keep_connectors=True)
+    g_nhb = filters.filter_edges_by_direction(g_nhb, filter_dirs.non_home,
+                                              keep_connectors=True)
 
     for src in srcs:
         #if src != 'Z-IP':
@@ -67,8 +67,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
             if src_dt_idx > tgt_dt_idx:
                 continue
 
-            successors = list(gf.successors(src))
-            predecessors = list(gf.predecessors(tgt))
+            successors = list(g_hb_nhb.successors(src))
+            predecessors = list(g_hb_nhb.predecessors(tgt))
 
             for succ, pred in list(product(successors, predecessors)):
 
@@ -76,16 +76,19 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                     zones_seqs.append([src, succ, tgt])
                     continue
 
+                gf = g_nhb
+
                 # Use edge betweeneess centrality to simplify the graph
                 # TODO the number of nexcl_edges should be excluded from the optimisation
                 # TODO the decision about the number of edges to be excluded should be automated
                 # edges_bef = gf.number_of_edges()
-                nexcl_edges = int(gf.number_of_edges() * excl_edges_perc)
-                gff = filters.filter_by_edge_betweenness_centrality(gff, succ, predecessors, nexcl_edges,
-                                                                    hb_purps=hb_purps,
-                                                                    trips_thresh=1,
-                                                                    weight='Length')
-                # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+                nexcl_edges = int(g_hb_nhb.number_of_edges() * excl_edges_perc)
+                if nexcl_edges > 0:
+                    gf = filters.filter_by_edge_betweenness_centrality(gf.copy(), succ, predecessors, nexcl_edges,
+                                                                       hb_purps=hb_purps,
+                                                                       trips_thresh=1,
+                                                                       weight='Length')
+                    # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
                 weights = ['Length']
                 cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
@@ -93,13 +96,13 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                 if max_tr_dists:
                     for w, v in list(max_tr_dists.items()):
                         weights.append(w)
-                        dist_src_to_succ = gf[src][succ][w]
-                        dist_pred_to_tgt = gf[pred][tgt][w]
+                        dist_src_to_succ = g_hb_nhb[src][succ][w]
+                        dist_pred_to_tgt = g_hb_nhb[pred][tgt][w]
                         cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
 
                     #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
 
-                zss = list(nx.all_simple_paths(gff, succ, pred,
+                zss = list(nx.all_simple_paths(gf, succ, pred,
                                                weight=weights,
                                                cutoff=cutoffs))
 
