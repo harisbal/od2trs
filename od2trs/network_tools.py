@@ -56,67 +56,72 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                                               keep_connectors=True)
 
     for src in srcs:
-        #if src != 'Z-IP':
-        #    continue
 
-        src_dt_idx = ordered_tps.index(g.nodes[src]['Timeperiod'])
-        for tgt in tgts:
-            tgt_dt_idx = ordered_tps.index(g.nodes[tgt]['Timeperiod'])
+        successors = list(g_hb_nhb.successors(src))
 
-            if src_dt_idx > tgt_dt_idx:
-                continue
+        for succ in successors:
 
-            successors = list(g_hb_nhb.successors(src))
-            predecessors = list(g_hb_nhb.predecessors(tgt))
-
-            for succ, pred in list(product(successors, predecessors)):
-
-                if succ == pred:
+            predecessors = list()
+            for tgt in tgts:
+                preds = list(g_hb_nhb.predecessors(tgt))
+                predecessors.extend(preds)
+                if succ in preds:
                     zones_seqs.append([src, succ, tgt])
-                    continue
 
-                gf = g_nhb
+            gf = g_nhb
 
-                # Use edge betweeneess centrality to simplify the graph
-                # TODO the number of nexcl_edges should be excluded from the optimisation
-                # TODO the decision about the number of edges to be excluded should be automated
-                # edges_bef = gf.number_of_edges()
-                nexcl_edges = int(g_hb_nhb.number_of_edges() * excl_edges_perc)
-                if nexcl_edges > 0:
-                    gf = filters.filter_by_edge_betweenness_centrality(gf.copy(), succ, predecessors, nexcl_edges,
-                                                                       hb_purps=hb_purps,
-                                                                       trips_thresh=1,
-                                                                       weight='Length')
-                    # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
+            # Use edge betweeneess centrality to simplify the graph
+            # TODO the number of nexcl_edges should be excluded from the optimisation
+            # TODO the decision about the number of edges to be excluded should be automated
+            # edges_bef = gf.number_of_edges()
+            nexcl_edges = int(g_hb_nhb.number_of_edges() * excl_edges_perc)
+            if nexcl_edges > 0:
+                gf = filters.filter_by_edge_betweenness_centrality(gf.copy(), succ, predecessors, nexcl_edges,
+                                                                   hb_purps=hb_purps,
+                                                                   trips_thresh=1,
+                                                                   weight='Length')
+                # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
-                weights = ['Length']
-                cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
+            weights = ['Length']
+            cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
 
-                if max_tr_dists:
-                    for w, v in list(max_tr_dists.items()):
-                        weights.append(w)
-                        dist_src_to_succ = g_hb_nhb[src][succ][w]
-                        dist_pred_to_tgt = g_hb_nhb[pred][tgt][w]
-                        cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
+            if max_tr_dists:
+                for w, v in list(max_tr_dists.items()):
+                    weights.append(w)
+                    dist_src_to_succ = g_hb_nhb[src][succ][w]
+                    dists_pred_to_tgt = list()
 
-                    #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
+                    # I'm searching for multiple tgts so I am not sure about the distance of the
+                    # predecessor to the tgt. Nonetheless I can reduce it my the minimum
+                    for tgt in tgts:
+                        for pred in g_hb_nhb.predecessors(tgt):
+                            dists_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
+                    dist_pred_to_tgt = min(dists_pred_to_tgt)
 
-                zss = list(nx.all_simple_paths(gf, succ, pred,
-                                               weight=weights,
-                                               cutoff=cutoffs))
+                    cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
 
-                if zss:
-                    # remove the src suffix
-                    for zs in zss:
-                        # prepend and append src
-                        zs.insert(0, src)
-                        zs.append(tgt)
+                #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
 
-                    zones_seqs.extend(zss)
+            zss = list(nx.all_simple_paths(gf, succ, predecessors,
+                                           weight=weights,
+                                           cutoff=cutoffs))
 
-                # TODO I still need to include loops
-                # if loops:
-                #    zss = _include_loops(zss)
+            if zss:
+                # remove the src suffix
+                for zs in zss:
+                    # prepend the src
+                    zs.insert(0, src)
+                    # the tgt depends on the predecessor last zone of zs (zs[-1])
+                    for tgt in tgts:
+                        if zs[-1] in list(g_hb_nhb.predecessors(tgt)):
+                            zs.append(tgt)
+                            break
+
+                zones_seqs.extend(zss)
+
+            # TODO I still need to include loops
+            # if loops:
+            #    zss = _include_loops(zss)
 
         tgts.remove(src)
 
