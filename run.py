@@ -99,6 +99,7 @@ def prepare_traj_params(traj, cfg):
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
+    warmstart = json.loads(cfg['OPTIMISATION']['warmstart'])
     ncores = json.loads(cfg['DEFAULT']['ncores'])
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
     distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
@@ -169,6 +170,7 @@ def prepare_traj_params(traj, cfg):
 
     # Optimisation parameters
     traj.par.optim.run_optim = Parameter('run_optim', run_optimisation, comment='Run optimisation')
+    traj.par.optim.warmstart= Parameter('warmstart', warmstart, comment='Attempt warmstart')
     traj.par.optim.submit_to_neos = Parameter('submit_to_neos', submit_to_neos, comment='Submit to NEOS')
     traj.par.optim.distr_perc_tolerance = Parameter('distr_perc_tolerance', distr_perc_tolerance[0],
                                                     comment='Distance bins')
