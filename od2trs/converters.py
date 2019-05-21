@@ -209,8 +209,8 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
 
 def results_to_od(descr, info, idx_cols):
-    idx_cols = [str.capitalize(v) for v in idx_cols]
-    info.rename(columns={'Timesused': 'Dailytrips'}, inplace=True)
+    idx_cols = [str.title(v) for v in idx_cols]
+    info = info.rename(columns={'Timesused': 'Dailytrips'})
     jn = descr.join(info['Dailytrips'])
     od = jn.groupby(idx_cols)['Dailytrips'].sum()
     return od
