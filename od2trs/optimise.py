@@ -169,12 +169,12 @@ def main(trs_descr, trs_info, od, target_distr=None,
 
     def prepare_init_scenario(_trs_descr, _trs_info, _target_distr, init_sol_legs=3):
 
-        _trs_info = _trs_info.loc[_trs_info['Nolegs'] <= init_sol_legs].copy()
-        _trs_descr = _trs_descr.loc[_trs_info.index].copy()
+        _trs_info = _trs_info.loc[_trs_info['Nolegs'] <= init_sol_legs]
+        _trs_descr = _trs_descr.loc(axis=0)[_trs_info.index.tolist()]
 
         if _target_distr is not None:
             mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
-            _target_distr = _target_distr.loc[mask].copy()
+            _target_distr = _target_distr.loc[mask]
 
         return [_trs_descr, _trs_info, _target_distr]
 
@@ -187,9 +187,12 @@ def main(trs_descr, trs_info, od, target_distr=None,
                                 distr_constr_enabled, distr_perc_tolerance,
                                 mip_tolerances_lowercutoff)
 
+        # spent less time on intial optim
+        timelimit_factor = 0.2
         results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                             workmem, mip_strategy_file, mip_strategy_probe,
-                            mip_tolerances_lowercutoff, timelimit)
+                            mip_tolerances_lowercutoff,
+                            timelimit=timelimit_factor)
 
     mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
                             distr_constr_enabled, distr_perc_tolerance,
@@ -197,7 +200,8 @@ def main(trs_descr, trs_info, od, target_distr=None,
 
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                         workmem, mip_strategy_file, mip_strategy_probe,
-                        mip_tolerances_lowercutoff, timelimit)
+                        mip_tolerances_lowercutoff,
+                        timelimit=(1-timelimit_factor) * timelimit)
 
     results
     return results

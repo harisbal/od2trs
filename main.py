@@ -128,7 +128,9 @@ def main(traj):
             pass
     else:
         trs_descr = pd.read_pickle(filepaths['in']['trs_mdl_descr'])
+        trs_descr.sort_index(inplace=True)
         trs_info = pd.read_pickle(filepaths['in']['trs_mdl_info'])
+        trs_info.sort_index(inplace=True)
         print('Number of tours read:', max(trs_info.index.unique()))
 
     od_out = None
