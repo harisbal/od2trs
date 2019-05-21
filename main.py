@@ -33,6 +33,7 @@ def main(traj):
     cost_bins = traj.par.trs.cost_bins
 
     run_optim = traj.par.optim.run_optim
+    warmstart = traj.par.optim.warmstart
     submit_to_neos = traj.par.optim.submit_to_neos
     #emphasis_mip = traj.par.optim.emphasis_mip
 
@@ -141,7 +142,7 @@ def main(traj):
                                  target_distr=target_distr,
                                  distr_constr_enabled=distr_constr_enabled,
                                  distr_perc_tolerance=distr_perc_tolerance,
-                                 prepare_init_results=True,
+                                 warmstart=warmstart,
                                  workmem=workmem,
                                  timelimit=timelimit,
                                  mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,

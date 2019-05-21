@@ -162,7 +162,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
 def main(trs_descr, trs_info, od, target_distr=None,
          distr_constr_enabled=False,
-         distr_perc_tolerance=0.01, prepare_init_results=False,
+         distr_perc_tolerance=0.01, warmstart=False,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
@@ -182,7 +182,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
         return [_trs_descr, _trs_info, _target_distr]
 
     results = None
-    if prepare_init_results:
+    if warmstart:
         res = prepare_init_scenario(trs_descr, trs_info, target_distr)
         trs_descr_init, trs_info_init, target_distr_init = res
 
