@@ -122,8 +122,8 @@ def export_results(results, filepaths):
     if od is not None:
         od.to_csv(filepaths['out']['od'], header=True)
 
-    trs_mdl_descr.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_descr'], index=True)
-    trs_mdl_info.dropna(axis=1).to_csv(filepaths['out']['trs_mdl_info'], index=True)
+    trs_mdl_descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
+    trs_mdl_info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
 
     if target_distr is not None:
         target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)

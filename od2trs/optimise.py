@@ -207,5 +207,4 @@ def main(trs_descr, trs_info, od, target_distr=None,
                         mip_tolerances_lowercutoff,
                         timelimit=int((1-timelimit_factor) * timelimit))
 
-    results
     return results
