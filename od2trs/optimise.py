@@ -182,6 +182,8 @@ def main(trs_descr, trs_info, od, target_distr=None,
         return [_trs_descr, _trs_info, _target_distr]
 
     results = None
+    timelimit_factor = 0.2
+
     if warmstart:
         res = prepare_init_scenario(trs_descr, trs_info, target_distr)
         trs_descr_init, trs_info_init, target_distr_init = res
@@ -192,7 +194,6 @@ def main(trs_descr, trs_info, od, target_distr=None,
                                 mip_tolerances_lowercutoff)
 
         # spent less time on intial optim
-        timelimit_factor = 0.2
         results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                             workmem, mip_strategy_file, mip_strategy_probe,
                             mip_tolerances_lowercutoff,
