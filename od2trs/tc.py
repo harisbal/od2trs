@@ -34,19 +34,16 @@ class TripChain:
         :param legs: list of Leg
         """
 
-        seqs = ['purpose', 'direction', 'timeperiod']
+        seqs = ['source', 'purpose', 'direction', 'timeperiod']
         costs = ['gencost', 'distance', 'traveltime']
 
         if len(legs) >= 2:
             self.legs = legs
-            self.zones = self.create_zones_seq()
+            self.nolegs = len(legs)
         else:
             raise ValueError('Less than 2 legs found')
 
         self.id = None
-        self.nolegs = len(legs)
-        self.tour = self.is_tour()
-        self.loopscnt = self.count_loops()
         self.chron_ordered = None
 
         for seq in seqs:
@@ -56,9 +53,11 @@ class TripChain:
             setattr(self, cost, self.calculate_cost(cost))
 
         self.dist_grp = None
-
         self.duration = None
         self.distr_group_id = None
+
+        self.tour = self.is_tour()
+        self.loopscnt = self.count_loops()
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -72,7 +71,7 @@ class TripChain:
 
     def count_loops(self):
         # Tours deriving from multilevel graphs include the time level in the name
-        zns = [z.split('-')[0] for z in self.zones][:-1]  # to avoid counting the src twice
+        zns = [s.split('-')[0] for s in self.sources][:-1]  # to avoid counting the src twice
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 

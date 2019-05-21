@@ -77,7 +77,11 @@ def filter_by_compatibilities(trs, compats):
     for tr in trs:
         add_tr = True
         for c in compats:
-            seq = tr.create_seq(c.lower())
+            if hasattr(tr, c):
+                seq = getattr(tr, c.lower())
+            else:
+                seq = tr.create_seq(c.lower())
+
             for u, v in utils.pairwise(seq):
                 if not [u, v] in compats[c]:
                     add_tr = False
