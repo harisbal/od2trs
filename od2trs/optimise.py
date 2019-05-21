@@ -176,10 +176,11 @@ def main(trs_descr, trs_info, od, target_distr=None,
             target_distr.sort_index(inplace=True)
             mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
             _target_distr = _target_distr.loc[mask].copy()
-            new_percs = _target_distr['Percentage'].div(_target_distr['Percentage'].sum())
-            _target_distr.loc[:, 'Percentage'] = new_percs
 
         return [_trs_descr, _trs_info, _target_distr]
+
+    # spent less time on intial optim
+    timelimit_init_optim_factor = 0.2
 
     results = None
     if warmstart:

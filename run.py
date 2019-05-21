@@ -227,7 +227,7 @@ def prepare_traj_params(traj, cfg):
     return traj
 
 
-def main(configpath=r'tests/config_test_example.ini'):
+def main(configpath=r'config.ini'):
 
     cfg = configparser.ConfigParser()
     cfg.read(configpath)
