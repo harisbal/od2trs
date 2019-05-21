@@ -173,8 +173,11 @@ def main(trs_descr, trs_info, od, target_distr=None,
         _trs_descr = _trs_descr.loc(axis=0)[_trs_info.index.tolist()]
 
         if _target_distr is not None:
+            target_distr.sort_index(inplace=True)
             mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
-            _target_distr = _target_distr.loc[mask]
+            _target_distr = _target_distr.loc[mask].copy()
+            new_percs = _target_distr['Percentage'].div(_target_distr['Percentage'].sum())
+            _target_distr.loc[:, 'Percentage'] = new_percs
 
         return [_trs_descr, _trs_info, _target_distr]
 
@@ -183,6 +186,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
         res = prepare_init_scenario(trs_descr, trs_info, target_distr)
         trs_descr_init, trs_info_init, target_distr_init = res
 
+        print('Preparing init model')
         mymodel = prepare_model(trs_descr_init, trs_info_init, od, target_distr_init,
                                 distr_constr_enabled, distr_perc_tolerance,
                                 mip_tolerances_lowercutoff)
@@ -192,7 +196,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
         results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                             workmem, mip_strategy_file, mip_strategy_probe,
                             mip_tolerances_lowercutoff,
-                            timelimit=timelimit_factor)
+                            timelimit=int(timelimit_factor*timelimit))
 
     mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
                             distr_constr_enabled, distr_perc_tolerance,
@@ -201,7 +205,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                         workmem, mip_strategy_file, mip_strategy_probe,
                         mip_tolerances_lowercutoff,
-                        timelimit=(1-timelimit_factor) * timelimit)
+                        timelimit=int((1-timelimit_factor) * timelimit))
 
     results
     return results
