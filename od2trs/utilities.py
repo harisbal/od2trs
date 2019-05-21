@@ -62,14 +62,16 @@ def list_to_interval(lst):
     return intervals
 
 
-def to_sequence(s):
+def to_sequence(s, sep=';'):
+    """
     s = (s.str.replace(' ', '').
          str.replace('(', '').
          str.replace(')', '').
          str.replace(')', '').
          str.replace("'", '').
          str.split(','))
-    s = s.apply(tuple)
+    """
+    s = s.str.split(sep).apply(tuple)
 
     return s
 

@@ -164,7 +164,7 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost']
+    keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost']
 
     if max_tr_dists:
         keys += list(max_tr_dists.keys())
@@ -187,6 +187,10 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
         for k in keys:
             attr = getattr(tr, k.lower(), None)
+            # tuples are sequences (better to export as string)
+            if isinstance(attr, tuple):
+                attr = ';'.join(attr)
+
             d_trs_info[k].append(attr)
 
         trs_decr.update(tr.to_dict())

@@ -37,9 +37,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
 
     hb_purps = [filter_dirs.from_home] + [filter_dirs.to_home]
 
-    #if src != 'E01014411':
-    #    return list()
-
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
@@ -56,11 +53,8 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                                               keep_connectors=True)
 
     for src in srcs:
-
         successors = list(g_hb_nhb.successors(src))
-
         for succ in successors:
-
             predecessors = list()
             for tgt in tgts:
                 preds = list(g_hb_nhb.predecessors(tgt))
@@ -71,7 +65,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
                 predecessors.extend(preds)
 
             gf = g_nhb
-
             # Use edge betweeneess centrality to simplify the graph
             # TODO the number of nexcl_edges should be excluded from the optimisation
             # TODO the decision about the number of edges to be excluded should be automated
@@ -126,7 +119,6 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
             #    zss = _include_loops(zss)
 
         tgts.remove(src)
-
 
     #print('len zones_seqs', len(zones_seqs))
     return zones_seqs
