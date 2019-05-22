@@ -178,7 +178,7 @@ class TripChain:
         for leg, dt in zip(self.legs, dts):
             leg.departtime = dt
 
-        self.departtimes = dts
+        self.departtimes = tuple(dts)
 
         return dts
 

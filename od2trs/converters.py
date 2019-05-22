@@ -187,10 +187,6 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
         for k in keys:
             attr = getattr(tr, k.lower(), None)
-            # tuples are sequences (better to export as string)
-            if isinstance(attr, tuple):
-                attr = ';'.join(attr)
-
             d_trs_info[k].append(attr)
 
         trs_decr.update(tr.to_dict())
@@ -203,6 +199,11 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     if target_distr is not None:
         trs_info_df = distrs.assign_distr_group(trs_info_df, target_distr, distr_dims)
+
+    # reformat the tuple sequences to strings
+    for c in trs_info_df:
+        if isinstance(trs_info_df[c].iloc[0], tuple):
+            trs_info_df[c] = trs_info_df[c].apply(';'.join)
 
     trs_descr_df = pd.DataFrame.from_dict(trs_decr, orient='index')
     trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
