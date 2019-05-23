@@ -22,7 +22,7 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
     return gn
 
 
-def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
+def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
                                   max_legs, max_tr_dists, excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
@@ -35,7 +35,7 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
     :return: potential_tripchains
     """
 
-    hb_purps = [filter_dirs.from_home] + [filter_dirs.to_home]
+    hb_purps = [direction_names.from_home] + [direction_names.to_home]
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
@@ -43,13 +43,13 @@ def identify_tour_zones_sequences(g, src, filter_dirs, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = list()
 
-    g_hb_nhb = filters.filter_prepare_graph(g.copy(), srcs, tgts, filter_dirs)
+    g_hb_nhb = filters.filter_prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
     # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
 
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, filter_dirs.non_home,
+    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
                                               keep_connectors=True)
 
     for src in srcs:

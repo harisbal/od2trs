@@ -15,33 +15,42 @@ def main(traj):
 
     run_trs_identification = traj.par.trs.run_trs_identification
     max_legs = traj.par.trs.max_legs
+    trips_thresh = traj.par.trs.trips_thresh
+    dists_info = traj.par.trs.dists_info
+    cost_bins = traj.par.trs.cost_bins
+    max_tr_dists = traj.par.trs.max_tr_dists
     compats = traj.par.trs.compats
-    filter_dirs = traj.par.trs.filter_dirs
-    grp_purposes = traj.par.trs.d_grp_purposes
+    excl_edges_perc = traj.par.trs.excl_edges_perc
+
+    direction_names = traj.par.trs.direction_names
     ordered_tps = traj.par.ordered_tps
     tps_durs = traj.par.tps_durs
-    max_tr_dists = traj.par.trs.max_tr_dists
-    dists_info = traj.par.trs.dists_info
-    trips_thresh = traj.par.trs.trips_thresh
+
     distr_dims = traj.par.trs.distr_dims
-    excl_edges_perc = traj.par.trs.excl_edges_perc
+    purp_to_acts = traj.par.trs.purp_to_acts
+    grp_purposes = traj.par.trs.d_grp_purposes
 
     od_perc_thresh = traj.par.trs.od_perc_thresh
     distr_constr_enabled = traj.par.optim.distr_constr_enabled
     distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
-
-    cost_bins = traj.par.trs.cost_bins
 
     run_optim = traj.par.optim.run_optim
     warmstart = traj.par.optim.warmstart
     submit_to_neos = traj.par.optim.submit_to_neos
     #emphasis_mip = traj.par.optim.emphasis_mip
 
+    # TODO pretify / make more concise
     try:
         traj.par.optim.mip_tolerances_lowercutoff.f_is_empty()
         mip_tolerances_lowercutoff = None
     except AttributeError:
         mip_tolerances_lowercutoff = traj.par.optim.mip_tolerances_lowercutoff
+
+    try:
+        traj.par.purp_to_acts.f_is_empty()
+        purp_to_acts = None
+    except AttributeError:
+        purp_to_acts = None
 
     timelimit = traj.par.optim.timelimit
     workmem = traj.par.optim.workmem
@@ -115,10 +124,11 @@ def main(traj):
         target_distr = None
 
     if run_trs_identification:
-        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, filter_dirs=filter_dirs,
+        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
                                                 compats=compats, ordered_tps=ordered_tps, tps_durs=tps_durs,
                                                 distances=dists, max_tr_dists=max_tr_dists,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
+                                                purp_to_acts=purp_to_acts,
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 

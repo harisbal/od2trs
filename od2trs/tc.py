@@ -12,7 +12,7 @@ class Leg:
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
                          'gencost', 'distance', 'traveltime', 'odpairid',
-                         'XsourceY', 'XtargetY']
+                         'fromact', 'toact', 'XsourceY', 'XtargetY']
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique
@@ -22,6 +22,9 @@ class Leg:
         for key in kwargs:
             if key.lower() in allowed_attrs:
                 setattr(self, key.lower(), kwargs[key])
+
+        self.fromact = None
+        self.toact = None
 
 
 class TripChain:
@@ -58,6 +61,11 @@ class TripChain:
 
         self.tour = self.is_tour()
         self.loopscnt = self.count_loops()
+
+        self.departtimes = None
+
+        self.fromacts = None
+        self.toacts = None
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -99,11 +107,6 @@ class TripChain:
             return True
         else:
             return False
-
-    def create_zones_seq(self):
-        zones = [l.source for l in self.legs]
-        zones.append(self.legs[-1].target)
-        return zones
 
     def create_seq(self, seq_name):
         seq = list()
@@ -181,6 +184,41 @@ class TripChain:
         self.departtimes = tuple(dts)
 
         return dts
+
+    def assign_activities(self, purp_to_acts):
+
+        # make sure that Home is first ( I could custom sort)
+        toact = purp_to_acts[self.legs[0].purpose].copy()
+        toact.remove('Home')
+
+        fromacts = ['Home']
+        fromacts.extend(toact)
+
+        self.legs[0].fromact = fromacts[0]
+        self.legs[0].toact = toact[0]
+
+        for leg in self.legs[1:-1]:
+            act1, act2 = purp_to_acts[leg.purpose]
+
+            if act1 == fromacts[-1]:
+                fromacts.append(act2)
+                leg.fromact = act2
+                leg.toact = act1
+            else:
+                fromacts.append(act1)
+                leg.fromact = act1
+                leg.toact = act2
+
+        toacts = fromacts[1:]
+        toacts.append('Home')
+
+        self.legs[-1].fromact = fromacts[-1]
+        self.legs[-1].toact = toacts[-1]
+
+        self.fromacts = tuple(fromacts)
+        self.toacts = tuple(toacts)
+
+        return tuple(fromacts), tuple(toacts)
 
     def to_dict(self):
         d_tc = dict()

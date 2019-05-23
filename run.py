@@ -66,15 +66,20 @@ def prepare_traj_params(traj, cfg):
     filepaths = utils.prepare_filepaths_from_config(cfg)
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
     explore = json.loads(cfg['TOURS']['explore'])
+
     max_legs = json.loads(cfg['TOURS']['max_legs'])
+    od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     compats = json.loads(cfg['TOURS']['compatibilities'])
-    distr_dims = json.loads(cfg['TOURS']['distr_dims'])
+    excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
+
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
-    od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
+
     dists_info = json.loads(cfg['TOURS']['distances_info'])
-    excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
+    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
+
+    distr_dims = json.loads(cfg['TOURS']['distr_dims'])
 
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
@@ -82,7 +87,7 @@ def prepare_traj_params(traj, cfg):
     th_direction = json.loads(cfg['TOURS']['tohome_direction'])
     nh_direction = json.loads(cfg['TOURS']['nonhome_direction'])
 
-    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
+    purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
 
     if dists_info:
         max_tr_dists = {k: v['thresh'] for k, v in dists_info.items()}
@@ -130,18 +135,14 @@ def prepare_traj_params(traj, cfg):
         traj.par.trs.distr_dims = PickleParameter('distr_dims', None, comment='Distribution Dimensions')
     else:
         traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
-
     traj.par.trs.ordered_tps = Parameter('ordered_tps', ordered_tps,
                                          comment='Distribution Dimensions')
-
     traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs,
                                             comment='Duration of timeperiods')
-
     traj.par.trs.od_perc_thresh = Parameter('od_perc_thresh', od_perc_thresh[0],
                                             comment='Distribution Percentage Threshold')
 
     traj.par.trs.dists_info = PickleParameter('dists_info', dists_info, comment='Information regarding distances')
-
     traj.par.trs.max_tr_dists = PickleParameter('max_tr_dists', max_tr_dists, comment='Maximum allowed distance for trs')
 
     if cost_bins is None:
@@ -151,17 +152,18 @@ def prepare_traj_params(traj, cfg):
 
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
-
-    traj.f_add_parameter('trs.filter_dirs.from_home', fh_direction,
-                         comment='List of the directions to be filtered for the FH trips')
-    traj.f_add_parameter('trs.filter_dirs.to_home', th_direction,
-                         comment='List of the directions to be filtered for the TH trips')
-    traj.f_add_parameter('trs.filter_dirs.non_home', nh_direction,
-                         comment='List of the directions to be filtered for the NHB trips')
+    traj.f_add_parameter('trs.direction_names.from_home', fh_direction,
+                         comment='List of the directions to be filtered for the FromHome trips')
+    traj.f_add_parameter('trs.direction_names.to_home', th_direction,
+                         comment='List of the directions to be filtered for the ToHome trips')
+    traj.f_add_parameter('trs.direction_names.non_home', nh_direction,
+                         comment='List of the directions to be filtered for the NonHomeBased trips')
 
     traj.par.trs.excl_edges_perc = Parameter('excl_edges_perc', excl_edges_perc[0],
                                              comment='Percentage of nhb edges to exclude during tours identification')
 
+    traj.par.trs.purp_to_acts = PickleParameter('purp_to_acts', purp_to_acts,
+                                                comment='Dictionary with the activities at the ends of a trip')
 
     # Scenario specific params
     traj.par.trs.perc_sample_size = Parameter('perc_sample_size', 0.10, comment='Aggregation level')

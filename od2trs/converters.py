@@ -105,7 +105,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     return g
 
 
-def zones_seq_to_trs(zones_seq, G, filter_dirs):
+def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
 
     def filter_leg_attrs_by_purpose(_leg_attrs, filter_directions):
         _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
@@ -117,9 +117,9 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
 
         return _leg_attrs
 
-    filter_dir_orig = filter_dirs.from_home
-    filter_dir_dest = filter_dirs.to_home
-    filter_dir_interm = filter_dirs.non_home
+    filter_dir_orig = direction_names.from_home
+    filter_dir_dest = direction_names.to_home
+    filter_dir_interm = direction_names.non_home
 
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
@@ -164,7 +164,9 @@ def zones_seq_to_trs(zones_seq, G, filter_dirs):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods', 'Departtimes', 'Loopscnt', 'Gencost']
+    keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods',
+            'Departtimes', 'Loopscnt', 'Gencost',
+            'Fromacts', 'Toacts']
 
     if max_tr_dists:
         keys += list(max_tr_dists.keys())
@@ -221,11 +223,12 @@ def results_to_od(descr, info, idx_cols):
     return od
 
 
-def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
+def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       max_legs, max_tr_dists, compats, cost_bins,
-                      target_distr, distr_dims, excl_edges_perc):
+                      target_distr, distr_dims, excl_edges_perc,
+                      purp_to_acts):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
+    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
                                                         max_legs, max_tr_dists, excl_edges_perc)
 
     if not zones_seqs:
@@ -233,26 +236,31 @@ def multiproc_wrapper(src_zone, filter_dirs, ordered_tps,
 
     filt_trs = list()
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, filter_dirs)
+        trs = zones_seq_to_trs(zs, G, direction_names, purp_to_acts)
         trs = filters.filter_trs(trs, max_tr_dists, compats,
                                  target_distr, distr_dims, cost_bins)
 
         if trs:
-            filt_trs.extend(trs)
+            # Assign the activities to the filtered trs
+            if purp_to_acts is not None:
+                for tr in trs:
+                    tr.assign_activities(purp_to_acts)
+                filt_trs.append(tr)
+            else:
+                filt_trs.extend(trs)
 
     if filt_trs:
-        #print('filt zones', src_zone, len(filt_trs))
         return filt_trs
     else:
         return None
 
 
-def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_tps,
+def multiproc_wrapper_profiling(G, src_zone, direction_names, ordered_tps,
                                 max_legs, max_tr_dist, dist_attr, cost_bins,
                                 target_distr, distr_dims, include_loops,
                                 excl_edges_perc):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, filter_dirs, ordered_tps,
+    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
                                                         max_legs, max_tr_dist, dist_attr,
                                                         include_loops, excl_edges_perc)
 
@@ -261,7 +269,7 @@ def multiproc_wrapper_profiling(G, src_zone, filter_dirs, ordered_tps,
 
     filt_trs = list()
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, filter_dirs)
+        trs = zones_seq_to_trs(zs, G, direction_names)
         trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
                                  target_distr, distr_dims, cost_bins)
 
@@ -279,9 +287,9 @@ def init_multiproc_wrapper(_G):
     G = _G
 
 
-def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
+def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=None,
            compats=None, target_distr=None, distr_dims=None, cost_bins=None,
-           distances=None, max_tr_dists=None,
+           distances=None, max_tr_dists=None, purp_to_acts=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
     if distances is not None:
@@ -315,7 +323,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
             for trs in tqdm(pool.imap_unordered(partial(multiproc_wrapper,
-                                                        filter_dirs=filter_dirs,
+                                                        direction_names=direction_names,
                                                         ordered_tps=ordered_tps,
                                                         max_legs=max_legs,
                                                         max_tr_dists=max_tr_dists,
@@ -323,7 +331,8 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
                                                         cost_bins=cost_bins,
                                                         target_distr=target_distr,
                                                         distr_dims=distr_dims,
-                                                        excl_edges_perc=excl_edges_perc),
+                                                        excl_edges_perc=excl_edges_perc,
+                                                        purp_to_acts=purp_to_acts),
                             zones), total=len(zones)):
                 if trs:
                     for tr in trs:
@@ -352,7 +361,7 @@ def od2trs(od, max_legs=None, filter_dirs=None, ordered_tps=None, tps_durs=None,
         for zone in tqdm(zones, total=len(zones)):
             trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dists,
                                               dist_attr=dist_attr, cost_bins=cost_bins,
-                                              filter_dirs=filter_dirs, ordered_tps=ordered_tps,
+                                              direction_names=direction_names, ordered_tps=ordered_tps,
                                               target_distr=target_distr, distr_dims=distr_dims,
                                               include_loops=include_loops, excl_edges_perc=excl_edges_perc)
 
