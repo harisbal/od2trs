@@ -64,8 +64,7 @@ class TripChain:
 
         self.departtimes = None
 
-        self.fromacts = None
-        self.toacts = None
+        self.acts = None
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
@@ -184,41 +183,6 @@ class TripChain:
         self.departtimes = tuple(dts)
 
         return dts
-
-    def assign_activities(self, purp_to_acts):
-
-        # make sure that Home is first ( I could custom sort)
-        toact = purp_to_acts[self.legs[0].purpose].copy()
-        toact.remove('Home')
-
-        fromacts = ['Home']
-        fromacts.extend(toact)
-
-        self.legs[0].fromact = fromacts[0]
-        self.legs[0].toact = toact[0]
-
-        for leg in self.legs[1:-1]:
-            act1, act2 = purp_to_acts[leg.purpose]
-
-            if act1 == fromacts[-1]:
-                fromacts.append(act2)
-                leg.fromact = act2
-                leg.toact = act1
-            else:
-                fromacts.append(act1)
-                leg.fromact = act1
-                leg.toact = act2
-
-        toacts = fromacts[1:]
-        toacts.append('Home')
-
-        self.legs[-1].fromact = fromacts[-1]
-        self.legs[-1].toact = toacts[-1]
-
-        self.fromacts = tuple(fromacts)
-        self.toacts = tuple(toacts)
-
-        return tuple(fromacts), tuple(toacts)
 
     def to_dict(self):
         d_tc = dict()

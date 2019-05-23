@@ -70,7 +70,6 @@ def prepare_traj_params(traj, cfg):
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
-    compats = json.loads(cfg['TOURS']['compatibilities'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
     ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
@@ -127,9 +126,6 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.max_legs = Parameter('max_legs', max_legs[0], comment='Maximum number of legs in trs')
     traj.par.trs.trips_thresh = Parameter('trips_thresh', trips_thresh[0],
                                           comment='Minimum number of trips allowed in ODs')
-
-    traj.par.trs.compats = PickleParameter('compats', compats,
-                                           comment='Dictionary with the compats between nodes')
 
     if distr_dims is None:
         traj.par.trs.distr_dims = PickleParameter('distr_dims', None, comment='Distribution Dimensions')

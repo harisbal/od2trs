@@ -164,9 +164,8 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods',
-            'Departtimes', 'Loopscnt', 'Gencost',
-            'Fromacts', 'Toacts']
+    keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
+            'Acts', 'Gencost', 'Departtimes', 'Loopscnt']
 
     if max_tr_dists:
         keys += list(max_tr_dists.keys())
@@ -224,7 +223,7 @@ def results_to_od(descr, info, idx_cols):
 
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
-                      max_legs, max_tr_dists, compats, cost_bins,
+                      max_legs, max_tr_dists, cost_bins,
                       target_distr, distr_dims, excl_edges_perc,
                       purp_to_acts):
 
@@ -237,17 +236,13 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
     filt_trs = list()
     for zs in zones_seqs:
         trs = zones_seq_to_trs(zs, G, direction_names, purp_to_acts)
-        trs = filters.filter_trs(trs, max_tr_dists, compats,
+
+        trs = filters.filter_trs(trs, max_tr_dists, purp_to_acts,
                                  target_distr, distr_dims, cost_bins)
 
         if trs:
             # Assign the activities to the filtered trs
-            if purp_to_acts is not None:
-                for tr in trs:
-                    tr.assign_activities(purp_to_acts)
-                    filt_trs.append(tr)
-            else:
-                filt_trs.extend(trs)
+            filt_trs.extend(trs)
 
     if filt_trs:
         return filt_trs
@@ -288,7 +283,7 @@ def init_multiproc_wrapper(_G):
 
 
 def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=None,
-           compats=None, target_distr=None, distr_dims=None, cost_bins=None,
+           target_distr=None, distr_dims=None, cost_bins=None,
            distances=None, max_tr_dists=None, purp_to_acts=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
@@ -322,18 +317,17 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
 
     if not profiling:
         with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
-            for trs in tqdm(pool.imap_unordered(partial(multiproc_wrapper,
-                                                        direction_names=direction_names,
-                                                        ordered_tps=ordered_tps,
-                                                        max_legs=max_legs,
-                                                        max_tr_dists=max_tr_dists,
-                                                        compats=compats,
-                                                        cost_bins=cost_bins,
-                                                        target_distr=target_distr,
-                                                        distr_dims=distr_dims,
-                                                        excl_edges_perc=excl_edges_perc,
-                                                        purp_to_acts=purp_to_acts),
-                            zones), total=len(zones)):
+            for trs in tqdm(pool.imap_unordered(
+                            partial(multiproc_wrapper,
+                                    direction_names=direction_names,
+                                    ordered_tps=ordered_tps,
+                                    max_legs=max_legs,
+                                    max_tr_dists=max_tr_dists,
+                                    cost_bins=cost_bins,
+                                    target_distr=target_distr,
+                                    distr_dims=distr_dims,
+                                    excl_edges_perc=excl_edges_perc,
+                                    purp_to_acts=purp_to_acts), zones), total=len(zones)):
                 if trs:
                     for tr in trs:
                         tr.id = tr_id
