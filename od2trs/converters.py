@@ -165,8 +165,7 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods',
-            'Departtimes', 'Loopscnt', 'Gencost',
-            'Fromacts', 'Toacts']
+            'Departtimes', 'Loopscnt', 'Gencost', 'Acts']
 
     if max_tr_dists:
         keys += list(max_tr_dists.keys())
