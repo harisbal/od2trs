@@ -164,8 +164,8 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
 def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Sources', 'Timeperiods',
-            'Departtimes', 'Loopscnt', 'Gencost', 'Acts']
+    keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
+            'Acts', 'Gencost', 'Departtimes', 'Loopscnt']
 
     if max_tr_dists:
         keys += list(max_tr_dists.keys())
