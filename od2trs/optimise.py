@@ -168,15 +168,16 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
     def prepare_init_scenario(_trs_descr, _trs_info, _target_distr, init_sol_legs=3):
-
+        _trs_info.sort_index(inplace=True)
         _trs_info = _trs_info.loc[_trs_info['Nolegs'] <= init_sol_legs]
-        _trs_descr = _trs_descr.loc(axis=0)[_trs_info.index.tolist()]
+        _trs_descr.sort_index(inplace=True)
+        mask = _trs_descr.index.get_level_values('Tourid').isin(_trs_info.index.tolist())
+        _trs_descr = _trs_descr.loc[mask]
 
         if _target_distr is not None:
             target_distr.sort_index(inplace=True)
             mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
             _target_distr = _target_distr.loc[mask].copy()
-
         return [_trs_descr, _trs_info, _target_distr]
 
     # spent less time on intial optim
