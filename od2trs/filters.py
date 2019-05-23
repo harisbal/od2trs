@@ -71,35 +71,14 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
         return filter_trs
 
 
-def filter_by_compatibilities(trs, compats):
-
-    filt_trs = list()
-    for tr in trs:
-        add_tr = True
-        for c in compats:
-            if hasattr(tr, c):
-                seq = getattr(tr, c.lower())
-            else:
-                seq = tr.create_seq(c.lower())
-
-            for u, v in utils.pairwise(seq):
-                if not [u, v] in compats[c]:
-                    add_tr = False
-                    break
-
-        if add_tr:
-            filt_trs.append(tr)
-
-    return filt_trs
-
-
-def filter_trs(trs, max_tr_dists, compats, target_distr, distr_dims, cost_bins):
+def filter_trs(trs, max_tr_dists, purp_to_acts,
+               target_distr, distr_dims, cost_bins):
 
     if max_tr_dists:
         trs = filter_by_max_dist(trs, max_tr_dists)
 
-    if compats:
-        trs = filter_by_compatibilities(trs, compats)
+    if purp_to_acts:
+        trs = filter_by_acts(trs, purp_to_acts)
 
     if target_distr is not None:
         trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins)
@@ -122,18 +101,49 @@ def filter_by_max_dist(trs, max_dists):
     return filtered_trs
 
 
-def filter_by_departtimeperiod(g, src_dt, tgt_dt, ordered_tps):
+def filter_by_acts(trs, purp_to_acts):
 
-    src_dt_idx = ordered_tps.index(src_dt)
-    tgt_dt_idx = ordered_tps.index(tgt_dt)
+    filt_trs = list()
+    for tr in trs:
+        keep_tr = True
+        # make sure that Home is first ( I could custom sort)
+        acts = purp_to_acts[tr.legs[0].purpose].copy()
 
-    to_rmn = set()
-    for s, t, dt in g.edges(data='Timeperiod'):
-        if dt not in ordered_tps[src_dt_idx:tgt_dt_idx + 1]:
-            to_rmn.add((s, t))
+        if acts[0] != 'Home':
+            acts.reverse()
 
-    g.remove_edges_from(to_rmn)
-    return g
+        if acts[0] != 'Home':
+            raise ValueError('First Activity in tour not Home!')
+
+        tr.legs[0].fromact = acts[0]
+        tr.legs[0].toact = acts[-1]
+
+        # intermediate legs
+        for leg in tr.legs[1:-1]:
+            act1, act2 = purp_to_acts[leg.purpose]
+            if act1 == acts[-1]:
+                acts.append(act2)
+                leg.fromact = act1
+                leg.toact = act2
+            elif act2 == acts[-1]:
+                acts.append(act1)
+                leg.fromact = act2
+                leg.toact = act1
+            else:
+                # inconsistent acts sequence
+                keep_tr = False
+                break
+
+        if keep_tr:
+            final_act = 'Home'
+            tr.legs[-1].fromact = acts[-1]
+            tr.legs[-1].toact = final_act
+            acts.append(final_act)  # should be home
+            tr.acts = tuple(acts)
+
+            filt_trs.append(tr)
+
+    return filt_trs
 
 
 def filter_prepare_graph(g, srcs, tgts, filter_edge_dirs):

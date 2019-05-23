@@ -19,7 +19,6 @@ def main(traj):
     dists_info = traj.par.trs.dists_info
     cost_bins = traj.par.trs.cost_bins
     max_tr_dists = traj.par.trs.max_tr_dists
-    compats = traj.par.trs.compats
     excl_edges_perc = traj.par.trs.excl_edges_perc
 
     direction_names = traj.par.trs.direction_names
@@ -125,7 +124,7 @@ def main(traj):
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
-                                                compats=compats, ordered_tps=ordered_tps, tps_durs=tps_durs,
+                                                ordered_tps=ordered_tps, tps_durs=tps_durs,
                                                 distances=dists, max_tr_dists=max_tr_dists,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,

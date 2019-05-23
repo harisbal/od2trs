@@ -184,43 +184,6 @@ class TripChain:
 
         return dts
 
-    def assign_activities(self, purp_to_acts):
-
-        # make sure that Home is first ( I could custom sort)
-        toact = purp_to_acts[self.legs[0].purpose].copy()
-        toact.remove('Home')
-
-        fromacts = ['Home']
-        fromacts.extend(toact)
-
-        self.legs[0].fromact = fromacts[0]
-        self.legs[0].toact = toact[0]
-
-        for leg in self.legs[1:-1]:
-            act1, act2 = purp_to_acts[leg.purpose]
-
-            if act1 == fromacts[-1]:
-                fromacts.append(act2)
-                leg.fromact = act2
-                leg.toact = act1
-            else:
-                fromacts.append(act1)
-                leg.fromact = act1
-                leg.toact = act2
-
-        toacts = fromacts[1:]
-        toacts.append('Home')
-
-        self.legs[-1].fromact = fromacts[-1]
-        self.legs[-1].toact = toacts[-1]
-
-        acts = fromacts.copy()
-        acts.append(toacts[-1])  # should be home
-
-        self.acts = acts
-
-        return acts
-
     def to_dict(self):
         d_tc = dict()
         for idx_leg, leg in enumerate(self.legs):

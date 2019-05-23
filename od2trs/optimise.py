@@ -176,6 +176,8 @@ def main(trs_descr, trs_info, od, target_distr=None,
             target_distr.sort_index(inplace=True)
             mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
             _target_distr = _target_distr.loc[mask].copy()
+            perc = _target_distr['Percentage']
+            _target_distr['Percentage'] = perc.div(perc.sum())
 
         return [_trs_descr, _trs_info, _target_distr]
 
@@ -187,7 +189,7 @@ def main(trs_descr, trs_info, od, target_distr=None,
         res = prepare_init_scenario(trs_descr, trs_info, target_distr)
         trs_descr_init, trs_info_init, target_distr_init = res
 
-        print('Preparing init optimisation model')
+        print('Warmstart enabled - Preparing initial optimisation model')
         mymodel = prepare_model(trs_descr_init, trs_info_init, od, target_distr_init,
                                 distr_constr_enabled, distr_perc_tolerance,
                                 mip_tolerances_lowercutoff)
