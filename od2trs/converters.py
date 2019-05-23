@@ -245,7 +245,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
             if purp_to_acts is not None:
                 for tr in trs:
                     tr.assign_activities(purp_to_acts)
-                filt_trs.append(tr)
+                    filt_trs.append(tr)
             else:
                 filt_trs.extend(trs)
 
