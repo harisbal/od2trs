@@ -47,10 +47,10 @@ def main(traj):
         mip_tolerances_lowercutoff = traj.par.optim.mip_tolerances_lowercutoff
 
     try:
-        traj.par.purp_to_acts.f_is_empty()
+        traj.par.trs.purp_to_acts.f_is_empty()
         purp_to_acts = None
     except AttributeError:
-        purp_to_acts = None
+        purp_to_acts = traj.par.trs.purp_to_acts
 
     timelimit = traj.par.optim.timelimit
     workmem = traj.par.optim.workmem
