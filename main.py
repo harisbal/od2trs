@@ -132,8 +132,10 @@ def main(traj):
                                                 zones_info=zones_info, ncores=ncores)
 
         try:
-            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl'])
-            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl'])
+            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl']
+                                .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
+            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl']
+                               .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
         except KeyError:
             pass
     else:
@@ -143,13 +145,8 @@ def main(traj):
         trs_info.sort_index(inplace=True)
         print('Number of tours read:', trs_info.shape[0])
 
-        # TODO not 100% sure that the distribution group ids should match
-        # It should work only in cases where all other params but od_perc_thresh remained the same
-        remaining_distr_grp_ids = target_distr['Distrgroupid'].unique().tolist()
-        trs_info = trs_info[trs_info['Distrgroupid'].isin(remaining_distr_grp_ids)]
-        mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.tolist())
-        trs_descr = trs_descr.loc[mask]
-        print('Number of tours after filt:', trs_info.shape[0])
+        # In case pcl were used to create info and descrs filter them with the new target_distr
+        trs_info, trs_edscr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
 
     od_out = None
     if run_optim:
@@ -176,9 +173,7 @@ def main(traj):
             trs_info['Timesused'] = trs_info['Timesused'].astype(int)
 
             # reformat the tuple sequences to strings
-            for c in trs_info:
-                if isinstance(trs_info[c].iloc[0], tuple):
-                    trs_info[c] = trs_info[c].apply(';'.join)
+            trs_info = utils.tuples_to_strings(trs_info)
 
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
