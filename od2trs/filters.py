@@ -119,7 +119,7 @@ def filter_by_acts(trs, purp_to_acts):
         tr.legs[0].toact = acts[-1]
 
         # intermediate legs
-        for leg in tr.legs[1:-1]:
+        for leg in tr.legs[1:]:
             act1, act2 = purp_to_acts[leg.purpose]
             if act1 == acts[-1]:
                 acts.append(act2)
@@ -135,12 +135,7 @@ def filter_by_acts(trs, purp_to_acts):
                 break
 
         if keep_tr:
-            final_act = 'Home'
-            tr.legs[-1].fromact = acts[-1]
-            tr.legs[-1].toact = final_act
-            acts.append(final_act)  # should be home
             tr.acts = tuple(acts)
-
             filt_trs.append(tr)
 
     return filt_trs
