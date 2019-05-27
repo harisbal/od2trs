@@ -2,16 +2,22 @@ import re
 import pandas as pd
 import networkx as nx
 
-import od2trs.utilities as utils
 
+def filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr):
 
-def filter_chron_possible_trs(trs, ordered_tps):
-    filtered_trs = list()
-    for tr in trs:
-        if tr.is_chron_ordered(ordered_tps):
-            filtered_trs.append(tr)
+    # I'll later join on these names but I need to reset the index
+    distr_dims = list(target_distr.index.names)
+    # I'll temporarily modify the tuples to strings
+    distr_copy = target_distr.reset_index()[distr_dims]  # we care only about the distr dims
 
-    return filtered_trs
+    trs_info = pd.merge(trs_info.reset_index(), distr_copy, on=distr_dims, how='right')
+    trs_info = trs_info.set_index('Tourid').sort_index()
+    # filter the trs_descr accordingly
+    mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.tolist())
+    trs_descr = trs_descr.loc[mask]
+    print('Number of tours after filt:', trs_info.shape[0])
+
+    return trs_info, trs_descr
 
 
 def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):

@@ -132,8 +132,10 @@ def main(traj):
                                                 zones_info=zones_info, ncores=ncores)
 
         try:
-            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl'])
-            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl'])
+            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl']
+                                .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
+            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl']
+                               .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
         except KeyError:
             pass
     else:
@@ -141,7 +143,10 @@ def main(traj):
         trs_descr.sort_index(inplace=True)
         trs_info = pd.read_pickle(filepaths['in']['trs_mdl_info'])
         trs_info.sort_index(inplace=True)
-        print('Number of tours read:', max(trs_info.index.unique()))
+        print('Number of tours read:', trs_info.shape[0])
+
+        # In case pcl were used to create info and descrs filter them with the new target_distr
+        trs_info, trs_edscr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
 
     od_out = None
     if run_optim:
@@ -166,6 +171,9 @@ def main(traj):
             trs_info = trs_info.join(trs_mdl_times_used)
             trs_info.fillna({'Timesused': 0}, inplace=True)
             trs_info['Timesused'] = trs_info['Timesused'].astype(int)
+
+            # reformat the tuple sequences to strings
+            trs_info = utils.tuples_to_strings(trs_info)
 
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)

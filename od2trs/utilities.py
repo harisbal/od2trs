@@ -115,6 +115,15 @@ def to_interval(x):
     return interval
 
 
+def tuples_to_strings(df, sep=';'):
+    # reformat the tuple sequences to strings
+    for c in df:
+        if all(isinstance(v, tuple) for v in df[c].values):
+            df[c] = df[c].apply(sep.join)
+
+    return df
+
+
 def calculate_excluded_trips(trs_info):
     trs_info = trs_info[trs_info['Inlowfreqgrp']]
     excluded_trips = trs_info[['Legs', 'Timesused']].product(axis=1).sum()
