@@ -146,7 +146,7 @@ def main(traj):
         print('Number of tours read:', trs_info.shape[0])
 
         # In case pcl were used to create info and descrs filter them with the new target_distr
-        trs_info, trs_edscr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
+        trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
 
     od_out = None
     if run_optim:
