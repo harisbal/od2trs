@@ -1,4 +1,5 @@
 import collections
+import copy
 import numpy as np
 import pandas as pd
 import od2trs.utilities as util
@@ -129,7 +130,21 @@ class TripChain:
                 return None
         return round(cost, round_prec)
 
-    def assign_departtimes(self, tps_durs):
+    def assign_departtimes(self, tps_durs, strfrmt='%Y-%m-%d %H:%M:%S'):
+
+        tps_durs_cp = copy.deepcopy(tps_durs)
+        ordered_tps = list(tps_durs_cp.keys())
+
+        start_date = pd.to_datetime('2019-05-28 {}'.format(tps_durs[ordered_tps[0]][0]))
+
+        if not self.is_chron_ordered(ordered_tps):
+            self.departtimes = None
+            return None
+
+        for tp in tps_durs_cp:
+            tps_durs_cp[tp][0] = pd.to_timedelta(tps_durs_cp[tp][0]).total_seconds()
+            tps_durs_cp[tp][1] = pd.to_timedelta(tps_durs_cp[tp][1]).total_seconds()
+
         # based on critical path method
         tps = list(self.timeperiods)
         tts = list()
@@ -137,44 +152,26 @@ class TripChain:
         for leg in self.legs:
             tts.append(leg.traveltime)
 
-        # find the earliest and latest starts
-        ess = list()
-        lss = list()
-
+        dts_sorted = False
         # Find the earliest starts
-        es = -float('inf')
-        for tp, tt in zip(tps, tts):
-            es = max(pd.to_timedelta(tps_durs[tp][0]).total_seconds(),
-                     es + tt)
-            ess.append(es)
+        while not dts_sorted:
+            dts_sorted = True
+            dts = list()
+            arrival_time = -float('inf')
+            for tp, tt in zip(tps, tts):
+                tp_start = tps_durs_cp[tp][0]
+                tp_end = tps_durs_cp[tp][1]
 
-        # Find the latest starts
-        tps.reverse()
-        tts.reverse()
-        ls = None
-        for tp, tt in zip(tps, tts):
-            if not ls:
-                lf = pd.to_timedelta(tps_durs[tp][1]).total_seconds()
-                ls = lf - tt
-            else:
-                ls = min(pd.to_timedelta(tps_durs[tp][1]).total_seconds() - tt,
-                         ls - tt)
-            lss.append(ls)
-        lss.reverse()
+                trip_start = max(tp_start, arrival_time)
+                if trip_start < tp_end:
+                    dt = np.random.randint(trip_start, tp_end)
+                    arrival_time = dt + tt
+                    dts.append(dt)
+                else:
+                    dts_sorted = False
+                    break
 
-        dts = list()
-        # print(i, tc, ess, lss)
-        for low, high in zip(ess, lss):
-            try:
-                dt = np.random.randint(low, high)
-            except ValueError:
-                # Not in chronological order
-                dt = 0
-
-            str_dt = str(pd.to_timedelta(dt, unit='s')).rsplit(' ', 1)[1]
-            dts.append(str_dt)
-
-        dts.sort()
+        dts = [(start_date + pd.to_timedelta(dt, unit='s')).strftime(strfrmt) for dt in dts]
 
         # assign the departtimes to the tour's legs
         for leg, dt in zip(self.legs, dts):
