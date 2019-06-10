@@ -42,7 +42,11 @@ def create_dicts_from_list_values(d):
     return combs_of_ds
 
 
-a
+def pairwise(iterable):
+    's -> (s0,s1), (s1,s2), (s2, s3), ...'
+    a, b = itertools.tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 def is_ascending(lst):

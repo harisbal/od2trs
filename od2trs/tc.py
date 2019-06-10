@@ -147,7 +147,7 @@ class TripChain:
 
         # based on critical path method
         tps = list(self.timeperiods)
-        tts = list()pa
+        tts = list()
 
         for leg in self.legs:
             tts.append(leg.traveltime)
