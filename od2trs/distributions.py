@@ -19,7 +19,7 @@ def prepare_distr_from_obs(obs_info, distr_dims, dist_bins, max_legs=None, maxdi
     gen_cost_grps = pd.cut(obs_info['Distance'], dist_bins)
     # TODO 'Distancegroup' must be renamed Gencostgrp or Costgrp
     obs_info.loc[:, 'Gencostgrp'] = gen_cost_grps
-    sizes = obs_info.groupby(distr_dims)['Timesused'].sum()
+    sizes = obs_info.groupby(distr_dims, observed=True)['Timesused'].sum()
     sizes.name = 'Size'
     percs = sizes.div(sizes.sum())
     percs.name = 'Percentage'

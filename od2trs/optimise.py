@@ -78,6 +78,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         return sum(
                (sum(_model.nchains[tcid] for tcid in _model.chains_descr[legid])
                if _model.chains_descr[legid] else 0) - _model.trips[legid] for legid in _model.OdPairIds)
+
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(_model, legid):
@@ -93,13 +94,6 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
             lower_lim = ((_model.distr_group_percs[grpid] - _model.distr_perc_tolerance)
                          * _model.total_chains)
-            """
-            if value(lower_lim) < 1:
-                print('value lower than 1')
-                lower_lim = int(round(value(lower_lim), 0))
-
-            #lower_lim = int(round(value(lower_lim), 0))
-            """
 
             expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
 
@@ -113,13 +107,6 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             upper_lim = ((_model.distr_group_percs[grpid] + _model.distr_perc_tolerance)
                          * _model.total_chains)
 
-            """
-            if value(upper_lim) < 1:
-                print('value lower than 1')
-                upper_lim = int(round(value(upper_lim), 0))
-            
-            #upper_lim = int(round(value(upper_lim), 0))
-            """
             expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
             return expr <= upper_lim
         else:

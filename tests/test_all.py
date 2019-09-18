@@ -1,9 +1,7 @@
 import configparser
 import pandas as pd
 from pandas.testing import assert_series_equal
-
 import run
-
 from od2trs import utilities as utils
 
 
