@@ -75,9 +75,10 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
               timelimit=None):
 
     def maximise_used_trips(_model):
-        return sum(
-               (sum(_model.nchains[tcid] for tcid in _model.chains_descr[legid])
-               if _model.chains_descr[legid] else 0) - _model.trips[legid] for legid in _model.OdPairIds)
+        odsum = _model.od['Dailytrips'].sum()
+        nlegs = _model.trs_info['Nolegs'].to_dict()
+        return sum(_model.nchains[tcid] * nlegs[tcid]
+                   for tcid in _model.ChainIds) - odsum
 
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
