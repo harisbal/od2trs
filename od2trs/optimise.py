@@ -1,71 +1,66 @@
-import re
+import pandas as pd
+
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 
 
-def prepare_model(trs, trs_info, od, target_distr,
+def prepare_model(trs, trs_info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
-                  mip_tolerances_lowercutoff, init_results=None):
+                  mip_tolerances_lowercutoff, max_ntrs, init_sol=None):
 
     # TODO for some reason it passes 2 args
-    def init_chains_descr(_model, _):
+    def init_trs_descr(_model, _):
         # Can be slow
         trs = _model.trs.reset_index()
-        d_chains_descr = trs.groupby('Odpairid')['Tourid'].apply(list).to_dict()
+        d_trs_descr = trs.groupby('Odpairid')['Tourid'].apply(list).to_dict()
 
-        return d_chains_descr
+        return d_trs_descr
 
-    def init_chain_distr_grps(_model):
+    def init_tr_distr_grps(_model):
         _trs_info = _model.trs_info.reset_index()
         _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tourid'].apply(list)
         d_distr_grps = _trs_infog.to_dict()
 
         return d_distr_grps
 
-    def init_solution(_model, _tcid):
-        if _model.init_results is None:
+    def init_solution(_model, _tr_id):
+        if _model.init_sol is None:
             return 0
         else:
-            return _model.init_results.get(_tcid, 0)
+            return _model.init_sol.get(_tr_id, 0)
 
     model = ConcreteModel()
     model.od = od
     model.trs = trs
     model.trs_info = trs_info
-    model.target_distr = target_distr
+    model.tgt_distr = tgt_distr
 
-    if init_results is not None:
-        rs = init_results['Solution'][0]['Variable']
-        tcids = [int(s) for r in list(rs.keys()) for s in re.match(".*\[(\d+)\]", r).groups()]
-        timesused = [int(round(v['Value'], 0)) for v in rs.values()]
-        init_results = dict(zip(tcids, timesused))
-        model.init_results = init_results
-    else:
-        model.init_results = init_results
+    model.init_sol = init_sol
 
     model.distr_perc_tolerance = distr_perc_tolerance
 
-    model.OdPairIds = Set(initialize=model.od['Odpairid'].unique().tolist())
-    model.ChainIds = Set(initialize=model.trs_info.index.unique().values.tolist())
+    model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
+    model.tr_ids = Set(initialize=model.trs_info.index.unique().values.tolist())
 
     d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
-    model.trips = Param(model.OdPairIds, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.chains_descr = Param(model.OdPairIds, initialize=init_chains_descr, default=None)
+    model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
+    model.trs_descr = Param(model.odpair_ids, initialize=init_trs_descr, default=None)
 
-    model.nchains = Var(model.ChainIds, within=NonNegativeIntegers, initialize=init_solution)
-    model.total_chains = sum(model.nchains[tcid] for tcid in model.ChainIds)
+    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=init_solution)
+    model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
+    model.max_ntrs = max_ntrs
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
-        model.GrpIds = Set(initialize=model.target_distr['Distrgroupid'].unique().tolist())
-        model.target_distr.set_index('Distrgroupid', inplace=True)
-        d_distr_grp_percs = model.target_distr['Percentage'].to_dict()
-        model.distr_group_percs = Param(model.GrpIds, initialize=d_distr_grp_percs, default=0)
-        model.chains_distr_groups = Param(model.GrpIds, initialize=init_chain_distr_grps, default=None)
+        model.distrgrp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
+        model.tgt_distr.set_index('Distrgroupid', inplace=True)
+        d_distr_grp_percs = model.tgt_distr['Percentage'].to_dict()
+        model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
+        model.tr_distr_grps = Param(model.distrgrp_ids, initialize=init_tr_distr_grps, default=None)
 
     return model
 
@@ -77,45 +72,50 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def maximise_used_trips(_model):
         odsum = _model.od['Dailytrips'].sum()
         nlegs = _model.trs_info['Nolegs'].to_dict()
-        return sum(_model.nchains[tcid] * nlegs[tcid]
-                   for tcid in _model.ChainIds) - odsum
+        return sum(_model.ntrs[tr_id] * nlegs[tr_id]
+                   for tr_id in _model.tr_ids) - odsum
 
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def trips_rule(_model, legid):
-        if _model.chains_descr[legid]:
-            expr = sum(_model.nchains[tcid] for tcid in _model.chains_descr[legid])
-            return (0, expr, model.trips[legid])
+    def max_ntrs_rule(_model):
+        expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
+        return (0, expr, _model.max_ntrs)
+    model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
+
+    def trips_rule(_model, leg_id):
+        if _model.trs_descr[leg_id]:
+            expr = sum(_model.ntrs[tr_id] for tr_id in _model.trs_descr[leg_id])
+            return (0, expr, model.trips[leg_id])
         else:
             return Constraint.Skip
-    model.od_trips_rule = Constraint(model.OdPairIds, rule=trips_rule)
+    model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule_low(_model, grpid):
-        if _model.chains_distr_groups[grpid]:
+    def distr_rule_low(_model, grp_id):
+        if _model.tr_distr_grps[grp_id]:
 
-            lower_lim = ((_model.distr_group_percs[grpid] - _model.distr_perc_tolerance)
-                         * _model.total_chains)
+            lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
+                         * _model.tot_used_trs)
 
-            expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
+            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
 
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
-    def distr_rule_high(_model, grpid):
-        if _model.chains_distr_groups[grpid]:
+    def distr_rule_high(_model, grp_id):
+        if _model.tr_distr_grps[grp_id]:
 
-            upper_lim = ((_model.distr_group_percs[grpid] + _model.distr_perc_tolerance)
-                         * _model.total_chains)
+            upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
+                         * _model.tot_used_trs)
 
-            expr = sum(_model.nchains[tcid] for tcid in _model.chains_distr_groups[grpid])
+            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
             return expr <= upper_lim
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.GrpIds, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.GrpIds, rule=distr_rule_high)
+        model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
+        model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
 
@@ -155,48 +155,38 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def prepare_init_scenario(_trs_descr, _trs_info, _target_distr, init_sol_legs=3):
-        _trs_info.sort_index(inplace=True)
-        _trs_info = _trs_info.loc[_trs_info['Nolegs'] <= init_sol_legs]
-        _trs_descr.sort_index(inplace=True)
-        mask = _trs_descr.index.get_level_values('Tourid').isin(_trs_info.index.tolist())
-        _trs_descr = _trs_descr.loc[mask]
+    def estimate_max_ntrs(_od, homebased_filt='HB'):
+        hb_purps = _od.reset_index()['Purpose'].str.startswith(homebased_filt).values
+        # case of non symmetric fh and th
+        max_ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
+        return max_ntrs
 
-        if _target_distr is not None:
-            target_distr.sort_index(inplace=True)
-            mask = _target_distr.index.get_level_values('Nolegs') <= init_sol_legs
-            _target_distr = _target_distr.loc[mask].copy()
-            perc = _target_distr['Percentage']
-            _target_distr['Percentage'] = perc.div(perc.sum())
+    def prepare_init_sol(info, distr, max_ntrs):
+        jn_name = 'Distrgroupid'
+        usecols = ['Percentage', 'Distrgroupid']
+        sample = (pd.merge(info, distr[usecols], on=jn_name)
+                  .sample(n=max_ntrs, replace=True, weights='Percentage'))
+        init_sol = sample.index.value_counts().to_dict()
+        return init_sol
 
-        return [_trs_descr, _trs_info, _target_distr]
+    # The maximun number of trs is known
+    max_ntrs = estimate_max_ntrs(od, homebased_filt='HB')
 
-    # spent less time on intial optim
-    timelimit_init_optim_factor = 0.2
+    # The target distr can be utilised to create an initial solution
+    if target_distr is not None:
+        init_sol = prepare_init_sol(trs_info, target_distr, max_ntrs)
+    else:
+        init_sol = None
 
-    results = None
-    if warmstart:
-        res = prepare_init_scenario(trs_descr, trs_info, target_distr)
-        trs_descr_init, trs_info_init, target_distr_init = res
-
-        print('Preparing init optimisation model')
-        mymodel = prepare_model(trs_descr_init, trs_info_init, od, target_distr_init,
-                                distr_constr_enabled, distr_perc_tolerance,
-                                mip_tolerances_lowercutoff)
-
-        results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
-                            workmem, mip_strategy_file, mip_strategy_probe,
-                            mip_tolerances_lowercutoff,
-                            timelimit=int(timelimit_init_optim_factor*timelimit))
-
-    print('Preparing final optimisation model')
+    print('Preparing the optimisation model')
     mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
                             distr_constr_enabled, distr_perc_tolerance,
-                            mip_tolerances_lowercutoff, init_results=results)
+                            mip_tolerances_lowercutoff, max_ntrs,
+                            init_sol=init_sol)
 
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
                         workmem, mip_strategy_file, mip_strategy_probe,
                         mip_tolerances_lowercutoff,
-                        timelimit=int((1-timelimit_init_optim_factor) * timelimit))
+                        timelimit=timelimit)
 
     return results
