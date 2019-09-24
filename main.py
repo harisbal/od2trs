@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 
 import od2trs.io as myio
@@ -121,6 +122,9 @@ def main(traj):
         #    max_tr_dists = maxdist
     else:
         target_distr = None
+
+    if target_distr is not None:
+        target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
