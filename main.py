@@ -27,7 +27,6 @@ def main(traj):
     tps_durs = traj.par.tps_durs
 
     distr_dims = traj.par.trs.distr_dims
-    purp_to_acts = traj.par.trs.purp_to_acts
     grp_purposes = traj.par.trs.d_grp_purposes
 
     od_perc_thresh = traj.par.trs.od_perc_thresh
@@ -37,7 +36,6 @@ def main(traj):
     run_optim = traj.par.optim.run_optim
     warmstart = traj.par.optim.warmstart
     submit_to_neos = traj.par.optim.submit_to_neos
-    #emphasis_mip = traj.par.optim.emphasis_mip
 
     # TODO pretify / make more concise
     try:
@@ -67,7 +65,7 @@ def main(traj):
             cost_bins = utils.list_to_interval(cost_bins)
 
     print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
-          .format(distr_dims, max_legs, trips_thresh, od_perc_thresh,excl_edges_perc))
+          .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
@@ -78,15 +76,15 @@ def main(traj):
         od = utils.reorder_idx_catcol(od, c, order)
 
     try:
-        zones_info = myio.read_zones_info(filepaths['in']['zones_info'])
+        zones_info = myio.import_zones_info(filepaths['in']['zones_info'])
     except FileNotFoundError:
         zones_info = None
 
     if distr_dims:
         if 'Gencostgrp' in distr_dims:
             try:
-                dists = myio.read_distances(filepaths['in']['distances'],
-                                            dist_types=max_tr_dists.keys())
+                dists = myio.import_distances(filepaths['in']['distances'],
+                                              dist_types=max_tr_dists.keys())
 
                 cost_weights = {k: v['weight'] for k, v in dists_info.items()}
                 dists = utils.append_gencost(dists, weights=cost_weights)
@@ -107,7 +105,7 @@ def main(traj):
 
         except FileNotFoundError:
             seq_cols = ['Timeperiods']
-            obs_info = myio.read_trs_info(filepaths['in']['trs_obs_info'], seq_cols)
+            obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
             # TODO allow for multiple distances (not sure if that's possible)
             target_distr = distrs.prepare_distr_from_obs(obs_info, distr_dims,
                                                          cost_bins, max_legs,
@@ -123,11 +121,10 @@ def main(traj):
     else:
         target_distr = None
 
-    if target_distr is not None:
-        target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)
+    myio.export_target_distr(target_distr, filepaths['out']['target_distr'])
 
     if run_trs_identification:
-        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
+        trs_info, trs_descr = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
                                                 ordered_tps=ordered_tps, tps_durs=tps_durs,
                                                 distances=dists, max_tr_dists=max_tr_dists,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
@@ -135,27 +132,17 @@ def main(traj):
                                                 target_distr=target_distr, excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 
-        try:
-            trs_descr.to_pickle(filepaths['out']['trs_mdl_descr_pcl']
-                                .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
-            trs_info.to_pickle(filepaths['out']['trs_mdl_info_pcl']
-                               .replace('.pcl', '_{}.pcl'.format(int(od_perc_thresh*100))))
-        except KeyError:
-            pass
+        # Export the identified tours
+        myio.export_trs(trs_info, trs_descr, filepaths)
     else:
-        trs_descr = pd.read_pickle(filepaths['in']['trs_mdl_descr'])
-        trs_descr.sort_index(inplace=True)
-        trs_info = pd.read_pickle(filepaths['in']['trs_mdl_info'])
-        trs_info.sort_index(inplace=True)
-        print('Number of tours read:', trs_info.shape[0])
-
+        trs_info, trs_descr = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr
-        trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
+        # can cause issues if parameters realted to tours_identification module are changed between runs
+        # trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
 
-    od_out = None
+    od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-
         optim_results = opt.main(trs_descr, trs_info, od,
                                  target_distr=target_distr,
                                  distr_constr_enabled=distr_constr_enabled,
@@ -180,13 +167,13 @@ def main(traj):
             trs_info = utils.tuples_to_strings(trs_info)
 
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-            od_out = converters.results_to_od(trs_descr, trs_info, idx_cols)
+            od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     if zones_info is not None:
         if 'Coords' in zones_info:
             trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
-    results = [od_out, trs_descr, trs_info, target_distr]
+    results = [od_mdl, trs_descr, trs_info, target_distr]
 
     return results
 

@@ -366,4 +366,4 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
 
         print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
-        return trs_descr_df, trs_info_df
+        return trs_info_df, trs_descr_df

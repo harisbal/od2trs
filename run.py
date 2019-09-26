@@ -42,14 +42,12 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     # Run simulation
     start_time = time.time()
     results = mn.main(traj)
+    (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
     elapsed_time = time.time() - start_time
-
     print('Complete!')
 
     if export_flat:
-        myio.export_results(results, traj.conf.filepaths)
-
-    (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
+        myio.export_od_mdl(od, traj.conf.filepaths['out']['od'])
 
     if od is not None:
         traj.f_add_result('od', od, comment='od')

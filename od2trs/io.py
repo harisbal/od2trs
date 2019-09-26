@@ -87,10 +87,8 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     return od
 
 
-def read_trs_info(infilepath, seq_cols):
-
+def import_trs_info_obs(infilepath, seq_cols):
     obs_info = pd.read_csv(infilepath, index_col=0).rename(columns=str.title)
-
     if seq_cols:
         for c in seq_cols:
             obs_info[c] = utils.to_sequence(obs_info[c])
@@ -98,7 +96,7 @@ def read_trs_info(infilepath, seq_cols):
     return obs_info
 
 
-def read_distances(infilepath, dist_types=['Distance']):
+def import_distances(infilepath, dist_types=['Distance']):
     # can contain all types of distances such as km distance, travel time, etc
     dists = pd.read_csv(infilepath, index_col=[0, 1])
     dists = dists[dist_types]
@@ -107,7 +105,7 @@ def read_distances(infilepath, dist_types=['Distance']):
     return dists
 
 
-def read_zones_info(infilepath):
+def import_zones_info(infilepath):
     df = pd.read_csv(infilepath, index_col=[0])
     df['Coords'] = df[['X', 'Y']].apply(tuple, axis=1)
     df.drop(columns=['X', 'Y'], inplace=True)
@@ -115,17 +113,36 @@ def read_zones_info(infilepath):
     return df
 
 
-def export_results(results, filepaths):
+def import_trs(filepaths):
+    ext = filepaths['in']['trs_mdl_descr'].split('.')[-1]
+    if ext == 'pcl':
+        info = pd.read_pickle(filepaths['in']['trs_mdl_info']).sort_index()
+        descr = pd.read_pickle(filepaths['in']['trs_mdl_descr']).sort_index()
+    else:
+        raise TypeError('Tours can be only imported in pcl format')
 
-    (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
+    print('Number of tours read:', info.shape[0])
+    return info, descr
 
+
+def export_target_distr(distr, filepath):
+    if distr is not None:
+        distr.to_csv(os.path.join(filepath), index=True)
+
+
+def export_trs(info, descr, filepaths):
+    ext = filepaths['out']['trs_mdl_descr'].split('.')[-1]
+    if ext == 'csv':
+        descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
+        info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
+    elif ext == 'pcl':
+        descr.to_pickle(filepaths['out']['trs_mdl_descr'])
+        info.to_pickle(filepaths['out']['trs_mdl_info'])
+    else:
+        raise TypeError('Unknown export format')
+
+
+def export_od_mdl(od, filepaths):
     if od is not None:
-        od.to_csv(filepaths['out']['od'], header=True)
-
-    trs_mdl_descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
-    trs_mdl_info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
-
-    if target_distr is not None:
-        target_distr.to_csv(os.path.join(filepaths['out']['target_distr']), index=True)
-
+        od.to_csv(filepaths, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
