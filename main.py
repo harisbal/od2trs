@@ -129,7 +129,8 @@ def main(traj):
                                                 distances=dists, max_tr_dists=max_tr_dists,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,
-                                                target_distr=target_distr, excl_edges_perc=excl_edges_perc,
+                                                target_distr=target_distr,
+                                                excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 
         # Export the identified tours

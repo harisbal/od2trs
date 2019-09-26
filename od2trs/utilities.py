@@ -109,7 +109,8 @@ def to_interval(x):
         else:
             raise ValueError('Not acceptable left side limit')
 
-    left_side, left, right, right_side = re.match('([\[(])(\d+),\s*(\d+)([\])])', x).groups()
+    expr = '([\[(])(\d+(?:\.\d+)?|inf),\s*(\d+(?:\.\d+)?|inf)([\])])'
+    left_side, left, right, right_side = re.match(expr, x).groups()
     closed = _interval_is_close_check(left_side, right_side)
     interval = pd.Interval(pd.to_numeric(left), pd.to_numeric(right), closed)
     return interval

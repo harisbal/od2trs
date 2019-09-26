@@ -198,7 +198,7 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
     trs_descr_df.index.names = [idxcol, 'Legseqidx']
     trs_descr_df.dropna(axis=1, inplace=True)
 
-    return trs_descr_df, trs_info_df
+    return trs_info_df, trs_descr_df
 
 
 def results_to_od(descr, info, idx_cols):
@@ -299,71 +299,38 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
         ncores = cpu_count() - 1
 
     print('Running on {} cores'.format(ncores))
-
-    profiling = False
-
-    if not profiling:
-        with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
-            for trs in tqdm(pool.imap_unordered(
-                            partial(multiproc_wrapper,
-                                    direction_names=direction_names,
-                                    ordered_tps=ordered_tps,
-                                    max_legs=max_legs,
-                                    max_tr_dists=max_tr_dists,
-                                    cost_bins=cost_bins,
-                                    target_distr=target_distr,
-                                    distr_dims=distr_dims,
-                                    excl_edges_perc=excl_edges_perc,
-                                    purp_to_acts=purp_to_acts), zones), total=len(zones)):
-                if trs:
-                    for tr in trs:
-                        tr.id = tr_id
-                        tr_id += 1
-
-                    trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists)
-                    descrs.append(trs_descr_df)
-                    infos.append(trs_info_df)
-
-        if descrs:
-            trs_descr_df = pd.concat(descrs)
-            trs_info_df = pd.concat(infos)
-            if not trs_info_df.index.is_unique:
-                raise ValueError('Returned index is duplicated')
-
-        else:
-            raise ValueError('No trs identified')
-
-        print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
-
-        return trs_descr_df, trs_info_df
-    else:
-        idx = zones.index('E01014387')
-        zones = zones[idx:idx+2]
-        for zone in tqdm(zones, total=len(zones)):
-            trs = multiproc_wrapper_profiling(G, zone, max_legs=max_legs, max_tr_dist=max_tr_dists,
-                                              dist_attr=dist_attr, cost_bins=cost_bins,
-                                              direction_names=direction_names, ordered_tps=ordered_tps,
-                                              target_distr=target_distr, distr_dims=distr_dims,
-                                              include_loops=include_loops, excl_edges_perc=excl_edges_perc)
-
+    with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
+        for trs in tqdm(pool.imap_unordered(
+                        partial(multiproc_wrapper,
+                                direction_names=direction_names,
+                                ordered_tps=ordered_tps,
+                                max_legs=max_legs,
+                                max_tr_dists=max_tr_dists,
+                                cost_bins=cost_bins,
+                                target_distr=target_distr,
+                                distr_dims=distr_dims,
+                                excl_edges_perc=excl_edges_perc,
+                                purp_to_acts=purp_to_acts), zones), total=len(zones)):
             if trs:
                 for tr in trs:
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df = trs_to_df(trs, target_distr, distr_dims)
+                trs_info_df, trs_descr_df = trs_to_df(trs, tps_durs,
+                                                      target_distr, distr_dims,
+                                                      max_tr_dists)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 
-        if descrs:
-            trs_descr_df = pd.concat(descrs)
-            trs_info_df = pd.concat(infos)
-            if not trs_info_df.index.is_unique:
-                raise ValueError('Returned index is duplicated')
+    if descrs:
+        trs_descr_df = pd.concat(descrs)
+        trs_info_df = pd.concat(infos)
+        if not trs_info_df.index.is_unique:
+            raise ValueError('Returned index is duplicated')
 
-        else:
-            raise ValueError('No trs identified')
+    else:
+        raise ValueError('No trs identified')
 
-        print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
+    print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
-        return trs_info_df, trs_descr_df
+    return trs_info_df, trs_descr_df
