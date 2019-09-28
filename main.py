@@ -1,6 +1,3 @@
-import os
-import pandas as pd
-
 import od2trs.io as myio
 import od2trs.utilities as utils
 import od2trs.distributions as distrs

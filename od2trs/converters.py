@@ -327,7 +327,6 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
         trs_info_df = pd.concat(infos)
         if not trs_info_df.index.is_unique:
             raise ValueError('Returned index is duplicated')
-
     else:
         raise ValueError('No trs identified')
 

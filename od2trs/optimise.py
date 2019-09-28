@@ -14,14 +14,12 @@ def prepare_model(trs, trs_info, od, tgt_distr,
         # Can be slow
         trs = _model.trs.reset_index()
         d_trs_descr = trs.groupby('Odpairid')['Tourid'].apply(list).to_dict()
-
         return d_trs_descr
 
     def init_tr_distr_grps(_model):
         _trs_info = _model.trs_info.reset_index()
         _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tourid'].apply(list)
         d_distr_grps = _trs_infog.to_dict()
-
         return d_distr_grps
 
     def init_solution(_model, _tr_id):
@@ -35,9 +33,7 @@ def prepare_model(trs, trs_info, od, tgt_distr,
     model.trs = trs
     model.trs_info = trs_info
     model.tgt_distr = tgt_distr
-
     model.init_sol = init_sol
-
     model.distr_perc_tolerance = distr_perc_tolerance
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
