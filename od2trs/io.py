@@ -126,13 +126,16 @@ def import_trs(filepaths):
 
 
 def export_target_distr(distr, filepath):
-    if distr is not None:
-        distr.to_csv(os.path.join(filepath), index=True)
+    # reformat the tuple sequences to strings
+    distr = distr.reset_index()
+    distr = utils.tuples_to_strings(distr)
+    distr.to_csv(os.path.join(filepath), index=False)
 
 
 def export_trs(info, descr, filepaths):
     ext = filepaths['out']['trs_mdl_descr'].split('.')[-1]
     if ext == 'csv':
+        info = utils.tuples_to_strings(info)
         descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
         info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
     elif ext == 'pcl':

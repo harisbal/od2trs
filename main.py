@@ -118,10 +118,9 @@ def main(traj):
         #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
         #if maxdist != float('inf'):
         #    max_tr_dists = maxdist
+        myio.export_target_distr(target_distr, filepaths['out']['target_distr'])
     else:
         target_distr = None
-
-    myio.export_target_distr(target_distr, filepaths['out']['target_distr'])
 
     if run_trs_identification:
         trs_info, trs_descr = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
@@ -163,9 +162,6 @@ def main(traj):
             trs_info = trs_info.join(trs_mdl_times_used)
             trs_info.fillna({'Timesused': 0}, inplace=True)
             trs_info['Timesused'] = trs_info['Timesused'].astype(int)
-
-            # reformat the tuple sequences to strings
-            trs_info = utils.tuples_to_strings(trs_info)
 
             idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
             od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
