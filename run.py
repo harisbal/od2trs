@@ -56,7 +56,13 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if target_distr is not None:
-        traj.f_add_result('target_distr', target_distr, comment='target_distr')
+        # Cannot export categoricals
+        df = target_distr.reset_index()
+        for c in df:
+            if df[c].dtype.name == 'category':
+                df[c] = df[c].astype(str)
+
+        traj.f_add_result('target_distr', df, comment='target_distr')
 
 
 def prepare_traj_params(traj, cfg):
