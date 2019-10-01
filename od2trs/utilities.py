@@ -1,6 +1,7 @@
 import os
 import itertools
 import re
+import numpy as np
 import pandas as pd
 
 
@@ -164,3 +165,13 @@ def append_gencost(df, weights, func=None, cost_name='Gencost'):
     df[cost_name] = cost
 
     return df
+
+
+def aggr_tolist(df, col_grpby, col_tolist):
+    df = df[[col_grpby, col_tolist]]
+    keys, values = df.sort_values(col_grpby).values.T
+    ukeys, index = np.unique(keys, True)
+    arrays = np.split(values, index[1:])
+    df2 = pd.DataFrame({col_grpby: ukeys,
+                        col_tolist: [list(a) for a in arrays]})
+    return df2.squeeze()

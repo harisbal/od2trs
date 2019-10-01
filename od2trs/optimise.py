@@ -4,6 +4,8 @@ from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 
+import od2trs.utilities as utils
+
 
 def prepare_model(trs, trs_info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
@@ -11,15 +13,18 @@ def prepare_model(trs, trs_info, od, tgt_distr,
 
     # TODO for some reason it passes 2 args
     def init_trs_descr(_model, _):
-        # Can be slow
-        trs = _model.trs.reset_index()
-        d_trs_descr = trs.groupby('Odpairid')['Tourid'].apply(list).to_dict()
+        _trs = _model.trs.reset_index()
+        d_trs_descr = (utils.aggr_tolist(_trs, 'Odpairid', 'Tourid')
+                            .set_index('Odpairid').squeeze()
+                            .to_dict())
         return d_trs_descr
 
     def init_tr_distr_grps(_model):
         _trs_info = _model.trs_info.reset_index()
-        _trs_infog = _trs_info.groupby(['Distrgroupid'])['Tourid'].apply(list)
-        d_distr_grps = _trs_infog.to_dict()
+        d_distr_grps = (utils.aggr_tolist(_trs_info, 'Distrgroupid', 'Tourid')
+                             .set_index('Distrgroupid').squeeze()
+                             .to_dict())
+
         return d_distr_grps
 
     def init_solution(_model, _tr_id):
