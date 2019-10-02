@@ -155,13 +155,13 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     return trs
 
 
-def trs_to_df(trs, target_distr, tps_durs, max_costs):
+def trs_to_df(trs, tgt_distr, tps_durs, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
             'Acts', 'Departtimes', 'Loopscnt']
 
-    if target_distr is not None:
+    if tgt_distr is not None:
         keys.append('Distrgroupid')
 
     if max_costs:
@@ -208,7 +208,7 @@ def results_to_od(descr, info, idx_cols):
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       max_legs, max_costs, cost_bins,
-                      target_distr, distr_dims, excl_edges_perc,
+                      tgt_distr, distr_dims, excl_edges_perc,
                       purp_to_acts):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
@@ -227,7 +227,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
         trs = zones_seq_to_trs(zs, G, direction_names, cost_types=cost_types)
 
         trs = filters.filter_trs(trs, max_costs, purp_to_acts,
-                                 target_distr, distr_dims, cost_bins)
+                                 tgt_distr, distr_dims, cost_bins)
 
         if trs:
             # Assign the activities to the filtered trs
@@ -245,7 +245,7 @@ def init_multiproc_wrapper(_G):
 
 
 def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=None,
-           target_distr=None, distr_dims=None, cost_bins=None,
+           tgt_distr=None, distr_dims=None, cost_bins=None,
            costs=None, max_costs=None, purp_to_acts=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
@@ -282,7 +282,7 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                                 max_legs=max_legs,
                                 max_costs=max_costs,
                                 cost_bins=cost_bins,
-                                target_distr=target_distr,
+                                tgt_distr=tgt_distr,
                                 distr_dims=distr_dims,
                                 excl_edges_perc=excl_edges_perc,
                                 purp_to_acts=purp_to_acts), zones), total=len(zones)):
@@ -291,7 +291,7 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df, = trs_to_df(trs, target_distr,
+                trs_descr_df, trs_info_df, = trs_to_df(trs, tgt_distr,
                                                        tps_durs, max_costs)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)

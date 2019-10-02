@@ -10,29 +10,32 @@ def create_folders(folder_list):
             os.makedirs(folder)
 
 
-def read_target_distr(infilepath, distr_cols,
-                      interval_cols=None, seq_cols=None,
-                      percent_col='Percentage'):
+def read_tgt_distr(infilepath, distr_cols, ntrs,
+                   interval_cols=None, seq_cols=None,
+                   percent_col='Percentage'):
 
-    target_distr = pd.read_csv(infilepath)
+    tgt_distr = pd.read_csv(infilepath)
 
     # check for intervals
     if interval_cols:
         for c in interval_cols:
-            target_distr[c] = target_distr[c].apply(utils.to_interval)
-            target_distr[c] = target_distr[c].astype('interval')
+            tgt_distr[c] = tgt_distr[c].apply(utils.to_interval)
+            tgt_distr[c] = tgt_distr[c].astype('interval')
 
     if seq_cols:
         for c in seq_cols:
-            target_distr[c] = utils.to_sequence(target_distr[c])
+            tgt_distr[c] = utils.to_sequence(tgt_distr[c])
 
-    target_distr = target_distr.groupby(distr_cols)[percent_col].sum()
+    tgt_distr = tgt_distr.groupby(distr_cols)[percent_col].sum()
+
+    # Has not been tested
+    tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
 
     # assign a Distrgroupid col
-    target_distr = target_distr.to_frame()
-    target_distr['Distrgroupid'] = target_distr.reset_index().index
+    tgt_distr = tgt_distr.to_frame()
+    tgt_distr['Distrgroupid'] = tgt_distr.reset_index().index
 
-    return target_distr
+    return tgt_distr
 
 
 def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=None):
@@ -124,7 +127,7 @@ def import_trs(filepaths):
     return info, descr
 
 
-def export_target_distr(distr, filepath):
+def export_tgt_distr(distr, filepath):
     # reformat the tuple sequences to strings
     distr = distr.reset_index()
     distr = utils.tuples_to_strings(distr)

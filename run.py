@@ -17,7 +17,7 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
     infldr = os.path.join(inputs_fldr, data_src, aggr_lvl, 'sample_perc_{}'.format(int(perc_sample_size * 100)))
 
-    files = ['od.csv', 'costs.csv', 'target_distr.csv', 'trs_obs_info.scv']
+    files = ['od.csv', 'costs.csv', 'tgt_distr.csv', 'trs_obs_info.scv']
     for f in files:
         nf = os.path.join(infldr, f)
         print(nf)
@@ -42,7 +42,7 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     # Run simulation
     start_time = time.time()
     results = mn.main(traj)
-    (od, trs_mdl_descr, trs_mdl_info, target_distr) = results
+    (od, trs_mdl_descr, trs_mdl_info, tgt_distr) = results
     elapsed_time = time.time() - start_time
     print('Complete!')
 
@@ -55,14 +55,14 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
     traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
-    if target_distr is not None:
+    if tgt_distr is not None:
         # Cannot export categoricals
-        df = target_distr.reset_index()
+        df = tgt_distr.reset_index()
         for c in df:
             if df[c].dtype.name == 'category':
                 df[c] = df[c].astype(str)
 
-        traj.f_add_result('target_distr', df, comment='target_distr')
+        traj.f_add_result('tgt_distr', df, comment='tgt_distr')
 
 
 def prepare_traj_params(traj, cfg):

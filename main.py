@@ -70,6 +70,8 @@ def main(traj):
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
+    ntrs = utils.estimate_max_ntrs(od, homebased_filt='HB')
+
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
 
@@ -82,24 +84,24 @@ def main(traj):
         seq_cols = ['Timeperiods']
         try:
             # TODO IMPROVE (not too generic)
-            target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
-                                                  interval_cols=cost_bins.keys(),
-                                                  seq_cols=seq_cols)
+            tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+                                            interval_cols=cost_bins.keys(),
+                                            seq_cols=seq_cols)
 
         except FileNotFoundError:
             obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            target_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
+            tgt_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
                                                          max_costs, distr_dims,
                                                          cost_bins, od_perc_thresh)
 
-        # max_legs = target_distr.index.get_level_values('Legs').max()
+        # max_legs = tgt_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering
-        #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
+        #maxdist = tgt_distr.index.get_level_values('Distancegroup').max().right
         #if maxdist != float('inf'):
         #    max_costs = maxdist
-        myio.export_target_distr(target_distr, filepaths['out']['target_distr'])
+        myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
-        target_distr = None
+        tgt_distr = None
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
@@ -107,7 +109,7 @@ def main(traj):
                                                 costs=costs, max_costs=max_costs,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,
-                                                target_distr=target_distr,
+                                                tgt_distr=tgt_distr,
                                                 excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info, ncores=ncores)
 
@@ -115,15 +117,15 @@ def main(traj):
         myio.export_trs(trs_info, trs_descr, filepaths, frmt='pkl')
     else:
         trs_info, trs_descr = myio.import_trs(filepaths)
-        # In case pcl were used to create info and descrs filter them with the new target_distr
+        # In case pcl were used to create info and descrs filter them with the new tgt_distr
         # can cause issues if parameters realted to tours_identification module are changed between runs
-        # trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
+        # trs_info, trs_descr = filters.filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr)
 
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_descr, trs_info, od,
-                            target_distr=target_distr,
+                            tgt_distr=tgt_distr,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
                             workmem=workmem,
@@ -140,7 +142,7 @@ def main(traj):
         if 'Coords' in zones_info:
             trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
-    results = [od_mdl, trs_descr, trs_info, target_distr]
+    results = [od_mdl, trs_descr, trs_info, tgt_distr]
 
     return results
 

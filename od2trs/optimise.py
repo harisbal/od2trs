@@ -1,3 +1,4 @@
+import random
 import pandas as pd
 
 from pyomo.environ import *
@@ -6,26 +7,27 @@ from pyutilib.common._exceptions import ApplicationError
 
 import od2trs.utilities as utils
 import od2trs.filters as filters
+import od2trs.converters as converters
+import warnings
 
 
-def prepare_model(trs, trs_info, od, tgt_distr,
+def prepare_model(descr, info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, max_ntrs, init_sol=None):
 
     # TODO for some reason it passes 2 args
-    def _init_trs_descr(_model, _):
-        _trs = _model.trs.reset_index()
-        d_trs_descr = (utils.aggr_tolist(_trs, 'Odpairid', 'Tourid')
+    def _init_descr_byodpair(_model, _):
+        _descr = _model.descr.reset_index()
+        d_trs_descr = (utils.aggr_tolist(_descr, 'Odpairid', 'Tourid')
                             .set_index('Odpairid').squeeze()
                             .to_dict())
         return d_trs_descr
 
-    def _init_tr_distr_grps(_model):
-        _trs_info = _model.trs_info.reset_index()
-        d_distr_grps = (utils.aggr_tolist(_trs_info, 'Distrgroupid', 'Tourid')
+    def _init_tr_bydistrgrps(_model):
+        _info = _model.info.reset_index()
+        d_distr_grps = (utils.aggr_tolist(_info, 'Distrgroupid', 'Tourid')
                              .set_index('Distrgroupid').squeeze()
                              .to_dict())
-
         return d_distr_grps
 
     def _init_solution(_model, _tr_id):
@@ -35,19 +37,19 @@ def prepare_model(trs, trs_info, od, tgt_distr,
             return _model.init_sol.get(_tr_id, 0)
 
     model = ConcreteModel()
-    model.od = od
-    model.trs = trs
-    model.trs_info = trs_info
-    model.tgt_distr = tgt_distr
+    model.od = od.copy()
+    model.tgt_distr = tgt_distr.copy()
+    model.descr = descr
+    model.info = info
     model.init_sol = init_sol
     model.distr_perc_tolerance = distr_perc_tolerance
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
-    model.tr_ids = Set(initialize=model.trs_info.index.unique().values.tolist())
+    model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
 
     d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
     model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.trs_descr = Param(model.odpair_ids, initialize=_init_trs_descr, default=None)
+    model.descr_byodpair = Param(model.odpair_ids, initialize=_init_descr_byodpair, default=None)
 
     model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=_init_solution)
     model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
@@ -62,7 +64,8 @@ def prepare_model(trs, trs_info, od, tgt_distr,
         model.tgt_distr.set_index('Distrgroupid', inplace=True)
         d_distr_grp_percs = model.tgt_distr['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
-        model.tr_distr_grps = Param(model.distrgrp_ids, initialize=_init_tr_distr_grps, default=None)
+        d_tr_bydistrgrps = _init_tr_bydistrgrps(model)
+        model.tr_bydistrgrps = Param(model.distrgrp_ids, initialize=d_tr_bydistrgrps, default=None)
 
     return model
 
@@ -73,7 +76,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def maximise_used_trips(_model):
         odsum = _model.od['Dailytrips'].sum()
-        nlegs = _model.trs_info['Nolegs'].to_dict()
+        nlegs = _model.info['Nolegs'].to_dict()
         return sum(_model.ntrs[tr_id] * nlegs[tr_id]
                    for tr_id in _model.tr_ids) - odsum
 
@@ -82,35 +85,36 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def max_ntrs_rule(_model):
         _expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
         return (0, _expr, _model.max_ntrs)
+
     model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
-    def trips_rule(_model, leg_id):
-        if _model.trs_descr[leg_id]:
-            _expr = sum(_model.ntrs[tr_id] for tr_id in _model.trs_descr[leg_id])
-            return (0, _expr, model.trips[leg_id])
+    def trips_rule(_model, odpair_id):
+        if _model.descr_byodpair[odpair_id]:
+            _expr = sum(_model.ntrs[tr_id] for tr_id in _model.descr_byodpair[odpair_id])
+            return (0, _expr, model.trips[odpair_id])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
     def distr_rule_low(_model, grp_id):
-        if _model.tr_distr_grps[grp_id]:
+        if _model.tr_bydistrgrps[grp_id]:
 
             lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
                          * _model.tot_used_trs)
 
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
+            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
 
             return lower_lim <= expr
         else:
             return Constraint.Skip
 
     def distr_rule_high(_model, grp_id):
-        if _model.tr_distr_grps[grp_id]:
+        if _model.tr_bydistrgrps[grp_id]:
 
             upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
                          * _model.tot_used_trs)
 
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
+            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
             return expr <= upper_lim
         else:
             return Constraint.Skip
@@ -150,88 +154,144 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(trs_descr, trs_info, od, target_distr=None,
+def main(descr, info, od, tgt_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def _estimate_max_ntrs(df, homebased_filt='HB'):
-        hb_purps = df.reset_index()['Purpose'].str.startswith(homebased_filt).values
-        # case of non symmetric fh and th
-        return int(df.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
-
-    def _sample_trs_bydistr(info, distr, sample_size):
+    def _sample_trs_bydistr(_info, _distr, _sample_size, _return_idx=False):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
-        sample = (pd.merge(info, distr[usecols], on=jn_name)
-                  .sample(n=sample_size, replace=False, weights='Percentage'))
+        sample = (pd.merge(_info.reset_index(), _distr[usecols], on=jn_name)
+                  .sample(n=_sample_size, replace=False, weights='Percentage')
+                  .set_index(_info.index.name))
         return sample
 
-    def _prepare_init_sol_bydistr(info, distr, ntrs, _nsols=1):
-        init_sols = []
+    def _prepare_init_sol_bydistr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
-        sample = (pd.merge(info, distr[usecols], on=jn_name)
-                  .sample(n=ntrs, replace=True, weights='Percentage'))
+        sample = (pd.merge(_info, _distr[usecols], on=jn_name)
+                  .sample(n=_ntrs, replace=True, weights='Percentage'))
 
-        for i in range(_nsols):
-            sol = sample.index.value_counts().to_dict()
-            init_sols.append(sol)
-        return init_sols
+        sol = sample.index.value_counts().to_dict()
+        return sol
 
-    def _update_trs_info_timesused(_trs_info, _results):
-        times_used = filters.extract_tour_times_used(_results)
-        if times_used is not None:
-            last_sol = times_used.index.unique(level='Solutionno').max()
-            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
-            _trs_info = _trs_info.join(trs_mdl_times_used)
-            _trs_info.fillna({'Timesused': 0}, inplace=True)
-            _trs_info['Timesused'] = _trs_info['Timesused'].astype(int)
-        return _trs_info
+    def _update_timesused(_info, _results):
+        timesused = filters.extract_sol_timesused(_results)
+        if timesused is not None:
+            last_sol = timesused.index.unique(level='Solutionno').max()
+            _timesused = timesused.xs(last_sol, level='Solutionno')
+            #_info = _info.join(_timesused).fillna({'Timesused': 0})
+            _info.update(_timesused)
+            _info['Timesused'] = _info['Timesused'].astype(int)
+        return _info
 
     # The maximum number of trs can be estimated
-    max_ntrs = _estimate_max_ntrs(od, homebased_filt='HB')
+    max_ntrs = utils.estimate_max_ntrs(od, homebased_filt='HB')
+    print('sample_size ', max_ntrs)
+    #max_ntrs = 2000
 
     optim_method = 'hybrid'
-    pop_size = 10
+    pop_size = 2
+    generations = 2
+    mut_prob = 0.1
+    # percentage of chromosome to replace
+    mut_frac = 0.01
 
+    # The population is a list with the timesused (solution) of each candidate trs set
+    pop = []
+    init_sol = None
+    info['Timesused'] = 0
     if optim_method == 'hybrid':
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
-        if max_ntrs < trs_info.shape[0]:
-            trs_info = _sample_trs_bydistr(trs_info, target_distr,
-                                           sample_size=max_ntrs)
-        else:
+        if max_ntrs >= info.shape[0]:
             raise ValueError('The candidate tours are less than the expected number of result tours,'
                              'switch to bnb optim_method')
-        mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.values)
-        trs_descr = trs_descr.loc[mask]
+
+        for i in range(pop_size):
+            sampled_info = _sample_trs_bydistr(info, tgt_distr,
+                                               _sample_size=max_ntrs)
+            pop.append(sampled_info['Timesused'])
     elif optim_method == 'bnb':
-        pass
+        generations = 1
+        pop.append(info['Timesused'])
+        # The target distr can be utilised to create initial solutions
+        if tgt_distr is not None:
+            init_sol = _prepare_init_sol_bydistr(info, tgt_distr, max_ntrs)
     else:
         raise ValueError('optim_method: {} not recognised'.format(optim_method))
 
-    # The target distr can be utilised to create initial solutions
-    if target_distr is not None:
-        init_sols = _prepare_init_sol_bydistr(trs_info, target_distr, max_ntrs, nsols)
-    else:
-        init_sols = None
+    evals = []
+    for gen_idx in range(generations):
+        for i, p_timesused in enumerate(pop):
+            p_info = info.loc(axis=0)[p_timesused.index]
+            p_descr = descr.loc(axis=0)[p_timesused.index]
+            print('Preparing the optimisation model: gen:{}'.format(i))
+            mymodel = prepare_model(p_descr, p_info, od, tgt_distr,
+                                    distr_constr_enabled, distr_perc_tolerance,
+                                    mip_tolerances_lowercutoff, max_ntrs,
+                                    init_sol=init_sol)
 
-    for i in range(pop_size):
-        #print('Preparing the optimisation model')
-        mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
-                                distr_constr_enabled, distr_perc_tolerance,
-                                mip_tolerances_lowercutoff, max_ntrs,
-                                init_sol=init_sol)
+            print('Running the optimisation model: gen:{}'.format(i))
+            results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
+                                workmem, mip_strategy_file, mip_strategy_probe,
+                                mip_tolerances_lowercutoff,
+                                timelimit=timelimit)
 
-        #print('Running the optimisation model')
-        results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
-                            workmem, mip_strategy_file, mip_strategy_probe,
-                            mip_tolerances_lowercutoff,
-                            timelimit=timelimit)
+            # evaluate
+            p_info = _update_timesused(p_info, results)
+            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+            p_od = converters.results_to_od(p_descr, p_info, idx_cols)
+            evals.append(od['Dailytrips'].sum() - p_od.sum())
 
-    trs_info = _update_trs_info_timesused(trs_info, results)
+        # crossover
+        # pick 'pop_size' pairs of candidates (parents) based on their evaluation (eval)
 
-    return trs_info
+        children = []
+        for _ in range(pop_size):
+            choices = list(range(len(evals)))
+            weights = evals
+            # parent1, parent2
+            idx_p1, idx_p2 = random.choices(choices, weights=weights, k=2)
+
+            p1 = pop[idx_p1]
+            p2 = pop[idx_p2]
+
+            crossover = p1 + p2
+            parts = []
+            for grpid, g in tgt_distr.groupby('Distrgroupid'):
+                df = crossover.to_frame().join(info['Distrgroupid'])
+                df = df[df['Distrgroupid'] == grpid]['Timesused']
+                size = g['Size']
+                weights = df.div(df.sum())
+                if not weights.sum() == 0:
+                    part = df.sample(n=size, replace=False, weights=weights)
+                else:
+                    df = info['Timesused'].to_frame().join(info['Distrgroupid'])
+                    df = df[df['Distrgroupid'] == grpid]['Timesused']
+                    part = df.sample(n=size, replace=False)
+                    warnings.warn('No trs identified in distr_grp_id:{},'
+                                  'filled it from all trs'.format(grpid))
+                parts.append(part)
+
+            child = pd.concat(parts)
+
+            if random.random() > mut_prob:
+                # remove a part of child
+                remove_part = child.sample(frac=mut_frac)
+                remove_mask = child.index.symmetric_difference(remove_part.index)
+                child = child.loc[remove_mask]
+                # fill it randomly and make sure to keep max_ntrs
+                replace_part = info.sample(n=remove_part.shape[0])
+                child = pd.concat(child, replace_part).head(max_ntrs)
+
+            children.append(child)
+
+        pop = children.copy()
+
+    info = _update_timesused(info, results)
+
+    return info
