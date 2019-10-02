@@ -92,17 +92,15 @@ def import_trs_info_obs(infilepath, seq_cols):
     if seq_cols:
         for c in seq_cols:
             obs_info[c] = utils.to_sequence(obs_info[c])
-
     return obs_info
 
 
-def import_distances(infilepath, dist_types=['Distance']):
-    # can contain all types of distances such as km distance, travel time, etc
-    dists = pd.read_csv(infilepath, index_col=[0, 1])
-    dists = dists[dist_types]
-    dists = dists.astype(float)
-    dists.index.names = ['Source', 'Target']
-    return dists
+def import_costs(infilepath):
+    # can contain all types of costs such as km distance, travel time, etc
+    costs = pd.read_csv(infilepath, index_col=['Source', 'Target'])
+    costs = costs.astype(float)
+    costs.index.names = ['Source', 'Target']
+    return costs
 
 
 def import_zones_info(infilepath):

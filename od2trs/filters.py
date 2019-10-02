@@ -48,27 +48,21 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
         nolegs = tr.nolegs
         d_dims['Nolegs'] = nolegs
 
-        if 'Gencostgrp' in distr_dims:
-            if cost_bins is None:
-                raise ValueError('Cost_bins cannot be empty when distance group is required')
-            tr.assign_gencost_grp(cost_bins)
-            d_dims['Gencostgrp'] = tr.gencostgrp
+        if cost_bins is not None:
+            for cost_type, bins in cost_bins.items():
+                d_dims[cost_type+'_grp'] = tr.get_cost_grp(cost_type, bins)
 
         if 'Timeperiods' in distr_dims:
             d_dims['Timeperiods'] = tr.timeperiods
 
-        mask = list()
+        key = list()
         for dd in distr_dims:
-            mask.append(d_dims[dd])
+            key.append(d_dims[dd])
 
-        mask = tuple(mask)
-
-        try:
-            perc = target_distr['Percentage'].loc[mask]
-        except KeyError:
-            perc = None
-
-        if isinstance(perc, float):
+        key = tuple(key)
+        perc = target_distr['Percentage'].get(key, 0)
+        if perc > 0:
+            tr.distrgroupid = int(target_distr.loc[key]['Distrgroupid'])
             filter_trs.append(tr)
         else:
             continue
@@ -77,11 +71,11 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
         return filter_trs
 
 
-def filter_trs(trs, max_tr_dists, purp_to_acts,
+def filter_trs(trs, max_costs, purp_to_acts,
                target_distr, distr_dims, cost_bins):
 
-    if max_tr_dists:
-        trs = filter_by_max_dist(trs, max_tr_dists)
+    if max_costs:
+        trs = filter_by_max_cost(trs, max_costs)
 
     if purp_to_acts:
         trs = filter_by_acts(trs, purp_to_acts)
@@ -92,14 +86,14 @@ def filter_trs(trs, max_tr_dists, purp_to_acts,
     return trs
 
 
-def filter_by_max_dist(trs, max_dists):
+def filter_by_max_cost(trs, max_costs):
 
     filtered_trs = list()
     for tr in trs:
-        for w in max_dists:
+        for w in max_costs:
             dist = getattr(tr, w.lower())
             if dist:
-                if dist > max_dists[w]:
+                if dist > max_costs[w]:
                     break
 
         filtered_trs.append(tr)

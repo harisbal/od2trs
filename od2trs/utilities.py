@@ -27,6 +27,14 @@ def prepare_filepaths_from_config(cfg):
     return filepaths
 
 
+def retrieve_pypet_param(param):
+    try:
+        param.f_is_empty()
+        return None
+    except AttributeError:
+        return param
+
+
 def create_dicts_from_list_values(d):
 
     combs_of_ds = list()
@@ -109,7 +117,7 @@ def to_interval(x):
         else:
             raise ValueError('Not acceptable left side limit')
 
-    expr = '([\[(])(\d+(?:\.\d+)?|inf),\s*(\d+(?:\.\d+)?|inf)([\])])'
+    expr = r'([\[(])(\d+(?:\.\d+)?|inf),\s*(\d+(?:\.\d+)?|inf)([\])])'
     left_side, left, right, right_side = re.match(expr, x).groups()
     closed = _interval_is_close_check(left_side, right_side)
     interval = pd.Interval(pd.to_numeric(left), pd.to_numeric(right), closed)
@@ -140,30 +148,6 @@ def add_coords(df, coords):
 
     df['Xtarget'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['X']
     df['Ytarget'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['Y']
-    return df
-
-
-def append_gencost(df, weights, func=None, cost_name='Gencost'):
-
-    """
-    Expecting a dictionary with the weights of each distance type
-    :param df:
-    :param weights:
-    :param func:
-    :param cost_name:
-
-    :return:
-    """
-
-    dist_types = list(weights.keys())
-
-    if func is None:
-        cost = 0
-        for dist_type in dist_types:
-            cost += df[dist_type] * weights[dist_type]
-
-    df[cost_name] = cost
-
     return df
 
 

@@ -15,7 +15,7 @@ from od2trs.tc import Leg, TripChain
 
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,
-                ordered_tps=None, dists=None,
+                ordered_tps=None, costs=None,
                 zones_info=None, verbose=True):
 
     def _add_chron_connectors(_g, _ordered_tps):
@@ -39,9 +39,9 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                 tgt_name = '{}-{}'.format(z, tgt_dt)
 
                 _d = dict()
-                if dists is not None:
-                    _d = dict(zip(dists.columns,
-                                  len(dists.columns) * [0]))
+                if costs is not None:
+                    _d = dict(zip(costs.columns,
+                                  len(costs.columns) * [0]))
 
                 _g.add_edge(src_name, tgt_name,
                             Connector=True,
@@ -97,7 +97,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     return g
 
 
-def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
+def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
 
     def filter_leg_attrs_by_purpose(_leg_attrs, filter_directions):
         _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
@@ -120,7 +120,8 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
                                   filter_dir_orig)
     avail_legs = list()
     for la in leg_attrs:
-        leg = Leg(source=zones_seq[0], target=zones_seq[1], **la)
+        leg = Leg(source=zones_seq[0], target=zones_seq[1],
+                  cost_types=cost_types, **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
@@ -129,7 +130,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
             avail_legs.clear()
             leg_attrs = prepare_leg_attrs(G, src, tgt, filter_dir_interm)
             for la in leg_attrs:
-                leg = Leg(source=src, target=tgt, **la)
+                leg = Leg(source=src, target=tgt, cost_types=cost_types, **la)
                 avail_legs.append(leg)
             # case for connectors
             if avail_legs:
@@ -140,7 +141,8 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
                                   filter_dir_dest)
     avail_legs.clear()
     for la in leg_attrs:
-        leg = Leg(source=zones_seq[-2], target=zones_seq[-1], **la)
+        leg = Leg(source=zones_seq[-2], target=zones_seq[-1],
+                  cost_types=cost_types, **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
@@ -153,28 +155,26 @@ def zones_seq_to_trs(zones_seq, G, direction_names, purp_to_acts):
     return trs
 
 
-def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
+def trs_to_df(trs, target_distr, tps_durs, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
-            'Acts', 'Gencost', 'Departtimes', 'Loopscnt']
+            'Acts', 'Departtimes', 'Loopscnt']
 
-    if max_tr_dists:
-        keys += list(max_tr_dists.keys())
+    if target_distr is not None:
+        keys.append('Distrgroupid')
 
-    if distr_dims:
-        if 'Gencostgrp' in distr_dims:
-            keys.append('Gencostgrp')
+    if max_costs:
+        keys += list(max_costs.keys())
 
     d_trs_info = dict()
     for k in keys:
         d_trs_info[k] = list()
 
     trs_decr = dict()
-
     for tr in trs:
-        if max_tr_dists:
-            if 'Traveltime' in max_tr_dists:
+        if max_costs:
+            if 'Traveltime' in max_costs:
                 if tps_durs:
                     tr.assign_departtimes(tps_durs)
 
@@ -185,20 +185,17 @@ def trs_to_df(trs, tps_durs, target_distr, distr_dims, max_tr_dists):
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-
     trs_info_df = pd.DataFrame(d_trs_info)
+
     trs_info_df.set_index('Id', inplace=True)
     trs_info_df.index.name = idxcol
-
-    if target_distr is not None:
-        trs_info_df = distrs.assign_distr_group(trs_info_df, target_distr, distr_dims)
 
     trs_descr_df = pd.DataFrame.from_dict(trs_decr, orient='index')
     trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
     trs_descr_df.index.names = [idxcol, 'Legseqidx']
     trs_descr_df.dropna(axis=1, inplace=True)
 
-    return trs_info_df, trs_descr_df
+    return trs_descr_df, trs_info_df
 
 
 def results_to_od(descr, info, idx_cols):
@@ -210,52 +207,30 @@ def results_to_od(descr, info, idx_cols):
 
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
-                      max_legs, max_tr_dists, cost_bins,
+                      max_legs, max_costs, cost_bins,
                       target_distr, distr_dims, excl_edges_perc,
                       purp_to_acts):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_tr_dists, excl_edges_perc)
+                                                        max_legs, max_costs, excl_edges_perc)
 
     if not zones_seqs:
         return None
 
+    if max_costs is not None:
+        cost_types = max_costs.keys()
+    else:
+        cost_types = None
+
     filt_trs = list()
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, direction_names, purp_to_acts)
+        trs = zones_seq_to_trs(zs, G, direction_names, cost_types=cost_types)
 
-        trs = filters.filter_trs(trs, max_tr_dists, purp_to_acts,
+        trs = filters.filter_trs(trs, max_costs, purp_to_acts,
                                  target_distr, distr_dims, cost_bins)
 
         if trs:
             # Assign the activities to the filtered trs
-            filt_trs.extend(trs)
-
-    if filt_trs:
-        return filt_trs
-    else:
-        return None
-
-
-def multiproc_wrapper_profiling(G, src_zone, direction_names, ordered_tps,
-                                max_legs, max_tr_dist, dist_attr, cost_bins,
-                                target_distr, distr_dims, include_loops,
-                                excl_edges_perc):
-
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_tr_dist, dist_attr,
-                                                        include_loops, excl_edges_perc)
-
-    if not zones_seqs:
-        return None
-
-    filt_trs = list()
-    for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, direction_names)
-        trs = filters.filter_trs(trs, ordered_tps, max_tr_dist,
-                                 target_distr, distr_dims, cost_bins)
-
-        if trs:
             filt_trs.extend(trs)
 
     if filt_trs:
@@ -271,17 +246,17 @@ def init_multiproc_wrapper(_G):
 
 def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=None,
            target_distr=None, distr_dims=None, cost_bins=None,
-           distances=None, max_tr_dists=None, purp_to_acts=None,
+           costs=None, max_costs=None, purp_to_acts=None,
            excl_edges_perc=0, zones_info=None, ncores=None):
 
-    if distances is not None:
-        od = od.join(distances)
+    if costs is not None:
+        od = od.join(costs)
         # TODO Drop missing values (could cause problems)
         od = od.dropna(axis=1)
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
-                    ordered_tps=ordered_tps, dists=distances,
+                    ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
     descrs = list()
@@ -305,7 +280,7 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                                 direction_names=direction_names,
                                 ordered_tps=ordered_tps,
                                 max_legs=max_legs,
-                                max_tr_dists=max_tr_dists,
+                                max_costs=max_costs,
                                 cost_bins=cost_bins,
                                 target_distr=target_distr,
                                 distr_dims=distr_dims,
@@ -316,9 +291,8 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_info_df, trs_descr_df = trs_to_df(trs, tps_durs,
-                                                      target_distr, distr_dims,
-                                                      max_tr_dists)
+                trs_descr_df, trs_info_df, = trs_to_df(trs, target_distr,
+                                                       tps_durs, max_costs)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 

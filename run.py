@@ -17,7 +17,7 @@ def prepare_inputs(data_src, aggr_lvl, perc_sample_size,
 
     infldr = os.path.join(inputs_fldr, data_src, aggr_lvl, 'sample_perc_{}'.format(int(perc_sample_size * 100)))
 
-    files = ['od.csv', 'distances.csv', 'target_distr.csv', 'trs_obs_info.scv']
+    files = ['od.csv', 'costs.csv', 'target_distr.csv', 'trs_obs_info.scv']
     for f in files:
         nf = os.path.join(infldr, f)
         print(nf)
@@ -76,10 +76,9 @@ def prepare_traj_params(traj, cfg):
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
 
-    ordered_tps = json.loads(cfg['TOURS']['ordered_timeperiods'])
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
 
-    dists_info = json.loads(cfg['TOURS']['distances_info'])
+    max_costs = json.loads(cfg['TOURS']['max_costs'])
     cost_bins = json.loads(cfg['TOURS']['cost_bins'])
 
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
@@ -92,22 +91,17 @@ def prepare_traj_params(traj, cfg):
 
     purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
 
-    if dists_info:
-        max_tr_dists = {k: v['thresh'] for k, v in dists_info.items()}
-    else:
-        max_tr_dists = None
-
-    # TODO fix
     if not cost_bins:
-        cost_bins_range = json.loads(cfg['TOURS']['cost_bins_range'])
-        if cost_bins_range:
-            cost_bins = list()
-            for r in cost_bins_range:
-                cost_bins.append(list(range(0, max(max_tr_dists['Distance']), r)))
+        cost_bins_interval = json.loads(cfg['TOURS']['cost_bins_interval'])
+        if cost_bins_interval is not None:
+            cost_bins = {}
+            for cost_type, interv in cost_bins_interval.items():
+                cost_bins[cost_type] = list(range(0, max_costs[cost_type], interv))
+        else:
+            cost_bins = None
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
-    warmstart = json.loads(cfg['OPTIMISATION']['warmstart'])
     ncores = json.loads(cfg['DEFAULT']['ncores'])
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
     distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
@@ -135,20 +129,16 @@ def prepare_traj_params(traj, cfg):
         traj.par.trs.distr_dims = PickleParameter('distr_dims', None, comment='Distribution Dimensions')
     else:
         traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
-    traj.par.trs.ordered_tps = Parameter('ordered_tps', ordered_tps,
+
+    traj.par.trs.ordered_tps = Parameter('ordered_tps', list(tps_durs.keys()),
                                          comment='Distribution Dimensions')
     traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs,
                                             comment='Duration of timeperiods')
     traj.par.trs.od_perc_thresh = Parameter('od_perc_thresh', od_perc_thresh[0],
                                             comment='Distribution Percentage Threshold')
+    traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
 
-    traj.par.trs.dists_info = PickleParameter('dists_info', dists_info, comment='Information regarding distances')
-    traj.par.trs.max_tr_dists = PickleParameter('max_tr_dists', max_tr_dists, comment='Maximum allowed distance for trs')
-
-    if cost_bins is None:
-        traj.par.trs.cost_bins = Parameter('cost_bins', None, comment='Distance bins')
-    else:
-        traj.par.trs.cost_bins = Parameter('cost_bins', cost_bins[0], comment='Distance bins')
+    traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Distance bins')
 
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
@@ -172,7 +162,6 @@ def prepare_traj_params(traj, cfg):
 
     # Optimisation parameters
     traj.par.optim.run_optim = Parameter('run_optim', run_optimisation, comment='Run optimisation')
-    traj.par.optim.warmstart= Parameter('warmstart', warmstart, comment='Attempt warmstart')
     traj.par.optim.submit_to_neos = Parameter('submit_to_neos', submit_to_neos, comment='Submit to NEOS')
     traj.par.optim.distr_perc_tolerance = Parameter('distr_perc_tolerance', distr_perc_tolerance[0],
                                                     comment='Distance bins')
@@ -209,14 +198,7 @@ def prepare_traj_params(traj, cfg):
                          'distr_constr_enabled')
         """
 
-        # create a list of dictionaries based on the input values
-        if max_tr_dists:
-            max_trs_dists_combs = utils.create_dicts_from_list_values(max_tr_dists)
-        else:
-            max_trs_dists_combs = None
-
-        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh, 'max_tr_dists': max_trs_dists_combs,
-                     'cost_bins': cost_bins,
+        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
                      'distr_perc_tolerance': distr_perc_tolerance,
                      'excl_edges_perc': excl_edges_perc}
@@ -232,6 +214,7 @@ def prepare_traj_params(traj, cfg):
 def main(configpath=r'config.ini'):
 
     cfg = configparser.ConfigParser()
+    configpath = os.path.join(os.getcwd(), configpath)
     cfg.read(configpath)
 
     # do not explore solutions

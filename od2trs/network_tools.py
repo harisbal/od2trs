@@ -23,7 +23,7 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
 
 
 def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
-                                  max_legs, max_tr_dists, excl_edges_perc):
+                                  max_legs, max_costs, excl_edges_perc):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -80,18 +80,18 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
             weights = ['Length']
             cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
 
-            if max_tr_dists:
-                for w, v in list(max_tr_dists.items()):
+            if max_costs:
+                for w, v in list(max_costs.items()):
                     weights.append(w)
                     dist_src_to_succ = g_hb_nhb[src][succ][w]
-                    dists_pred_to_tgt = list()
+                    costs_pred_to_tgt = list()
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
                     # predecessor to the tgt. Nonetheless I can reduce it my the minimum
                     for tgt in tgts:
                         for pred in g_hb_nhb.predecessors(tgt):
-                            dists_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
-                    dist_pred_to_tgt = min(dists_pred_to_tgt)
+                            costs_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
+                    dist_pred_to_tgt = min(costs_pred_to_tgt)
 
                     cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
 

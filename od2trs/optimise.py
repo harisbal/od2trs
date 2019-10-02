@@ -151,7 +151,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
 def main(trs_descr, trs_info, od, target_distr=None,
          distr_constr_enabled=False,
-         distr_perc_tolerance=0.01, warmstart=False,
+         distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):

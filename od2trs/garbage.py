@@ -27,14 +27,14 @@ def dict_split(d, chunk_size=1):
 
 
 def create_trs_info(trs_descr, distr_dims,
-                    cost_bins=None, distances=None):
+                    cost_bins=None, costs=None):
     """
     Function to return info for each chain
 
     :param trs_descr: df
     :param distr_dims: list
     :param cost_bins: list
-    :param distances: pd.Series
+    :param costs: pd.Series
     :return: Dataframe with the tripchains info (distance, Legs, etc)
     """
 
@@ -51,12 +51,12 @@ def create_trs_info(trs_descr, distr_dims,
 
     # Add the grouping information
     if cost_bins:
-        # Join legs with distances
-        trs_descr = pd.merge(trs_descr, distances.to_frame(), left_on=['Source', 'Target'], right_index=True)
-        distances = trs_descr['Distance'].groupby(level='Tourid').sum()
-        aggr_dimensions.append(distances)
+        # Join legs with costs
+        trs_descr = pd.merge(trs_descr, costs.to_frame(), left_on=['Source', 'Target'], right_index=True)
+        costs = trs_descr['Distance'].groupby(level='Tourid').sum()
+        aggr_dimensions.append(costs)
 
-        distance_grps = pd.cut(distances, bins=settings.parameters['cost_bins'])
+        distance_grps = pd.cut(costs, bins=settings.parameters['cost_bins'])
         distance_grps.name = 'Distancegroup'
         aggr_dimensions.append(distance_grps)
 
@@ -157,21 +157,21 @@ def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
 
-    dists_from_src = nx.shortest_path_length(g, source=src, weight=weight)
-    dists_to_tgt = nx.shortest_path_length(g, target=tgt, weight=weight)
+    costs_from_src = nx.shortest_path_length(g, source=src, weight=weight)
+    costs_to_tgt = nx.shortest_path_length(g, target=tgt, weight=weight)
 
     # we do not know the exact predecessor in nx.all_simple_paths
     # Nonetheless, we can exclude the minimum distance from all predecessors
-    dists_preds_to_tgt = {n: dists_to_tgt[n] for n in preds}
+    costs_preds_to_tgt = {n: costs_to_tgt[n] for n in preds}
 
-    if dists_preds_to_tgt:
-        min_dist_to_tgt = min(dists_preds_to_tgt.values())
+    if costs_preds_to_tgt:
+        min_dist_to_tgt = min(costs_preds_to_tgt.values())
     else:
         min_dist_to_tgt = 0
 
     cycles = list()
     for succ in succs:
-        excl_dist = dists_from_src[succ] + min_dist_to_tgt
+        excl_dist = costs_from_src[succ] + min_dist_to_tgt
         simple_paths = nx.all_simple_paths(g.subgraph(list(g.nodes).remove(src)),
                                            succ, preds, cutoff_len=cutoff_length,
                                            weight=weight, cutoff_weight=cutoff_weight - excl_dist)

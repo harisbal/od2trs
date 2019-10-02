@@ -9,17 +9,23 @@ class Leg:
     """
     A leg is a trip between an Source and a Target
     """
-    def __init__(self, source, target, **kwargs):
+    def __init__(self, source, target, cost_types=None,
+                 **kwargs):
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
-                         'gencost', 'distance', 'traveltime', 'odpairid',
-                         'fromact', 'toact', 'XsourceY', 'XtargetY']
+                         'odpairid', 'fromact', 'toact', 'XsourceY', 'XtargetY']
+
+        if cost_types is None:
+            cost_types = []
+        else:
+            cost_types = [ct.lower() for ct in cost_types]
+            allowed_attrs += cost_types
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique
         self.source = source.split('-', 1)[0]
         self.target = target.split('-', 1)[0]
-
+        self.cost_types = cost_types
         for key in kwargs:
             if key.lower() in allowed_attrs:
                 setattr(self, key.lower(), kwargs[key])
@@ -39,7 +45,6 @@ class TripChain:
         """
 
         seqs = ['source', 'purpose', 'direction', 'timeperiod']
-        costs = ['gencost', 'distance', 'traveltime']
 
         if len(legs) >= 2:
             self.legs = legs
@@ -53,7 +58,9 @@ class TripChain:
         for seq in seqs:
             setattr(self, seq+'s', self.create_seq(seq))
 
-        for cost in costs:
+        # Retrieve cost_types from legs (the first leg should have)
+        cost_types = legs[0].cost_types
+        for cost in cost_types:
             setattr(self, cost, self.calculate_cost(cost))
 
         self.dist_grp = None
@@ -83,12 +90,10 @@ class TripChain:
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 
-    def assign_gencost_grp(self, bins):
-        gencost = self.gencost
-        self.gencostgrp = None
+    def get_cost_grp(self, cost_type, bins):
+        cost = getattr(self, cost_type.lower())
         for b in bins:
-            if gencost in b:
-                self.gencostgrp = b
+            if cost in b:
                 return b
 
     def is_chron_ordered(self, ordered_tps):
@@ -119,10 +124,10 @@ class TripChain:
 
         return tuple(seq)
 
-    def calculate_cost(self, cost_name, round_prec=3):
+    def calculate_cost(self, cost_type, round_prec=3):
         cost = 0
         for leg in self.legs:
-            leg_cost = getattr(leg, cost_name, None)
+            leg_cost = getattr(leg, cost_type, None)
             if leg_cost:
                 cost += leg_cost
             else:
