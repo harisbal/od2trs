@@ -200,9 +200,12 @@ def main(trs_descr, trs_info, od, target_distr=None,
     if optim_method == 'hybrid':
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
-        trs_info = _sample_trs_bydistr(trs_info, target_distr,
-                                       sample_size=max_ntrs)
-
+        if max_ntrs < trs_info.shape[0]:
+            trs_info = _sample_trs_bydistr(trs_info, target_distr,
+                                           sample_size=max_ntrs)
+        else:
+            raise ValueError('The candidate tours are less than the expected number of result tours,'
+                             'switch to bnb optim_method')
         mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.values)
         trs_descr = trs_descr.loc[mask]
     elif optim_method == 'bnb':

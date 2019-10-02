@@ -62,7 +62,7 @@ def main(traj):
 
             cost_bins[cost_type] = utils.list_to_interval(vs)
 
-    print(r'\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
+    print('DistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
           .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
@@ -82,14 +82,12 @@ def main(traj):
         seq_cols = ['Timeperiods']
         try:
             # TODO IMPROVE (not too generic)
-            # TODO filter according to max_legs and max costs
             target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
                                                   interval_cols=cost_bins.keys(),
                                                   seq_cols=seq_cols)
 
         except FileNotFoundError:
             obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            # TODO allow for multiple costs (not sure if that's possible)
             target_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
                                                          max_costs, distr_dims,
                                                          cost_bins, od_perc_thresh)
@@ -114,7 +112,7 @@ def main(traj):
                                                 zones_info=zones_info, ncores=ncores)
 
         # Export the identified tours
-        myio.export_trs(trs_info, trs_descr, filepaths)
+        myio.export_trs(trs_info, trs_descr, filepaths, frmt='pkl')
     else:
         trs_info, trs_descr = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr

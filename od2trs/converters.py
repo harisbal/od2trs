@@ -291,9 +291,8 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs,
-                                                      target_distr, distr_dims,
-                                                      max_tr_dists)
+                trs_descr_df, trs_info_df, = trs_to_df(trs, target_distr,
+                                                       tps_durs, max_costs)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 
