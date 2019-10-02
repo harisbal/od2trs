@@ -291,8 +291,9 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df, = trs_to_df(trs, target_distr,
-                                                       tps_durs, max_costs)
+                trs_descr_df, trs_info_df = trs_to_df(trs, tps_durs,
+                                                      target_distr, distr_dims,
+                                                      max_tr_dists)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 
@@ -306,4 +307,4 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
 
     print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
 
-    return trs_info_df, trs_descr_df
+    return trs_descr_df, trs_info_df

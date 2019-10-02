@@ -83,6 +83,7 @@ def get_observed_trs_info(infilepath, max_legs, index_col='Tourid'):
     observed_trs_info['Timeperiods'] = observed_trs_info['Timeperiods'].apply(tuple)
     return observed_trs_info
 
+
 def filter_trs_by_dict(trs_info_df, d_filters):
     # Filter based dictionary
     for k, v in d_filters.items():
@@ -151,8 +152,8 @@ def collapse_tours_descr(trs_descr, descr_cols, drop_duplicates=False):
 
     return trs_collapsed
 
-def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
 
+def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
     tgt = src
     succs = list(g.successors(src))
     preds = list(g.predecessors(tgt))
@@ -197,6 +198,38 @@ def identify_cycles(g, src, cutoff_length, weight, cutoff_weight):
     else:
         return None
 
+def filter_nodes_by_dist(g, src, tgt, weight, cutoff):
+
+    if not isinstance(tgt, list):
+        tgts = [tgt]
+    else:
+        tgts = tgt
+
+    weights_cutoffs = list(zip(weight, cutoff))
+
+    to_rmv = set()
+
+    for w, c in weights_cutoffs:
+        from_src = nx.shortest_path_length(g, source=src, target=None, weight=w)
+
+        to_tgts = dict()
+        for tgt in tgts:
+            to_tgts[tgt] = nx.shortest_path_length(g, source=None, target=tgt, weight=w)
+
+        for n in (g.nodes() - ([src] + tgts)):
+            rmv = True
+            for tgt in tgts:
+                dist = from_src.get(n, float('inf')) + to_tgts[tgt].get(n, float('inf'))
+                if dist <= c:
+                    rmv = False
+                    break
+
+            if rmv:
+                to_rmv.add(n)
+
+    g.remove_nodes_from(to_rmv)
+
+    return g
 
 def reduce_2leg_trs():
 

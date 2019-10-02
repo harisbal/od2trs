@@ -39,9 +39,7 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
 
 def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
-
     filter_trs = list()
-
     for tr in trs:
         d_dims = dict()
 
@@ -235,40 +233,6 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, tr
         to_rmv = n.index.tolist()
 
         g.remove_edges_from(to_rmv)
-
-    return g
-
-
-def filter_nodes_by_dist(g, src, tgt, weight, cutoff):
-
-    if not isinstance(tgt, list):
-        tgts = [tgt]
-    else:
-        tgts = tgt
-
-    weights_cutoffs = list(zip(weight, cutoff))
-
-    to_rmv = set()
-
-    for w, c in weights_cutoffs:
-        from_src = nx.shortest_path_length(g, source=src, target=None, weight=w)
-
-        to_tgts = dict()
-        for tgt in tgts:
-            to_tgts[tgt] = nx.shortest_path_length(g, source=None, target=tgt, weight=w)
-
-        for n in (g.nodes() - ([src] + tgts)):
-            rmv = True
-            for tgt in tgts:
-                dist = from_src.get(n, float('inf')) + to_tgts[tgt].get(n, float('inf'))
-                if dist <= c:
-                    rmv = False
-                    break
-
-            if rmv:
-                to_rmv.add(n)
-
-    g.remove_nodes_from(to_rmv)
 
     return g
 

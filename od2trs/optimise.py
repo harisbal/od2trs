@@ -5,6 +5,7 @@ from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 
 import od2trs.utilities as utils
+import od2trs.filters as filters
 
 
 def prepare_model(trs, trs_info, od, tgt_distr,
@@ -12,14 +13,14 @@ def prepare_model(trs, trs_info, od, tgt_distr,
                   mip_tolerances_lowercutoff, max_ntrs, init_sol=None):
 
     # TODO for some reason it passes 2 args
-    def init_trs_descr(_model, _):
+    def _init_trs_descr(_model, _):
         _trs = _model.trs.reset_index()
         d_trs_descr = (utils.aggr_tolist(_trs, 'Odpairid', 'Tourid')
                             .set_index('Odpairid').squeeze()
                             .to_dict())
         return d_trs_descr
 
-    def init_tr_distr_grps(_model):
+    def _init_tr_distr_grps(_model):
         _trs_info = _model.trs_info.reset_index()
         d_distr_grps = (utils.aggr_tolist(_trs_info, 'Distrgroupid', 'Tourid')
                              .set_index('Distrgroupid').squeeze()
@@ -27,7 +28,7 @@ def prepare_model(trs, trs_info, od, tgt_distr,
 
         return d_distr_grps
 
-    def init_solution(_model, _tr_id):
+    def _init_solution(_model, _tr_id):
         if _model.init_sol is None:
             return 0
         else:
@@ -46,9 +47,9 @@ def prepare_model(trs, trs_info, od, tgt_distr,
 
     d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
     model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.trs_descr = Param(model.odpair_ids, initialize=init_trs_descr, default=None)
+    model.trs_descr = Param(model.odpair_ids, initialize=_init_trs_descr, default=None)
 
-    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=init_solution)
+    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=_init_solution)
     model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
     model.max_ntrs = max_ntrs
 
@@ -61,7 +62,7 @@ def prepare_model(trs, trs_info, od, tgt_distr,
         model.tgt_distr.set_index('Distrgroupid', inplace=True)
         d_distr_grp_percs = model.tgt_distr['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
-        model.tr_distr_grps = Param(model.distrgrp_ids, initialize=init_tr_distr_grps, default=None)
+        model.tr_distr_grps = Param(model.distrgrp_ids, initialize=_init_tr_distr_grps, default=None)
 
     return model
 
@@ -79,14 +80,14 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def max_ntrs_rule(_model):
-        expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
-        return (0, expr, _model.max_ntrs)
+        _expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
+        return (0, _expr, _model.max_ntrs)
     model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
     def trips_rule(_model, leg_id):
         if _model.trs_descr[leg_id]:
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.trs_descr[leg_id])
-            return (0, expr, model.trips[leg_id])
+            _expr = sum(_model.ntrs[tr_id] for tr_id in _model.trs_descr[leg_id])
+            return (0, _expr, model.trips[leg_id])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
@@ -156,38 +157,78 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def estimate_max_ntrs(_od, homebased_filt='HB'):
-        hb_purps = _od.reset_index()['Purpose'].str.startswith(homebased_filt).values
+    def _estimate_max_ntrs(df, homebased_filt='HB'):
+        hb_purps = df.reset_index()['Purpose'].str.startswith(homebased_filt).values
         # case of non symmetric fh and th
-        max_ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
-        return max_ntrs
+        return int(df.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
 
-    def prepare_init_sol(info, distr, max_ntrs):
+    def _sample_trs_bydistr(info, distr, sample_size):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
         sample = (pd.merge(info, distr[usecols], on=jn_name)
-                  .sample(n=max_ntrs, replace=True, weights='Percentage'))
-        init_sol = sample.index.value_counts().to_dict()
-        return init_sol
+                  .sample(n=sample_size, replace=False, weights='Percentage'))
+        return sample
 
-    # The maximun number of trs is known
-    max_ntrs = estimate_max_ntrs(od, homebased_filt='HB')
+    def _prepare_init_sol_bydistr(info, distr, ntrs, _nsols=1):
+        init_sols = []
+        jn_name = 'Distrgroupid'
+        usecols = ['Percentage', 'Distrgroupid']
+        sample = (pd.merge(info, distr[usecols], on=jn_name)
+                  .sample(n=ntrs, replace=True, weights='Percentage'))
 
-    # The target distr can be utilised to create an initial solution
-    if target_distr is not None:
-        init_sol = prepare_init_sol(trs_info, target_distr, max_ntrs)
+        for i in range(_nsols):
+            sol = sample.index.value_counts().to_dict()
+            init_sols.append(sol)
+        return init_sols
+
+    def _update_trs_info_timesused(_trs_info, _results):
+        times_used = filters.extract_tour_times_used(_results)
+        if times_used is not None:
+            last_sol = times_used.index.unique(level='Solutionno').max()
+            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
+            _trs_info = _trs_info.join(trs_mdl_times_used)
+            _trs_info.fillna({'Timesused': 0}, inplace=True)
+            _trs_info['Timesused'] = _trs_info['Timesused'].astype(int)
+        return _trs_info
+
+    # The maximum number of trs can be estimated
+    max_ntrs = _estimate_max_ntrs(od, homebased_filt='HB')
+
+    optim_method = 'hybrid'
+    pop_size = 10
+
+    if optim_method == 'hybrid':
+        # The worst case scenario is to utilise trs only once (each tr to be unique)
+        # Therefore we create a set of max_ntrs candidates
+        trs_info = _sample_trs_bydistr(trs_info, target_distr,
+                                       sample_size=max_ntrs)
+
+        mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.values)
+        trs_descr = trs_descr.loc[mask]
+    elif optim_method == 'bnb':
+        pass
     else:
-        init_sol = None
+        raise ValueError('optim_method: {} not recognised'.format(optim_method))
 
-    print('Preparing the optimisation model')
-    mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
-                            distr_constr_enabled, distr_perc_tolerance,
-                            mip_tolerances_lowercutoff, max_ntrs,
-                            init_sol=init_sol)
+    # The target distr can be utilised to create initial solutions
+    if target_distr is not None:
+        init_sols = _prepare_init_sol_bydistr(trs_info, target_distr, max_ntrs, nsols)
+    else:
+        init_sols = None
 
-    results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
-                        workmem, mip_strategy_file, mip_strategy_probe,
-                        mip_tolerances_lowercutoff,
-                        timelimit=timelimit)
+    for i in range(pop_size):
+        #print('Preparing the optimisation model')
+        mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
+                                distr_constr_enabled, distr_perc_tolerance,
+                                mip_tolerances_lowercutoff, max_ntrs,
+                                init_sol=init_sol)
 
-    return results
+        #print('Running the optimisation model')
+        results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
+                            workmem, mip_strategy_file, mip_strategy_probe,
+                            mip_tolerances_lowercutoff,
+                            timelimit=timelimit)
+
+    trs_info = _update_trs_info_timesused(trs_info, results)
+
+    return trs_info

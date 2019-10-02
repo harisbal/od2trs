@@ -156,6 +156,6 @@ def aggr_tolist(df, col_grpby, col_tolist):
     keys, values = df.sort_values(col_grpby).values.T
     ukeys, index = np.unique(keys, True)
     arrays = np.split(values, index[1:])
-    df2 = pd.DataFrame({col_grpby: ukeys,
-                        col_tolist: [list(a) for a in arrays]})
-    return df2.squeeze()
+    df_list = pd.DataFrame({col_grpby: ukeys,
+                            col_tolist: [list(a) for a in arrays]})
+    return df_list.squeeze()

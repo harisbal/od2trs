@@ -62,7 +62,7 @@ def main(traj):
 
             cost_bins[cost_type] = utils.list_to_interval(vs)
 
-    print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
+    print(r'\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
           .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
@@ -104,7 +104,7 @@ def main(traj):
         target_distr = None
 
     if run_trs_identification:
-        trs_info, trs_descr = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
+        trs_descr, trs_info = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
                                                 ordered_tps=ordered_tps, tps_durs=tps_durs,
                                                 costs=costs, max_costs=max_costs,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
@@ -124,27 +124,19 @@ def main(traj):
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-        optim_results = opt.main(trs_descr, trs_info, od,
-                                 target_distr=target_distr,
-                                 distr_constr_enabled=distr_constr_enabled,
-                                 distr_perc_tolerance=distr_perc_tolerance,
-                                 workmem=workmem,
-                                 timelimit=timelimit,
-                                 mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
-                                 mip_strategy_probe=mip_strategy_probe,
-                                 mip_strategy_file=mip_strategy_file,
-                                 submit_to_neos=submit_to_neos)
+        trs_info = opt.main(trs_descr, trs_info, od,
+                            target_distr=target_distr,
+                            distr_constr_enabled=distr_constr_enabled,
+                            distr_perc_tolerance=distr_perc_tolerance,
+                            workmem=workmem,
+                            timelimit=timelimit,
+                            mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
+                            mip_strategy_probe=mip_strategy_probe,
+                            mip_strategy_file=mip_strategy_file,
+                            submit_to_neos=submit_to_neos)
 
-        times_used = filters.extract_tour_times_used(optim_results)
-        if times_used is not None:
-            last_sol = times_used.index.unique(level='Solutionno').max()
-            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
-            trs_info = trs_info.join(trs_mdl_times_used)
-            trs_info.fillna({'Timesused': 0}, inplace=True)
-            trs_info['Timesused'] = trs_info['Timesused'].astype(int)
-
-            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-            od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
+        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+        od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     if zones_info is not None:
         if 'Coords' in zones_info:
