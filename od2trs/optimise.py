@@ -3,12 +3,15 @@ import pandas as pd
 
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-from pyutilib.common._exceptions import ApplicationError
+#from pyutilib.common._exceptions import ApplicationError
+from pyomo.core.util import quicksum
 
 import od2trs.utilities as utils
 import od2trs.filters as filters
 import od2trs.converters as converters
 import warnings
+
+from pyutilib.services import TempfileManager
 
 
 def prepare_model(descr, info, od, tgt_distr,
@@ -77,20 +80,20 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def maximise_used_trips(_model):
         odsum = _model.od['Dailytrips'].sum()
         nlegs = _model.info['Nolegs'].to_dict()
-        return sum(_model.ntrs[tr_id] * nlegs[tr_id]
-                   for tr_id in _model.tr_ids) - odsum
+        return quicksum(_model.ntrs[tr_id] * nlegs[tr_id]
+                        for tr_id in _model.tr_ids) - odsum
 
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def max_ntrs_rule(_model):
-        _expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
+        _expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
         return (0, _expr, _model.max_ntrs)
 
     model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
     def trips_rule(_model, odpair_id):
         if _model.descr_byodpair[odpair_id]:
-            _expr = sum(_model.ntrs[tr_id] for tr_id in _model.descr_byodpair[odpair_id])
+            _expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.descr_byodpair[odpair_id])
             return (0, _expr, model.trips[odpair_id])
         else:
             return Constraint.Skip
@@ -102,7 +105,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
                          * _model.tot_used_trs)
 
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
+            expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
 
             return lower_lim <= expr
         else:
@@ -114,14 +117,15 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
                          * _model.tot_used_trs)
 
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
+            expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
             return expr <= upper_lim
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
+        pass
+        #model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
+        #model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
 
@@ -144,11 +148,15 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
+        """
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
             opt.set_executable(r'/opt/ibm/ILOG/CPLEX_Studio128/cplex/bin/x86-64_linux/cplex')
             results = opt.solve(model, tee=True)
+        """
+        TempfileManager.tempdir = r'./tmp'
+        results = opt.solve(model, tee=True)
 
     model.solutions.store_to(results)
     return results
@@ -193,7 +201,8 @@ def main(descr, info, od, tgt_distr=None,
     print('sample_size ', max_ntrs)
     #max_ntrs = 2000
 
-    optim_method = 'hybrid'
+    #optim_method = 'hybrid'
+    optim_method = 'bnb'
     pop_size = 2
     generations = 2
     mut_prob = 0.1
@@ -215,6 +224,7 @@ def main(descr, info, od, tgt_distr=None,
             sampled_info = _sample_trs_bydistr(info, tgt_distr,
                                                _sample_size=max_ntrs)
             pop.append(sampled_info['Timesused'])
+
     elif optim_method == 'bnb':
         generations = 1
         pop.append(info['Timesused'])
@@ -227,8 +237,8 @@ def main(descr, info, od, tgt_distr=None,
     evals = []
     for gen_idx in range(generations):
         for i, p_timesused in enumerate(pop):
-            p_info = info.loc(axis=0)[p_timesused.index]
-            p_descr = descr.loc(axis=0)[p_timesused.index]
+            p_info = info.query('Tourid in @p_timesused.index.values')
+            p_descr = descr.query('Tourid in @p_timesused.index.values')
             print('Preparing the optimisation model: gen:{}'.format(i))
             mymodel = prepare_model(p_descr, p_info, od, tgt_distr,
                                     distr_constr_enabled, distr_perc_tolerance,
