@@ -3,7 +3,7 @@ import pandas as pd
 
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-#from pyutilib.common._exceptions import ApplicationError
+from pyutilib.common._exceptions import ApplicationError
 from pyomo.core.util import quicksum
 
 import od2trs.utilities as utils
@@ -18,26 +18,41 @@ def prepare_model(descr, info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, max_ntrs, init_sol=None):
 
+    def get_tr_ubounds(m):
+
+        d = m.descr
+        trips = m.od['Dailytrips']
+        df = pd.merge(d, trips,
+                      left_on=trips.index.names,
+                      right_index=True)['Dailytrips']
+
+        ubnds = df.groupby('Tourid').min().to_dict()
+
+        return ubnds
+
     # TODO for some reason it passes 2 args
-    def _init_descr_byodpair(_model, _):
-        _descr = _model.descr.reset_index()
+    def _init_descr_by_odpair(m, _):
+        _descr = m.descr.reset_index()
         d_trs_descr = (utils.aggr_tolist(_descr, 'Odpairid', 'Tourid')
                             .set_index('Odpairid').squeeze()
                             .to_dict())
         return d_trs_descr
 
-    def _init_tr_bydistrgrps(_model):
-        _info = _model.info.reset_index()
+    def _init_tr_by_distrgrps(m):
+        _info = m.info.reset_index()
         d_distr_grps = (utils.aggr_tolist(_info, 'Distrgroupid', 'Tourid')
                              .set_index('Distrgroupid').squeeze()
                              .to_dict())
         return d_distr_grps
 
-    def _init_solution(_model, _tr_id):
-        if _model.init_sol is None:
+    def _init_solution(m, i):
+        if m.init_sol is None:
             return 0
         else:
-            return _model.init_sol.get(_tr_id, 0)
+            return m.init_sol.get(i, 0)
+
+    def _bnds_rule(m, i):
+        return (0, m.tr_ubnds[i])
 
     model = ConcreteModel()
     model.od = od.copy()
@@ -50,12 +65,16 @@ def prepare_model(descr, info, od, tgt_distr,
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
     model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
 
-    d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
-    model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.descr_byodpair = Param(model.odpair_ids, initialize=_init_descr_byodpair, default=None)
+    d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
+    model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
+    model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
 
-    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=_init_solution)
-    model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
+    model.tr_ubnds = get_tr_ubounds(model)
+
+    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_bnds_rule,
+                     initialize=_init_solution)
+
+    model.tot_used_trs = quicksum(model.ntrs[tr_id] for tr_id in model.tr_ids)
     model.max_ntrs = max_ntrs
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
@@ -64,11 +83,11 @@ def prepare_model(descr, info, od, tgt_distr,
 
     if distr_constr_enabled:
         model.distrgrp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
-        model.tgt_distr.set_index('Distrgroupid', inplace=True)
+        model.tgt_distr = model.tgt_distr.set_index('Distrgroupid')
         d_distr_grp_percs = model.tgt_distr['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
-        d_tr_bydistrgrps = _init_tr_bydistrgrps(model)
-        model.tr_bydistrgrps = Param(model.distrgrp_ids, initialize=d_tr_bydistrgrps, default=None)
+        d_tr_by_distrgrps = _init_tr_by_distrgrps(model)
+        model.tr_by_distrgrps = Param(model.distrgrp_ids, initialize=d_tr_by_distrgrps, default=None)
 
     return model
 
@@ -86,46 +105,33 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def max_ntrs_rule(_model):
-        _expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
-        return (0, _expr, _model.max_ntrs)
+        e = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
+        return (0, e, _model.max_ntrs)
 
     model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
     def trips_rule(_model, odpair_id):
-        if _model.descr_byodpair[odpair_id]:
-            _expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.descr_byodpair[odpair_id])
-            return (0, _expr, model.trips[odpair_id])
+        if _model.descr_by_odpair[odpair_id]:
+            e = quicksum(_model.ntrs[tr_id] for tr_id in _model.descr_by_odpair[odpair_id])
+            return (0, e, model.trips[odpair_id])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule_low(_model, grp_id):
-        if _model.tr_bydistrgrps[grp_id]:
-
-            lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
+    def distr_rule(_model, grp_id):
+        if _model.tr_by_distrgrps[grp_id]:
+            upper_lim = (round(_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance, 2)
                          * _model.tot_used_trs)
-
-            expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
-
-            return lower_lim <= expr
-        else:
-            return Constraint.Skip
-
-    def distr_rule_high(_model, grp_id):
-        if _model.tr_bydistrgrps[grp_id]:
-
-            upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
+            lower_lim = (max(round(_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance, 2), 0)
                          * _model.tot_used_trs)
+            e = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_by_distrgrps[grp_id])
 
-            expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_bydistrgrps[grp_id])
-            return expr <= upper_lim
+            return inequality(lower_lim, e, upper_lim)
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        pass
-        #model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
-        #model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
+        model.distr_rule = Constraint(model.distrgrp_ids, rule=distr_rule)
 
     opt = SolverFactory('cplex')
 
@@ -148,15 +154,12 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        """
+        TempfileManager.tempdir = r'./tmp'
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
             opt.set_executable(r'/opt/ibm/ILOG/CPLEX_Studio128/cplex/bin/x86-64_linux/cplex')
             results = opt.solve(model, tee=True)
-        """
-        TempfileManager.tempdir = r'./tmp'
-        results = opt.solve(model, tee=True)
 
     model.solutions.store_to(results)
     return results
@@ -201,10 +204,10 @@ def main(descr, info, od, tgt_distr=None,
     print('sample_size ', max_ntrs)
     #max_ntrs = 2000
 
-    #optim_method = 'hybrid'
-    optim_method = 'bnb'
+    optim_method = 'hybrid'
+    #optim_method = 'bnb'
     pop_size = 2
-    generations = 2
+    generations = 1
     mut_prob = 0.1
     # percentage of chromosome to replace
     mut_frac = 0.01
