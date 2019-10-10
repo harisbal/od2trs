@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 
 from pyomo.environ import *
@@ -115,10 +116,12 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def distr_rule(_model, grp_id):
         if _model.tr_by_distrgrps[grp_id]:
-            upper_lim = (_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance
-                         * _model.sum_ntrs)
-            lower_lim = (max(_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance, 0)
-                         * _model.sum_ntrs)
+            lower_lim = (max(_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance, 0) * _model.sum_ntrs)
+            lower_lim = math.floor(value(lower_lim))
+
+            upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance) * _model.sum_ntrs)
+            upper_lim = math.ceil(value(upper_lim))
+
             e = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_by_distrgrps[grp_id])
 
             return inequality(lower_lim, e, upper_lim)
@@ -148,7 +151,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        TempfileManager.tempdir = r'./tmp'
+        #TempfileManager.tempdir = r'./tmp'
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
