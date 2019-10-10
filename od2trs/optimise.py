@@ -94,42 +94,47 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
               mip_strategy_file=2, mip_strategy_probe=3, mip_tolerances_lowercutoff=None,
               timelimit=None):
 
-    def maximise_used_trips(_model):
-        odsum = _model.od['Dailytrips'].sum()
-        nlegs = _model.info['Nolegs'].to_dict()
-        return quicksum(_model.ntrs[tr_id] * nlegs[tr_id]
-                        for tr_id in _model.tr_ids) - odsum
+    def maximise_used_trips(m):
+        odsum = m.od['Dailytrips'].sum()
+        nlegs = m.info['Nolegs'].to_dict()
+        return quicksum(m.ntrs[tr_id] * nlegs[tr_id]
+                        for tr_id in m.tr_ids) - odsum
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def max_ntrs_rule(_model):
-        e = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
-        return (0, e, _model.max_ntrs)
+    def max_ntrs_rule(m):
+        e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_ids)
+        return (0, e, m.max_ntrs)
     model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
-    def trips_rule(_model, odpair_id):
-        if _model.descr_by_odpair[odpair_id]:
-            e = quicksum(_model.ntrs[tr_id] for tr_id in _model.descr_by_odpair[odpair_id])
+    def trips_rule(m, odpair_id):
+        if m.descr_by_odpair[odpair_id]:
+            e = quicksum(m.ntrs[tr_id] for tr_id in m.descr_by_odpair[odpair_id])
             return (0, e, model.trips[odpair_id])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule(_model, grp_id):
-        if _model.tr_by_distrgrps[grp_id]:
-            lower_lim = (max(_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance, 0) * _model.sum_ntrs)
-            lower_lim = math.floor(value(lower_lim))
+    def distr_rule_low(m, grp_id):
+        if m.tr_by_distrgrps[grp_id]:
+            p = round(max(m.distr_grp_percs[grp_id]-m.distr_perc_tolerance, 0), 2)
+            lower_lim = p * m.sum_ntrs
+            e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
+            return lower_lim <= e
+        else:
+            return Constraint.Skip
 
-            upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance) * _model.sum_ntrs)
-            upper_lim = math.ceil(value(upper_lim))
-
-            e = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_by_distrgrps[grp_id])
-
-            return inequality(lower_lim, e, upper_lim)
+    def distr_rule_high(m, grp_id):
+        if m.tr_by_distrgrps[grp_id]:
+            p = round(m.distr_grp_percs[grp_id]+m.distr_perc_tolerance, 2)
+            upper_lim = p * m.sum_ntrs
+            e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
+            return e <= upper_lim
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule = Constraint(model.distrgrp_ids, rule=distr_rule)
+        model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
+        model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
     if workmem:
@@ -219,8 +224,8 @@ def main(descr, info, od, tgt_distr=None,
         generations = 1
         pop.append(info['Timesused'])
         # The target distr can be utilised to create initial solutions
-        if tgt_distr is not None:
-            init_sol = _prepare_init_sol_bydistr(info, tgt_distr, max_ntrs)
+        #if tgt_distr is not None:
+        #    init_sol = _prepare_init_sol_bydistr(info, tgt_distr, max_ntrs)
 
     elif optim_method == 'hybrid':
         # The worst case scenario is to utilise trs only once (each tr to be unique)
