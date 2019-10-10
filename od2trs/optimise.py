@@ -53,12 +53,15 @@ def prepare_model(descr, info, od, tgt_distr,
 
     model = ConcreteModel()
     model.od = od.copy()
-    model.tgt_distr = tgt_distr
 
     model.descr = descr
     model.info = info
     model.init_sol = init_sol
     model.distr_perc_tolerance = distr_perc_tolerance
+
+    #get the required precision
+    prec = len(str(distr_perc_tolerance).split('.')[1])
+    model.tgt_distr = tgt_distr.round(prec)
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
     model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
@@ -116,7 +119,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def distr_rule_low(m, grp_id):
         if m.tr_by_distrgrps[grp_id]:
-            p = round(max(m.distr_grp_percs[grp_id]-m.distr_perc_tolerance, 0), 2)
+            p = m.distr_grp_percs[grp_id]-m.distr_perc_tolerance
             lower_lim = p * m.sum_ntrs
             e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
             return lower_lim <= e
@@ -125,7 +128,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def distr_rule_high(m, grp_id):
         if m.tr_by_distrgrps[grp_id]:
-            p = round(m.distr_grp_percs[grp_id]+m.distr_perc_tolerance, 2)
+            p = m.distr_grp_percs[grp_id]+m.distr_perc_tolerance
             upper_lim = p * m.sum_ntrs
             e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
             return e <= upper_lim
@@ -156,7 +159,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        #TempfileManager.tempdir = r'./tmp'
+        TempfileManager.tempdir = r'./tmp'
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
@@ -224,8 +227,8 @@ def main(descr, info, od, tgt_distr=None,
         generations = 1
         pop.append(info['Timesused'])
         # The target distr can be utilised to create initial solutions
-        #if tgt_distr is not None:
-        #    init_sol = _prepare_init_sol_bydistr(info, tgt_distr, max_ntrs)
+        if tgt_distr is not None:
+            init_sol = _prepare_init_sol_bydistr(info, tgt_distr, max_ntrs)
 
     elif optim_method == 'hybrid':
         # The worst case scenario is to utilise trs only once (each tr to be unique)
