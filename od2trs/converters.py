@@ -8,7 +8,6 @@ import networkx as nx
 
 import od2trs.utilities as utils
 import od2trs.network_tools as nettools
-import od2trs.distributions as distrs
 import od2trs.filters as filters
 
 from od2trs.tc import Leg, TripChain

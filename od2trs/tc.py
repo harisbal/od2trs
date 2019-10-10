@@ -19,7 +19,8 @@ class Leg:
             cost_types = []
         else:
             cost_types = [ct.lower() for ct in cost_types]
-            allowed_attrs += cost_types
+            for ct in cost_types:
+                allowed_attrs += [ct]
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique
