@@ -60,8 +60,9 @@ def prepare_model(descr, info, od, tgt_distr,
     model.distr_perc_tolerance = distr_perc_tolerance
 
     #get the required precision
-    prec = len(str(distr_perc_tolerance).split('.')[1])
-    model.tgt_distr = tgt_distr.round(prec)
+    if tgt_distr is not None:
+        prec = len(str(distr_perc_tolerance).split('.')[1])
+        model.tgt_distr = tgt_distr.round(prec)
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
     model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
@@ -160,7 +161,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        TempfileManager.tempdir = r'./tmp'
+        #TempfileManager.tempdir = r'./tmp'
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
