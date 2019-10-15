@@ -173,11 +173,6 @@ def trs_to_df(trs, target_distr, tps_durs, max_costs):
 
     trs_decr = dict()
     for tr in trs:
-        if max_costs:
-            if 'Traveltime' in max_costs:
-                if tps_durs:
-                    tr.assign_departtimes(tps_durs)
-
         for k in keys:
             attr = getattr(tr, k.lower(), None)
             d_trs_info[k].append(attr)
