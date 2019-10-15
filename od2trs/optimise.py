@@ -140,6 +140,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
 
     opt = SolverFactory('cplex')
+
     if workmem:
         opt.options['workmem'] = workmem
 

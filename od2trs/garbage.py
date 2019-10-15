@@ -231,6 +231,57 @@ def filter_nodes_by_dist(g, src, tgt, weight, cutoff):
 
     return g
 
+    def assign_departtimes(self, tps_durs, strfrmt='%Y-%m-%d %H:%M'):
+
+        tps_durs_cp = copy.deepcopy(tps_durs)
+        ordered_tps = list(tps_durs_cp.keys())
+
+        start_date = pd.to_datetime('2019-05-28 {}'.format(tps_durs[ordered_tps[0]][0]))
+
+        if not self.is_chron_ordered(ordered_tps):
+            self.departtimes = None
+            return None
+
+        for tp in tps_durs_cp:
+            tps_durs_cp[tp][0] = pd.to_timedelta(tps_durs_cp[tp][0]).total_seconds()
+            tps_durs_cp[tp][1] = pd.to_timedelta(tps_durs_cp[tp][1]).total_seconds()
+
+        # based on critical path method
+        tps = list(self.timeperiods)
+        tts = list()
+
+        for leg in self.legs:
+            tts.append(leg.traveltime)
+
+        dts_sorted = False
+        # Find the earliest starts
+        while not dts_sorted:
+            dts_sorted = True
+            dts = list()
+            arrival_time = -float('inf')
+            for tp, tt in zip(tps, tts):
+                tp_start = tps_durs_cp[tp][0]
+                tp_end = tps_durs_cp[tp][1]
+
+                trip_start = max(tp_start, arrival_time)
+                if trip_start < tp_end:
+                    dt = np.random.randint(trip_start, tp_end)
+                    arrival_time = dt + tt
+                    dts.append(dt)
+                else:
+                    dts_sorted = False
+                    break
+
+        dts = [(start_date + pd.to_timedelta(dt, unit='s')).strftime(strfrmt) for dt in dts]
+
+        # assign the departtimes to the tour's legs
+        for leg, dt in zip(self.legs, dts):
+            leg.departtime = dt
+
+        self.departtimes = tuple(dts)
+
+        return dts
+
 def reduce_2leg_trs():
 
     """
