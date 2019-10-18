@@ -39,7 +39,7 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
 
 
 def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
-    filter_trs = list()
+    filtered = list()
     for tr in trs:
         d_dims = dict()
 
@@ -61,12 +61,12 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
         perc = tgt_distr['Percentage'].get(key, 0)
         if perc > 0:
             tr.distrgroupid = int(tgt_distr.loc[key]['Distrgroupid'])
-            filter_trs.append(tr)
+            filtered.append(tr)
         else:
             continue
 
-    if filter_trs:
-        return filter_trs
+    if filtered:
+        return filtered
 
 
 def filter_trs(trs, max_costs, purp_to_acts,

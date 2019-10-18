@@ -154,7 +154,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     return trs
 
 
-def trs_to_df(trs, tgt_distr, tps_durs, max_costs):
+def trs_to_df(trs, tgt_distr, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
@@ -286,7 +286,7 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr_id += 1
 
                 trs_descr_df, trs_info_df, = trs_to_df(trs, tgt_distr,
-                                                       tps_durs, max_costs)
+                                                       max_costs)
                 descrs.append(trs_descr_df)
                 infos.append(trs_info_df)
 
