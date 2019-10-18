@@ -10,6 +10,7 @@ def main(traj):
 
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
+    low_memory = traj.conf.low_memory
 
     run_trs_identification = traj.par.trs.run_trs_identification
     max_legs = traj.par.trs.max_legs
@@ -104,19 +105,21 @@ def main(traj):
         target_distr = None
 
     if run_trs_identification:
-        trs_info, trs_descr = converters.od2trs(od=od, max_legs=max_legs, direction_names=direction_names,
-                                                ordered_tps=ordered_tps, tps_durs=tps_durs,
+        trs_descr, trs_info = converters.od2trs(od=od, filepaths=filepaths,
+                                                max_legs=max_legs, direction_names=direction_names,
+                                                ordered_tps=ordered_tps,
                                                 costs=costs, max_costs=max_costs,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,
                                                 target_distr=target_distr,
                                                 excl_edges_perc=excl_edges_perc,
-                                                zones_info=zones_info, ncores=ncores)
+                                                zones_info=zones_info,
+                                                ncores=ncores, low_memory=low_memory)
 
         # Export the identified tours
         myio.export_trs(trs_info, trs_descr, filepaths)
     else:
-        trs_info, trs_descr = myio.import_trs(filepaths)
+        trs_descr, trs_info = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr
         # can cause issues if parameters realted to tours_identification module are changed between runs
         # trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)

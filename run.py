@@ -68,6 +68,9 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
 def prepare_traj_params(traj, cfg):
 
     filepaths = utils.prepare_filepaths_from_config(cfg)
+    low_memory = json.loads(cfg['DEFAULT']['low_memory'])
+    ncores = json.loads(cfg['DEFAULT']['ncores'])
+
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
     explore = json.loads(cfg['TOURS']['explore'])
 
@@ -102,7 +105,6 @@ def prepare_traj_params(traj, cfg):
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
-    ncores = json.loads(cfg['DEFAULT']['ncores'])
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
     distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
     distr_constr_enabled = json.loads(cfg['OPTIMISATION']['distribution_constraints_enabled'])
@@ -116,6 +118,7 @@ def prepare_traj_params(traj, cfg):
     traj.f_add_parameter_group('trs', 'Parameter groups for trs')
     traj.f_add_parameter_group('optim', 'Parameter groups for optimisation')
     traj.f_add_config('ncores', ncores, 'Number of cores')
+    traj.f_add_config('low_memory', low_memory, 'Minimise memory use by exporting tours locally')
     traj.conf.filepaths = PickleParameter('filepaths', filepaths, comment='Filepaths')
 
     traj.par.trs.run_trs_identification = Parameter('run_trs_identification', run_trs_identification,

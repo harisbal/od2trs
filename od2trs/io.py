@@ -4,10 +4,16 @@ import pandas as pd
 import od2trs.utilities as utils
 
 
-def create_folders(folder_list):
+def create_folders(folder_list, overwrite=False):
+    import shutil
     for folder in folder_list:
         if not os.path.exists(folder):
             os.makedirs(folder)
+        elif overwrite:
+            shutil.rmtree(folder)
+            os.makedirs(folder)
+        else:
+            pass
 
 
 def read_target_distr(infilepath, distr_cols,
@@ -111,6 +117,43 @@ def import_zones_info(infilepath):
     return df
 
 
+def export_low_memory(descr, info, outfolder):
+    import re
+    filefmt = '{}_{}.pkl'
+    files = [f for f in os.listdir(outfolder) if os.path.isfile(os.path.join(outfolder, f))]
+    # max iteration
+    if files:
+        fmax = max([int(re.match(r'.*_(\d+).pkl', f).group(1)) for f in files])
+    else:
+        fmax = 0
+
+    for name, df in zip(['descr', 'info'], [descr, info]):
+        fname = os.path.join(outfolder, filefmt.format(name, fmax+1))
+        df.to_pickle(fname)
+
+
+def combine_interm_results(filepaths, processfolder, purge=True):
+    files = [f for f in os.listdir(processfolder) if os.path.isfile(os.path.join(processfolder, f))]
+    descrs = []
+    infos = []
+    for f in files:
+        f = os.path.join(processfolder, f)
+        df = pd.read_pickle(f)
+        if 'descr' in f:
+            descrs.append(df)
+        elif 'info' in f:
+            infos.append(df)
+
+        if purge:
+            os.remove(f)
+
+    descr = pd.concat(descrs)
+    info = pd.concat(infos)
+
+    descr.to_pickle(os.path.join(filepaths['in']['trs_mdl_descr']))
+    info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
+
+
 def import_trs(filepaths):
     ext = filepaths['in']['trs_mdl_descr'].split('.')[-1]
     if ext == 'pkl':
@@ -120,7 +163,7 @@ def import_trs(filepaths):
         raise TypeError('Tours can be only imported in pkl format')
 
     print('Number of tours read:', info.shape[0])
-    return info, descr
+    return descr, info
 
 
 def export_target_distr(distr, filepath):

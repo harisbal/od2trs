@@ -1,3 +1,4 @@
+import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from functools import partial
@@ -8,8 +9,8 @@ import networkx as nx
 
 import od2trs.utilities as utils
 import od2trs.network_tools as nettools
-import od2trs.distributions as distrs
 import od2trs.filters as filters
+import od2trs.io as myio
 
 from od2trs.tc import Leg, TripChain
 
@@ -155,7 +156,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     return trs
 
 
-def trs_to_df(trs, target_distr, tps_durs, max_costs):
+def trs_to_df(trs, target_distr, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
@@ -239,10 +240,11 @@ def init_multiproc_wrapper(_G):
     G = _G
 
 
-def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=None,
+def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
            target_distr=None, distr_dims=None, cost_bins=None,
            costs=None, max_costs=None, purp_to_acts=None,
-           excl_edges_perc=0, zones_info=None, ncores=None):
+           excl_edges_perc=0, zones_info=None,
+           ncores=None, low_memory=False):
 
     if costs is not None:
         od = od.join(costs)
@@ -269,6 +271,9 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
         ncores = cpu_count() - 1
 
     print('Running on {} cores'.format(ncores))
+    # clean the processing folder
+    filepaths['processfolder'] = r'./tmp/identification'
+    myio.create_folders([filepaths['processfolder']], overwrite=True)
     with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
         for trs in tqdm(pool.imap_unordered(
                         partial(multiproc_wrapper,
@@ -286,19 +291,25 @@ def od2trs(od, max_legs=None, direction_names=None, ordered_tps=None, tps_durs=N
                     tr.id = tr_id
                     tr_id += 1
 
-                trs_descr_df, trs_info_df, = trs_to_df(trs, target_distr,
-                                                       tps_durs, max_costs)
-                descrs.append(trs_descr_df)
-                infos.append(trs_info_df)
+                descr_df, info_df, = trs_to_df(trs, target_distr, max_costs)
 
-    if descrs:
-        trs_descr_df = pd.concat(descrs)
-        trs_info_df = pd.concat(infos)
-        if not trs_info_df.index.is_unique:
+                if low_memory:
+                    myio.export_low_memory(descr_df, info_df, filepaths['processfolder'])
+                else:
+                    descrs.append(descr_df)
+                    infos.append(info_df)
+
+    if low_memory:
+        myio.combine_interm_results(filepaths, filepaths['processfolder'], purge=True)
+        descr_df, info_df = myio.import_trs(filepaths)
+    elif descrs:
+        descr_df = pd.concat(descrs)
+        info_df = pd.concat(infos)
+        if not info_df.index.is_unique:
             raise ValueError('Returned index is duplicated')
     else:
         raise ValueError('No trs identified')
 
-    print('Total trs after filtering: {:,}'.format(trs_info_df.index.unique().size))
+    print('Total trs after filtering: {:,}'.format(info_df.index.unique().size))
 
-    return trs_info_df, trs_descr_df
+    return descr_df, info_df
