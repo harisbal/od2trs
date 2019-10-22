@@ -1,4 +1,5 @@
 import re
+import itertools
 import pandas as pd
 import networkx as nx
 
@@ -102,41 +103,48 @@ def filter_by_max_cost(trs, max_costs):
 
 
 def filter_by_acts(trs, purp_to_acts):
+    from copy import deepcopy
 
     filt_trs = list()
     for tr in trs:
-        keep_tr = True
-        # make sure that Home is first ( I could custom sort)
-        acts = purp_to_acts[tr.legs[0].purpose].copy()
+        # Trip purposes can connect different pairs of acts (e.g. NHBW: [('Work', 'Other'), ('Work', 'Work')]
+        # Check all cases
+        purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts.values()]))
+        for c in purp_to_acts_combs:
+            tr = deepcopy(tr)
+            purp_to_acts_c = dict(zip(purp_to_acts.keys(), c))
+            keep_tr = True
+            # make sure that Home is first ( I could custom sort)
+            acts = purp_to_acts_c[tr.legs[0].purpose].copy()
 
-        if acts[0] != 'Home':
-            acts.reverse()
+            if acts[0] != 'Home':
+                acts.reverse()
 
-        if acts[0] != 'Home':
-            raise ValueError('First Activity in tour not Home!')
+            if acts[0] != 'Home':
+                raise ValueError('First Activity in tour is not Home!')
 
-        tr.legs[0].fromact = acts[0]
-        tr.legs[0].toact = acts[-1]
+            tr.legs[0].fromact = acts[0]
+            tr.legs[0].toact = acts[-1]
 
-        # intermediate legs
-        for leg in tr.legs[1:]:
-            act1, act2 = purp_to_acts[leg.purpose]
-            if act1 == acts[-1]:
-                acts.append(act2)
-                leg.fromact = act1
-                leg.toact = act2
-            elif act2 == acts[-1]:
-                acts.append(act1)
-                leg.fromact = act2
-                leg.toact = act1
-            else:
-                # inconsistent acts sequence
-                keep_tr = False
-                break
+            # intermediate legs
+            for leg in tr.legs[1:]:
+                act1, act2 = purp_to_acts_c[leg.purpose]
+                if act1 == acts[-1]:
+                    acts.append(act2)
+                    leg.fromact = act1
+                    leg.toact = act2
+                elif act2 == acts[-1]:
+                    acts.append(act1)
+                    leg.fromact = act2
+                    leg.toact = act1
+                else:
+                    # inconsistent acts sequence
+                    keep_tr = False
+                    break
 
-        if keep_tr:
-            tr.acts = tuple(acts)
-            filt_trs.append(tr)
+            if keep_tr:
+                tr.acts = tuple(acts)
+                filt_trs.append(tr)
 
     return filt_trs
 
