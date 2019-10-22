@@ -73,11 +73,10 @@ def prepare_model(descr, info, od, tgt_distr,
 
     model.tr_ubnds = get_tr_ubounds(model)
 
-    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_bnds_rule,
+    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_bnds_rule,
                      initialize=_init_solution)
 
-    model.sum_ntrs = quicksum(model.ntrs[tr_id] for tr_id in model.tr_ids)
-    model.max_ntrs = max_ntrs
+    model.ntrs = quicksum(model.ntrs[tr_id] for tr_id in model.tr_ids)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
@@ -101,14 +100,9 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def maximise_used_trips(m):
         odsum = m.od['Dailytrips'].sum()
         nlegs = m.info['Nolegs'].to_dict()
-        return quicksum(m.ntrs[tr_id] * nlegs[tr_id]
+        return quicksum(m.trs_util[tr_id] * nlegs[tr_id]
                         for tr_id in m.tr_ids) - odsum
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
-
-    def max_ntrs_rule(m):
-        e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_ids)
-        return (0, e, m.max_ntrs)
-    model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
 
     def trips_rule(m, odpair_id):
         if m.descr_by_odpair[odpair_id]:
@@ -118,27 +112,21 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule_low(m, grp_id):
-        if m.tr_by_distrgrps[grp_id]:
-            p = m.distr_grp_percs[grp_id]-m.distr_perc_tolerance
-            lower_lim = p * m.sum_ntrs
-            e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
-            return lower_lim <= e
-        else:
-            return Constraint.Skip
+    def distr_rule(_model, grp_id):
+        if _model.tr_distr_grps[grp_id]:
+            lower_lim = math.floor((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
+                                    * _model.ntrs)
 
-    def distr_rule_high(m, grp_id):
-        if m.tr_by_distrgrps[grp_id]:
-            p = m.distr_grp_percs[grp_id]+m.distr_perc_tolerance
-            upper_lim = p * m.sum_ntrs
-            e = quicksum(m.ntrs[tr_id] for tr_id in m.tr_by_distrgrps[grp_id])
-            return e <= upper_lim
+            upper_lim = math.ceil(((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
+                                    * _model.ntrs))
+
+            expr = quicksum(_model.trs_util[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
+            return (lower_lim, expr, upper_lim)
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
+        model.distr_rule = Constraint(model.distrgrp_ids, rule=distr_rule)
 
     opt = SolverFactory('cplex')
 
@@ -161,7 +149,6 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
-        #TempfileManager.tempdir = r'./tmp'
         try:
             results = opt.solve(model, tee=True)
         except ApplicationError:
@@ -209,6 +196,21 @@ def main(descr, info, od, tgt_distr=None,
             _info.update(_timesused)
             _info['Timesused'] = _info['Timesused'].astype(int)
         return _info
+
+    def estimate_ntrs(_od, homebased_filt='HB'):
+        hb_purps = _od.reset_index()['Purpose'].str.startswith(homebased_filt).values
+        # case of non symmetric fh and th
+        ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
+        return ntrs
+
+    # The estimated number of trs to be identified
+    ntrs = estimate_ntrs(od, homebased_filt='HB')
+
+    # The target distr can be utilised to create an initial solution
+    if tgt_distr is not None:
+        init_sol = prepare_init_sol(info, tgt_distr, ntrs)
+    else:
+        init_sol = None
 
     # The maximum number of trs can be estimated
     max_ntrs = utils.estimate_max_ntrs(od, homebased_filt='HB')

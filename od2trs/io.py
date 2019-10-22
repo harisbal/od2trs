@@ -4,10 +4,16 @@ import pandas as pd
 import od2trs.utilities as utils
 
 
-def create_folders(folder_list):
+def create_folders(folder_list, overwrite=False):
+    import shutil
     for folder in folder_list:
         if not os.path.exists(folder):
             os.makedirs(folder)
+        elif overwrite:
+            shutil.rmtree(folder)
+            os.makedirs(folder)
+        else:
+            pass
 
 
 def read_tgt_distr(infilepath, distr_cols, ntrs,
@@ -114,6 +120,43 @@ def import_zones_info(infilepath):
     return df
 
 
+def export_low_memory(descr, info, outfolder):
+    import re
+    filefmt = '{}_{}.pkl'
+    files = [f for f in os.listdir(outfolder) if os.path.isfile(os.path.join(outfolder, f))]
+    # max iteration
+    if files:
+        fmax = max([int(re.match(r'.*_(\d+).pkl', f).group(1)) for f in files])
+    else:
+        fmax = 0
+
+    for name, df in zip(['descr', 'info'], [descr, info]):
+        fname = os.path.join(outfolder, filefmt.format(name, fmax+1))
+        df.to_pickle(fname)
+
+
+def combine_interm_results(filepaths, processfolder, purge=True):
+    files = [f for f in os.listdir(processfolder) if os.path.isfile(os.path.join(processfolder, f))]
+    descrs = []
+    infos = []
+    for f in files:
+        f = os.path.join(processfolder, f)
+        df = pd.read_pickle(f)
+        if 'descr' in f:
+            descrs.append(df)
+        elif 'info' in f:
+            infos.append(df)
+
+        if purge:
+            os.remove(f)
+
+    descr = pd.concat(descrs)
+    info = pd.concat(infos)
+
+    descr.to_pickle(os.path.join(filepaths['in']['trs_mdl_descr']))
+    info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
+
+
 def import_trs(filepaths):
     #ext = filepaths['in']['trs_mdl_descr'].split('.')[-1]
     _, ext = os.path.splitext(filepaths['in']['trs_mdl_descr'])
@@ -124,7 +167,7 @@ def import_trs(filepaths):
         raise TypeError('Tours can be only imported in pkl format')
 
     print('Number of tours read:', info.shape[0])
-    return info, descr
+    return descr, info
 
 
 def export_tgt_distr(distr, filepath):
@@ -134,14 +177,15 @@ def export_tgt_distr(distr, filepath):
     distr.to_csv(os.path.join(filepath), index=False)
 
 
-def export_trs(info, descr, filepaths, frmt='csv'):
-    if frmt == 'csv':
+def export_trs(info, descr, filepaths):
+    ext = filepaths['out']['trs_mdl_descr'].split('.')[-1]
+    if ext == 'csv':
         info = utils.tuples_to_strings(info)
         descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
         info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
-    elif frmt == 'pkl':
-        descr.to_pickle(filepaths['out']['trs_mdl_descr'].replace('csv', 'pkl'))
-        info.to_pickle(filepaths['out']['trs_mdl_info'].replace('csv', 'pkl'))
+    elif ext == 'pkl':
+        descr.to_pickle(filepaths['out']['trs_mdl_descr'])
+        info.to_pickle(filepaths['out']['trs_mdl_info'])
     else:
         raise TypeError('Unknown export format')
 
@@ -149,5 +193,4 @@ def export_trs(info, descr, filepaths, frmt='csv'):
 def export_od_mdl(od, filepaths):
     if od is not None:
         od.to_csv(filepaths, header=True)
-    #nx.write_gml(trs_descr_comp, os.path.join(outfolder,
-    #filepaths['trs_descr_comp_gml']))
+    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
