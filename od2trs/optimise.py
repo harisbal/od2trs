@@ -14,6 +14,15 @@ def prepare_model(trs, trs_info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, ntrs, init_sol=None):
 
+    def get_tr_ubounds(_model):
+        d = _model.trs
+        trips = _model.od['Dailytrips']
+        df = pd.merge(d, trips,
+                      left_on=trips.index.names,
+                      right_index=True)['Dailytrips']
+        ubnds = df.groupby('Tourid').min().to_dict()
+        return ubnds
+
     # TODO for some reason it passes 2 args
     def init_trs_descr(_model, _):
         _trs = _model.trs.reset_index()
@@ -36,6 +45,9 @@ def prepare_model(trs, trs_info, od, tgt_distr,
         else:
             return _model.init_sol.get(_tr_id, 0)
 
+    def _bnds_rule(m, i):
+        return (0, m.tr_ubnds[i])
+
     model = ConcreteModel()
     model.od = od
     model.trs = trs
@@ -50,8 +62,9 @@ def prepare_model(trs, trs_info, od, tgt_distr,
     d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
     model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.trs_descr = Param(model.odpair_ids, initialize=init_trs_descr, default=None)
-
-    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, initialize=init_solution)
+    model.tr_ubnds = get_tr_ubounds(model)
+    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_bnds_rule,
+                         initialize=init_solution)
     # model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
     model.ntrs = ntrs
 
@@ -82,11 +95,6 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
                         for tr_id in _model.tr_ids) - odsum
 
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
-
-    def ntrs_rule(_model):
-        expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
-        return (0, expr, _model.ntrs)
-    #model.ntrs_rule = Constraint(rule=ntrs_rule)
 
     def trips_rule(_model, leg_id):
         if _model.trs_descr[leg_id]:
