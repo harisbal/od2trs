@@ -10,16 +10,6 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
     groups identified in the created tripchains.
     """
 
-    """
-    if max_legs:
-        obs_info = obs_info[obs_info['Nolegs'] <= max_legs]
-
-    if max_costs:
-        for cost_type, max_dist in max_costs.items():
-            distgrpname = cost_type + '_grp'
-            obs_info = obs_info[obs_info[distgrpname] <= max_dist]
-    """
-
     mask = obs_info['Nolegs'] > max_legs
     for cost_type, bins in cost_bins.items():
         # Iteratively create a mask to identify excluded trs
@@ -32,6 +22,9 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
 
     total_trips = sum(obs_info['Nolegs'] * obs_info['Timesused'])
     excl_obs_info = obs_info.loc[mask]
+    # keep track of the excluded number of trs. It is required for the optimisation step
+    excl_ntrs = excl_obs_info.shape[0]
+
     excl_trips = sum(excl_obs_info['Nolegs'] * excl_obs_info['Timesused'])
     perc_excl = excl_trips / total_trips
 
