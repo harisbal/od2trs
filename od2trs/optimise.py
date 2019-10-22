@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 
 from pyomo.environ import *
@@ -85,7 +86,7 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def ntrs_rule(_model):
         expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
         return (0, expr, _model.ntrs)
-    model.ntrs_rule = Constraint(rule=ntrs_rule)
+    #model.ntrs_rule = Constraint(rule=ntrs_rule)
 
     def trips_rule(_model, leg_id):
         if _model.trs_descr[leg_id]:
@@ -97,11 +98,11 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
 
     def distr_rule(_model, grp_id):
         if _model.tr_distr_grps[grp_id]:
-            lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
-                         * _model.ntrs)
+            lower_lim = math.floor((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
+                                    * _model.ntrs)
 
-            upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
-                         * _model.ntrs)
+            upper_lim = math.ceil(((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
+                                    * _model.ntrs))
 
             expr = quicksum(_model.trs_util[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
             return (lower_lim, expr, upper_lim)
