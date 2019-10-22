@@ -4,12 +4,14 @@ from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 
+from pyutilib.services import TempfileManager
+
 import od2trs.utilities as utils
 
 
 def prepare_model(trs, trs_info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
-                  mip_tolerances_lowercutoff, max_ntrs, init_sol=None):
+                  mip_tolerances_lowercutoff, ntrs, init_sol=None):
 
     # TODO for some reason it passes 2 args
     def init_trs_descr(_model, _):
@@ -48,9 +50,9 @@ def prepare_model(trs, trs_info, od, tgt_distr,
     model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
     model.trs_descr = Param(model.odpair_ids, initialize=init_trs_descr, default=None)
 
-    model.ntrs = Var(model.tr_ids, within=NonNegativeIntegers, initialize=init_solution)
-    model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
-    model.max_ntrs = max_ntrs
+    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, initialize=init_solution)
+    # model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
+    model.ntrs = ntrs
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
@@ -63,6 +65,8 @@ def prepare_model(trs, trs_info, od, tgt_distr,
         model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
         model.tr_distr_grps = Param(model.distrgrp_ids, initialize=init_tr_distr_grps, default=None)
 
+    #TempfileManager.tempdir = './tmp'
+
     return model
 
 
@@ -73,50 +77,41 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def maximise_used_trips(_model):
         odsum = _model.od['Dailytrips'].sum()
         nlegs = _model.trs_info['Nolegs'].to_dict()
-        return sum(_model.ntrs[tr_id] * nlegs[tr_id]
-                   for tr_id in _model.tr_ids) - odsum
+        return quicksum(_model.trs_util[tr_id] * nlegs[tr_id]
+                        for tr_id in _model.tr_ids) - odsum
 
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def max_ntrs_rule(_model):
-        expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
-        return (0, expr, _model.max_ntrs)
-    model.max_ntrs_rule = Constraint(rule=max_ntrs_rule)
+    def ntrs_rule(_model):
+        expr = quicksum(_model.ntrs[tr_id] for tr_id in _model.tr_ids)
+        return (0, expr, _model.ntrs)
+    model.ntrs_rule = Constraint(rule=ntrs_rule)
 
     def trips_rule(_model, leg_id):
         if _model.trs_descr[leg_id]:
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.trs_descr[leg_id])
+            expr = quicksum(_model.trs_util[tr_id] for tr_id in _model.trs_descr[leg_id])
             return (0, expr, model.trips[leg_id])
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule_low(_model, grp_id):
+    def distr_rule(_model, grp_id):
         if _model.tr_distr_grps[grp_id]:
-
             lower_lim = ((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
-                         * _model.tot_used_trs)
-
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
-
-            return lower_lim <= expr
-        else:
-            return Constraint.Skip
-
-    def distr_rule_high(_model, grp_id):
-        if _model.tr_distr_grps[grp_id]:
+                         * _model.ntrs)
 
             upper_lim = ((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
-                         * _model.tot_used_trs)
+                         * _model.ntrs)
 
-            expr = sum(_model.ntrs[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
-            return expr <= upper_lim
+            expr = quicksum(_model.trs_util[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
+            return (lower_lim, expr, upper_lim)
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
-        model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
+        #model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
+        #model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
+        model.distr_rule = Constraint(model.distrgrp_ids, rule=distr_rule)
 
     opt = SolverFactory('cplex')
 
@@ -156,33 +151,33 @@ def main(trs_descr, trs_info, od, target_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def estimate_max_ntrs(_od, homebased_filt='HB'):
+    def estimate_ntrs(_od, homebased_filt='HB'):
         hb_purps = _od.reset_index()['Purpose'].str.startswith(homebased_filt).values
         # case of non symmetric fh and th
-        max_ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
-        return max_ntrs
+        ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
+        return ntrs
 
-    def prepare_init_sol(info, distr, max_ntrs):
+    def prepare_init_sol(info, distr, ntrs):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
         sample = (pd.merge(info, distr[usecols], on=jn_name)
-                  .sample(n=max_ntrs, replace=True, weights='Percentage'))
+                  .sample(n=ntrs, replace=True, weights='Percentage'))
         init_sol = sample.index.value_counts().to_dict()
         return init_sol
 
-    # The maximun number of trs is known
-    max_ntrs = estimate_max_ntrs(od, homebased_filt='HB')
+    # The estimated number of trs to be identified
+    ntrs = estimate_ntrs(od, homebased_filt='HB')
 
     # The target distr can be utilised to create an initial solution
     if target_distr is not None:
-        init_sol = prepare_init_sol(trs_info, target_distr, max_ntrs)
+        init_sol = prepare_init_sol(trs_info, target_distr, ntrs)
     else:
         init_sol = None
 
     print('Preparing the optimisation model')
     mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
                             distr_constr_enabled, distr_perc_tolerance,
-                            mip_tolerances_lowercutoff, max_ntrs,
+                            mip_tolerances_lowercutoff, ntrs,
                             init_sol=init_sol)
 
     results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
