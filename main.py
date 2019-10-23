@@ -71,7 +71,7 @@ def main(traj):
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
-    ntrs = utils.estimate_max_ntrs(od, homebased_filt='HB')
+    ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
 
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)

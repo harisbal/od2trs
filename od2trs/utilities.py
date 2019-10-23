@@ -161,7 +161,7 @@ def aggr_tolist(df, col_grpby, col_tolist):
     return df_list.squeeze()
 
 
-def estimate_max_ntrs(od, homebased_filt='HB'):
+def estimate_ntrs(od, homebased_filt='HB'):
     hb_purps = od.reset_index()['Purpose'].str.startswith(homebased_filt).values
     # case of non symmetric fh and th
     return int(od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
