@@ -218,6 +218,7 @@ def main(descr, info, od, tgt_distr=None,
         if tgt_distr is not None:
             init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
+        raise NotImplementedError('hybrid is not yet implemented')
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
         if ntrs >= info.shape[0]:
