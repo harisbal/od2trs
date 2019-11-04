@@ -6,49 +6,68 @@ import warnings
 
 class Gene:
 
-    def __init__(self, g_id, g_weight):
+    def __init__(self, g_id, weight):
         self.id = g_id
-        self.weight = g_weight
+        self.weight = weight
 
 
 class Chromosome:
 
     def __init__(self, genes, fitness=None):
-        self.genes = genes
+
+        def from_series(series):
+            d = series.to_dict()
+            ids = list(d.keys())
+            vals = list(d.values())
+            genes = []
+            for i, v in zip(ids, vals):
+                g = Gene(i, v)
+                genes.append(g)
+
+            return genes
+
+        if isinstance(genes, pd.Series):
+            self.genes = from_series(genes)
+        elif isinstance(genes[0], Gene):
+            self.genes = genes
+        else:
+            raise TypeError('genes should be of type pd.Series or Gene')
+
         self.fitness = fitness
+        self.gene_ids = [g.id for g in self.genes]
 
 
 class Pop:
-
-    def __init__(self, pop, evals=None, avail_genes=None,
+    def __init__(self, chromosomes, fitness=None, avail_genes=None,
                  mut_prob=0.01):
 
-        if type(pop[0]) is pd.Series:
-            conv_pop = []
-            for p, e in zip(pop, evals):
-                d = p.to_dict()
-                ids = list(d.keys())
-                vals = list(d.values())
-                genes = []
-                for i, v in zip(ids, vals):
-                    g = Gene(i, v)
-                    genes.append(g)
+        def from_series(series, fitness=None):
+            if fitness is None:
+                fitness = [None] * len(series)
 
-                c = Chromosome(genes, fitness=e)
-                conv_pop.append(c)
-            pop = conv_pop.copy()
+            chromosomes = []
+            for s, f in zip(series, fitness):
+                c = Chromosome(s, f)
+                chromosomes.append(c)
+            return chromosomes
 
-        self.pop = pop
         self.mut_prob = mut_prob
         # Useful for mutation (maximum number of alternatives)
         self.avail_genes = avail_genes
+
+        if isinstance(chromosomes[0], pd.Series):
+            self.chromosomes = from_series(chromosomes, fitness=fitness)
+
+    def update_fitness(self, fitness):
+        for c, f in zip(self.chromosomes, fitness):
+            c.fitness = f
 
     def crossover(self, mutate=False):
         """
         :return:
             new population
         """
-        pop = self.pop
+        pop = self.chromosomes
         # crossover
         # pick n pop pairs of candidates (parents) based on their evaluation (fitness)
         children = []
