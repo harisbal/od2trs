@@ -82,11 +82,12 @@ def main(traj):
         zones_info = None
 
     if distr_constr_enabled:
+        interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
             # TODO IMPROVE (not too generic)
             tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
-                                            interval_cols=cost_bins.keys(),
+                                            interval_cols=interval_cols,
                                             seq_cols=seq_cols)
 
         except FileNotFoundError:

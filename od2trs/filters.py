@@ -34,7 +34,7 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
     distr.loc(axis=1)[percent_col] /= distr[percent_col].sum()
 
     # Drop the filter column
-    distr.drop(columns=filter_col, inplace=True)
+    distr = distr.drop(columns=filter_col)
 
     return distr
 

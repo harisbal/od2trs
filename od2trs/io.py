@@ -32,13 +32,11 @@ def read_tgt_distr(infilepath, distr_cols, ntrs,
         for c in seq_cols:
             tgt_distr[c] = utils.to_sequence(tgt_distr[c])
 
-    tgt_distr = tgt_distr.groupby(distr_cols)[percent_col].sum()
-
-    # Has not been tested
+    tgt_distr = tgt_distr.groupby(distr_cols)[percent_col].sum().to_frame()
+    # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
 
     # assign a Distrgroupid col
-    tgt_distr = tgt_distr.to_frame()
     tgt_distr['Distrgroupid'] = tgt_distr.reset_index().index
 
     return tgt_distr
