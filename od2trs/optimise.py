@@ -168,7 +168,7 @@ def main(descr, info, od, tgt_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def _sample_trs_bydistr(_info, _distr, _sample_size, _return_idx=False):
+    def _sample_trs_by_distr(_info, _distr, _sample_size, _return_idx=False):
         if _distr is not None:
             jn_name = 'Distrgroupid'
             usecols = ['Percentage', 'Distrgroupid']
@@ -179,7 +179,7 @@ def main(descr, info, od, tgt_distr=None,
             sample = _info.sample(n=_sample_size, replace=False)
         return sample
 
-    def _prepare_init_sol_bydistr(_info, _distr, _ntrs):
+    def _prepare_init_sol_by_distr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
         sample = (pd.merge(_info, _distr[usecols], on=jn_name)
@@ -202,7 +202,7 @@ def main(descr, info, od, tgt_distr=None,
     ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
     print('sample_size ', ntrs)
 
-    optim_method = 'hybrid'
+    optim_method = 'bnb'
     pop_size = 2
     generations = 10
 
@@ -216,7 +216,7 @@ def main(descr, info, od, tgt_distr=None,
         pop.append(info['Timesused'])
         # The target distr can be utilised to create initial solutions
         if tgt_distr is not None:
-            init_sol = _prepare_init_sol_bydistr(info, tgt_distr, ntrs)
+            init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
@@ -224,7 +224,7 @@ def main(descr, info, od, tgt_distr=None,
             raise ValueError('The candidate tours are less than the expected number of result tours,'
                              'switch to bnb optim_method')
         for i in range(pop_size):
-            sampled_info = _sample_trs_bydistr(info, tgt_distr,
+            sampled_info = _sample_trs_by_distr(info, tgt_distr,
                                                _sample_size=ntrs)
             pop.append(sampled_info['Timesused'])
     else:

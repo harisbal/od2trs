@@ -263,11 +263,13 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
     zones.sort()
 
-    if ncores.f_is_empty():
-        ncores = cpu_count()
     if isinstance(ncores, int):
         if ncores < 0:
             ncores = cpu_count() + ncores
+    elif ncores.f_is_empty():
+        ncores = cpu_count()
+    else:
+        raise ValueError('ncores should be either an integer or null')
 
     print('Running on {} cores'.format(ncores))
     # clean the processing folder
