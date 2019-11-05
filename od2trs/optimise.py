@@ -200,15 +200,13 @@ def main(descr, info, od, tgt_distr=None,
     # The expected number of trs can be estimated
     ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
 
-    # TODO tests
-    #ntrs = int(ntrs * 1.5)
+    # If solution is infeasible for the current number of estimated trs
+    # reduce them iteratively by this percentage
+    ntrs_step_reduction_perc = 0.05
 
     print('sample_size ', ntrs)
 
     optim_method = 'bnb'
-    pop_size = 2
-    generations = 10
-
     # The population is a list with the timesused (solution) of each candidate trs set
     pop = []
     init_sol = None
@@ -221,7 +219,9 @@ def main(descr, info, od, tgt_distr=None,
         if tgt_distr is not None:
             init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
-        raise NotImplementedError('hybrid is not yet implemented')
+        pop_size = 2
+        generations = 10
+        #raise NotImplementedError('hybrid is not yet implemented')
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
         if ntrs >= info.shape[0]:
@@ -237,20 +237,20 @@ def main(descr, info, od, tgt_distr=None,
     evals = []
     mymodel = None
     for i_gen in range(generations):
-        for i_c, c in enumerate(pop.chromosomes):
+        for i_chr, c in enumerate(pop.chromosomes):
             solution_feasible = False
             i_feasible = 0
             while not solution_feasible:
                 c_info = info.query('Tourid in @c.gene_ids')
                 c_descr = descr.query('Tourid in @c.gene_ids')
-                print('Preparing the optimisation model: gen:{}, parent: {}'.format(i_gen, i_c))
+                print('Preparing the optimisation model: gen:{}, parent: {}'.format(i_gen, i_chr))
                 if mymodel is None:
                     mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
                                             distr_constr_enabled, distr_perc_tolerance,
                                             mip_tolerances_lowercutoff, ntrs,
                                             init_sol=init_sol)
 
-                print('Running the optimisation model: gen:{}'.format(i_c))
+                print('Running the optimisation model: gen:{}'.format(i_chr))
                 results = run_model(mymodel, submit_to_neos,
                                     workmem, mip_strategy_file, mip_strategy_probe,
                                     mip_tolerances_lowercutoff,
@@ -260,8 +260,10 @@ def main(descr, info, od, tgt_distr=None,
                     solution_feasible = True
                 else:
                     i_feasible += 1
-                    # change the expected number of trs and re-solve
-                    mymodel.ntrs = int(ntrs*(1-i_feasible*0.05))
+                    # reduce the expected number of trs and re-solve
+                    mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
+                    mymodel.distr_rule.reconstruct()
+                    print(i_feasible, mymodel.ntrs.value)
 
             # evaluate
             c_info = _update_timesused(c_info, results)
