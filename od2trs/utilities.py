@@ -71,16 +71,7 @@ def list_to_interval(lst):
 
 
 def to_sequence(s, sep=';'):
-    """
-    s = (s.str.replace(' ', '').
-         str.replace('(', '').
-         str.replace(')', '').
-         str.replace(')', '').
-         str.replace("'", '').
-         str.split(','))
-    """
     s = s.str.split(sep).apply(tuple)
-
     return s
 
 
@@ -124,9 +115,12 @@ def to_interval(x):
     return interval
 
 
-def tuples_to_strings(df, sep=';'):
+def tuples_to_strings(df, sep=';', cols=None):
     # reformat the tuple sequences to strings
-    for c in df:
+    if cols is None:
+        cols = df.columns
+
+    for c in cols:
         if all(isinstance(v, tuple) for v in df[c].values):
             df[c] = df[c].apply(sep.join)
 
