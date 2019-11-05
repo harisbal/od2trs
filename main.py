@@ -63,13 +63,15 @@ def main(traj):
 
             cost_bins[cost_type] = utils.list_to_interval(vs)
 
-    print('\nDistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
+    print('DistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
           .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
+
+    ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
 
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
@@ -80,29 +82,28 @@ def main(traj):
         zones_info = None
 
     if distr_constr_enabled:
+        interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
             # TODO IMPROVE (not too generic)
-            # TODO filter according to max_legs and max costs
-            target_distr = myio.read_target_distr(filepaths['in']['target_distr'], distr_dims,
-                                                  interval_cols=cost_bins.keys(),
-                                                  seq_cols=seq_cols)
+            tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+                                            interval_cols=interval_cols,
+                                            seq_cols=seq_cols)
 
         except FileNotFoundError:
             obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            # TODO allow for multiple costs (not sure if that's possible)
-            target_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
+            tgt_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
                                                          max_costs, distr_dims,
                                                          cost_bins, od_perc_thresh)
 
-        # max_legs = target_distr.index.get_level_values('Legs').max()
+        # max_legs = tgt_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering
-        #maxdist = target_distr.index.get_level_values('Distancegroup').max().right
+        #maxdist = tgt_distr.index.get_level_values('Distancegroup').max().right
         #if maxdist != float('inf'):
         #    max_costs = maxdist
-        myio.export_target_distr(target_distr, filepaths['out']['target_distr'])
+        myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
-        target_distr = None
+        tgt_distr = None
 
     if run_trs_identification:
         trs_descr, trs_info = converters.od2trs(od=od, filepaths=filepaths,
@@ -111,7 +112,7 @@ def main(traj):
                                                 costs=costs, max_costs=max_costs,
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,
-                                                target_distr=target_distr,
+                                                tgt_distr=tgt_distr,
                                                 excl_edges_perc=excl_edges_perc,
                                                 zones_info=zones_info,
                                                 ncores=ncores, low_memory=low_memory)
@@ -122,38 +123,30 @@ def main(traj):
         trs_descr, trs_info = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr
         # can cause issues if parameters realted to tours_identification module are changed between runs
-        # trs_info, trs_descr = filters.filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr)
+        # trs_info, trs_descr = filters.filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr)
 
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-        optim_results = opt.main(trs_descr, trs_info, od,
-                                 target_distr=target_distr,
-                                 distr_constr_enabled=distr_constr_enabled,
-                                 distr_perc_tolerance=distr_perc_tolerance,
-                                 workmem=workmem,
-                                 timelimit=timelimit,
-                                 mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
-                                 mip_strategy_probe=mip_strategy_probe,
-                                 mip_strategy_file=mip_strategy_file,
-                                 submit_to_neos=submit_to_neos)
+        trs_info = opt.main(trs_descr, trs_info, od,
+                            tgt_distr=tgt_distr,
+                            distr_constr_enabled=distr_constr_enabled,
+                            distr_perc_tolerance=distr_perc_tolerance,
+                            workmem=workmem,
+                            timelimit=timelimit,
+                            mip_tolerances_lowercutoff=mip_tolerances_lowercutoff,
+                            mip_strategy_probe=mip_strategy_probe,
+                            mip_strategy_file=mip_strategy_file,
+                            submit_to_neos=submit_to_neos)
 
-        times_used = filters.extract_tour_times_used(optim_results)
-        if times_used is not None:
-            last_sol = times_used.index.unique(level='Solutionno').max()
-            trs_mdl_times_used = times_used.xs(last_sol, level='Solutionno')
-            trs_info = trs_info.join(trs_mdl_times_used)
-            trs_info.fillna({'Timesused': 0}, inplace=True)
-            trs_info['Timesused'] = trs_info['Timesused'].astype(int)
-
-            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-            od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
+        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+        od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
 
     if zones_info is not None:
         if 'Coords' in zones_info:
             trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
-    results = [od_mdl, trs_descr, trs_info, target_distr]
+    results = [od_mdl, trs_descr, trs_info, tgt_distr]
 
     return results
 

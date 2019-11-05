@@ -4,82 +4,93 @@ import pandas as pd
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
+from pyomo.core.util import quicksum
+
+import od2trs.utilities as utils
+import od2trs.filters as filters
+import od2trs.converters as converters
+import od2trs.genetic_algos as gals
 
 from pyutilib.services import TempfileManager
 
-import od2trs.utilities as utils
 
-
-def prepare_model(trs, trs_info, od, tgt_distr,
+def prepare_model(descr, info, od, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, ntrs, init_sol=None):
 
-    def get_tr_ubounds(_model):
-        d = _model.trs
-        trips = _model.od['Dailytrips']
+    # TODO for some reason it passes 2 args
+    def _init_descr_by_odpair(m, _):
+        _descr = m.descr.reset_index()
+        d_trs_descr = (utils.aggr_tolist(_descr, 'Odpairid', 'Tourid')
+                            .set_index('Odpairid').squeeze()
+                            .to_dict())
+        return d_trs_descr
+
+    def _init_tr_by_distr_grps(m):
+        _info = m.info.reset_index()
+        d_distr_grps = (utils.aggr_tolist(_info, 'Distrgroupid', 'Tourid')
+                             .set_index('Distrgroupid').squeeze()
+                             .to_dict())
+        return d_distr_grps
+
+    def _init_solution(m, i):
+        if m.init_sol is None:
+            return 0
+        else:
+            return m.init_sol.get(i, 0)
+
+    def _find_ubnds(m):
+        d = m.descr
+        trips = m.od['Dailytrips']
         df = pd.merge(d, trips,
                       left_on=trips.index.names,
                       right_index=True)['Dailytrips']
         ubnds = df.groupby('Tourid').min().to_dict()
         return ubnds
 
-    # TODO for some reason it passes 2 args
-    def init_trs_descr(_model, _):
-        _trs = _model.trs.reset_index()
-        d_trs_descr = (utils.aggr_tolist(_trs, 'Odpairid', 'Tourid')
-                            .set_index('Odpairid').squeeze()
-                            .to_dict())
-        return d_trs_descr
-
-    def init_tr_distr_grps(_model):
-        _trs_info = _model.trs_info.reset_index()
-        d_distr_grps = (utils.aggr_tolist(_trs_info, 'Distrgroupid', 'Tourid')
-                             .set_index('Distrgroupid').squeeze()
-                             .to_dict())
-
-        return d_distr_grps
-
-    def init_solution(_model, _tr_id):
-        if _model.init_sol is None:
-            return 0
-        else:
-            return _model.init_sol.get(_tr_id, 0)
-
-    def _bnds_rule(m, i):
+    def _get_bnds(m, i):
         return (0, m.tr_ubnds[i])
 
     model = ConcreteModel()
-    model.od = od
-    model.trs = trs
-    model.trs_info = trs_info
-    model.tgt_distr = tgt_distr
+    model.od = od.copy()
+    d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
+
+    model.descr = descr
+    model.info = info
     model.init_sol = init_sol
     model.distr_perc_tolerance = distr_perc_tolerance
 
-    model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
-    model.tr_ids = Set(initialize=model.trs_info.index.unique().values.tolist())
+    #get the required precision
+    if tgt_distr is not None:
+        prec = len(str(distr_perc_tolerance).split('.')[1])
+        model.tgt_distr = tgt_distr.round(prec)
 
-    d_leg_trips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
-    model.trips = Param(model.odpair_ids, initialize=d_leg_trips, within=NonNegativeIntegers)
-    model.trs_descr = Param(model.odpair_ids, initialize=init_trs_descr, default=None)
-    model.tr_ubnds = get_tr_ubounds(model)
-    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_bnds_rule,
-                         initialize=init_solution)
-    # model.tot_used_trs = sum(model.ntrs[tr_id] for tr_id in model.tr_ids)
+    model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
+    model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
+
+    model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
+    model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
+    model.tr_ubnds = _find_ubnds(model)
     model.ntrs = ntrs
+
+    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
+                         initialize=_init_solution)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
-        model.distrgrp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
-        model.tgt_distr.set_index('Distrgroupid', inplace=True)
-        d_distr_grp_percs = model.tgt_distr['Percentage'].to_dict()
-        model.distr_grp_percs = Param(model.distrgrp_ids, initialize=d_distr_grp_percs, default=0)
-        model.tr_distr_grps = Param(model.distrgrp_ids, initialize=init_tr_distr_grps, default=None)
+        model.distr_grp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
+        model.tgt_distr = model.tgt_distr.set_index('Distrgroupid')
 
-    # TempfileManager.tempdir = './tmp'
+        d_init = model.tgt_distr['Percentage'].to_dict()
+        model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
+
+        d_init = _init_tr_by_distr_grps(model)
+        model.tr_by_distr_grps = Param(model.distr_grp_ids, initialize=d_init, default=None)
+
+    # TempfileManager.tempdir = r'./tmp'
 
     return model
 
@@ -88,39 +99,36 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
               mip_strategy_file=2, mip_strategy_probe=3, mip_tolerances_lowercutoff=None,
               timelimit=None):
 
-    def maximise_used_trips(_model):
-        odsum = _model.od['Dailytrips'].sum()
-        nlegs = _model.trs_info['Nolegs'].to_dict()
-        return quicksum(_model.trs_util[tr_id] * nlegs[tr_id]
-                        for tr_id in _model.tr_ids) - odsum
-
+    def maximise_used_trips(m):
+        odsum = m.od['Dailytrips'].sum()
+        nlegs = m.info['Nolegs'].to_dict()
+        return quicksum(m.trs_util[tr_id] * nlegs[tr_id]
+                        for tr_id in m.tr_ids) - odsum
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
-    def trips_rule(_model, leg_id):
-        if _model.trs_descr[leg_id]:
-            e = quicksum(_model.trs_util[tr_id] for tr_id in _model.trs_descr[leg_id])
-            return (0, e, model.trips[leg_id])
+    def trips_rule(m, odpair_id):
+        if m.descr_by_odpair[odpair_id]:
+            e = quicksum(m.trs_util[tr_id] for tr_id in m.descr_by_odpair[odpair_id])
+            return e <= model.trips[odpair_id]
         else:
             return Constraint.Skip
     model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
 
-    def distr_rule(_model, grp_id):
-        if _model.tr_distr_grps[grp_id]:
-            lower_lim = math.floor((_model.distr_grp_percs[grp_id] - _model.distr_perc_tolerance)
-                                   * _model.ntrs)
+    def distr_rule(m, grp_id):
+        if m.tr_by_distr_grps[grp_id]:
+            lower_lim = math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance)
+                                   * m.ntrs)
 
-            upper_lim = math.ceil(((_model.distr_grp_percs[grp_id] + _model.distr_perc_tolerance)
-                                   * _model.ntrs))
+            upper_lim = math.ceil(((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance)
+                                   * m.ntrs))
 
-            e = quicksum(_model.trs_util[tr_id] for tr_id in _model.tr_distr_grps[grp_id])
+            e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
             return (lower_lim, e, upper_lim)
         else:
             return Constraint.Skip
 
     if distr_constr_enabled:
-        #model.distr_rule_low = Constraint(model.distrgrp_ids, rule=distr_rule_low)
-        #model.distr_rule_high = Constraint(model.distrgrp_ids, rule=distr_rule_high)
-        model.distr_rule = Constraint(model.distrgrp_ids, rule=distr_rule)
+        model.distr_rule = Constraint(model.distr_grp_ids, rule=distr_rule)
 
     opt = SolverFactory('cplex')
 
@@ -153,45 +161,104 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(trs_descr, trs_info, od, target_distr=None,
+def main(descr, info, od, tgt_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def estimate_ntrs(_od, homebased_filt='HB'):
-        hb_purps = _od.reset_index()['Purpose'].str.startswith(homebased_filt).values
-        # case of non symmetric fh and th
-        ntrs = int(_od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
-        return ntrs
+    def _sample_trs_by_distr(_info, _distr, _sample_size, _return_idx=False):
+        if _distr is not None:
+            jn_name = 'Distrgroupid'
+            usecols = ['Percentage', 'Distrgroupid']
+            sample = (pd.merge(_info.reset_index(), _distr[usecols], on=jn_name)
+                      .sample(n=_sample_size, replace=False, weights='Percentage')
+                      .set_index(_info.index.name))
+        else:
+            sample = _info.sample(n=_sample_size, replace=False)
+        return sample
 
-    def prepare_init_sol(info, distr, ntrs):
+    def _prepare_init_sol_by_distr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
         usecols = ['Percentage', 'Distrgroupid']
-        sample = (pd.merge(info, distr[usecols], on=jn_name)
-                  .sample(n=ntrs, replace=True, weights='Percentage'))
-        init_sol = sample.index.value_counts().to_dict()
-        return init_sol
+        sample = (pd.merge(_info, _distr[usecols], on=jn_name)
+                  .sample(n=_ntrs, replace=True, weights='Percentage'))
 
-    # The estimated number of trs to be identified
-    ntrs = estimate_ntrs(od, homebased_filt='HB')
+        sol = sample.index.value_counts().to_dict()
+        return sol
 
-    # The target distr can be utilised to create an initial solution
-    if target_distr is not None:
-        init_sol = prepare_init_sol(trs_info, target_distr, ntrs)
+    def _update_timesused(_info, _results):
+        timesused = filters.extract_sol_timesused(_results)
+        if timesused is not None:
+            last_sol = timesused.index.unique(level='Solutionno').max()
+            _timesused = timesused.xs(last_sol, level='Solutionno')
+            #_info = _info.join(_timesused).fillna({'Timesused': 0})
+            _info.update(_timesused)
+            _info.Timesused = _info['Timesused'].astype(int)
+        return _info
+
+    # The expcted number of trs can be estimated
+    ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
+    print('sample_size ', ntrs)
+
+    optim_method = 'bnb'
+    pop_size = 2
+    generations = 10
+
+    # The population is a list with the timesused (solution) of each candidate trs set
+    pop = []
+    init_sol = None
+    info['Timesused'] = 0
+
+    if optim_method == 'bnb':
+        generations = 1
+        pop.append(info['Timesused'])
+        # The target distr can be utilised to create initial solutions
+        if tgt_distr is not None:
+            init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
+    elif optim_method == 'hybrid':
+        raise NotImplementedError('hybrid is not yet implemented')
+        # The worst case scenario is to utilise trs only once (each tr to be unique)
+        # Therefore we create a set of max_ntrs candidates
+        if ntrs >= info.shape[0]:
+            raise ValueError('The candidate tours are less than the expected number of result tours,'
+                             'switch to bnb optim_method')
+        for i in range(pop_size):
+            sampled_info = _sample_trs_by_distr(info, tgt_distr,
+                                               _sample_size=ntrs)
+            pop.append(sampled_info['Timesused'])
     else:
-        init_sol = None
+        raise ValueError('optim_method: {} not recognised'.format(optim_method))
 
-    print('Preparing the optimisation model')
-    mymodel = prepare_model(trs_descr, trs_info, od, target_distr,
-                            distr_constr_enabled, distr_perc_tolerance,
-                            mip_tolerances_lowercutoff, ntrs,
-                            init_sol=init_sol)
+    pop = gals.Pop(pop, fitness=None, avail_genes=info.index.tolist())
+    evals = []
+    for gen_idx in range(generations):
+        for i, c in enumerate(pop.chromosomes):
+            c_info = info.query('Tourid in @c.gene_ids')
+            c_descr = descr.query('Tourid in @c.gene_ids')
+            print('Preparing the optimisation model: gen:{}, parent: {}'.format(gen_idx, i))
+            mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
+                                    distr_constr_enabled, distr_perc_tolerance,
+                                    mip_tolerances_lowercutoff, ntrs,
+                                    init_sol=init_sol)
 
-    results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
-                        workmem, mip_strategy_file, mip_strategy_probe,
-                        mip_tolerances_lowercutoff,
-                        timelimit=timelimit)
+            print('Running the optimisation model: gen:{}'.format(i))
+            results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
+                                workmem, mip_strategy_file, mip_strategy_probe,
+                                mip_tolerances_lowercutoff,
+                                timelimit=timelimit)
 
-    return results
+            # evaluate
+            c_info = _update_timesused(c_info, results)
+            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+            p_od = converters.results_to_od(c_descr, c_info, idx_cols)
+            evals.append(od['Dailytrips'].sum() - p_od.sum())
+
+        if optim_method == 'hybrid':
+            pop.update_fitness(evals)
+            pop.crossover(mutate=True)
+
+    info = _update_timesused(info, results)
+
+    return info

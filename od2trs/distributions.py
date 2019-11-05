@@ -38,12 +38,12 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
 
     # Filter the low freq distr groups taking into account
     # the percentage which has been already excluded
-    target_distr = filters.filter_lowpercent_distr_groups(obs_distr, od_perc_thresh+perc_excl)
+    tgt_distr = filters.filter_lowpercent_distr_groups(obs_distr, od_perc_thresh+perc_excl)
 
-    return target_distr
+    return tgt_distr
 
 
-def assign_distr_groupid(info, target_distr, distr_dims, cost_bins):
+def assign_distr_groupid(info, tgt_distr, distr_dims, cost_bins):
 
     # assign costs to bins
     for cost_type, bins in cost_bins.items():
@@ -51,7 +51,7 @@ def assign_distr_groupid(info, target_distr, distr_dims, cost_bins):
         info[cost_grp] = pd.cut(info[cost_type], bins=bins)
 
     # Keep only the distribution group id and its definition
-    distr_group_ids = target_distr['Distrgroupid']
+    distr_group_ids = tgt_distr['Distrgroupid']
 
     info = pd.merge(info, distr_group_ids.to_frame(),
                     left_on=distr_dims, right_index=True,

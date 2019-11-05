@@ -4,12 +4,12 @@ import pandas as pd
 import networkx as nx
 
 
-def filter_pcl_by_remaining_target_distr(trs_info, trs_descr, target_distr):
+def filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr):
 
     # I'll later join on these names but I need to reset the index
-    distr_dims = list(target_distr.index.names)
+    distr_dims = list(tgt_distr.index.names)
     # I'll temporarily modify the tuples to strings
-    distr_copy = target_distr.reset_index()[distr_dims]  # we care only about the distr dims
+    distr_copy = tgt_distr.reset_index()[distr_dims]  # we care only about the distr dims
 
     trs_info = pd.merge(trs_info.reset_index(), distr_copy, on=distr_dims, how='right')
     trs_info = trs_info.set_index('Tourid').sort_index()
@@ -34,15 +34,13 @@ def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
     distr.loc(axis=1)[percent_col] /= distr[percent_col].sum()
 
     # Drop the filter column
-    distr.drop(columns=filter_col, inplace=True)
+    distr = distr.drop(columns=filter_col)
 
     return distr
 
 
-def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
-
-    filter_trs = list()
-
+def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
+    filtered = list()
     for tr in trs:
         d_dims = dict()
 
@@ -61,19 +59,19 @@ def filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins=None):
             key.append(d_dims[dd])
 
         key = tuple(key)
-        perc = target_distr['Percentage'].get(key, 0)
+        perc = tgt_distr['Percentage'].get(key, 0)
         if perc > 0:
-            tr.distrgroupid = int(target_distr.loc[key]['Distrgroupid'])
-            filter_trs.append(tr)
+            tr.distrgroupid = int(tgt_distr.loc[key]['Distrgroupid'])
+            filtered.append(tr)
         else:
             continue
 
-    if filter_trs:
-        return filter_trs
+    if filtered:
+        return filtered
 
 
 def filter_trs(trs, max_costs, purp_to_acts,
-               target_distr, distr_dims, cost_bins):
+               tgt_distr, distr_dims, cost_bins):
 
     if max_costs:
         trs = filter_by_max_cost(trs, max_costs)
@@ -81,8 +79,8 @@ def filter_trs(trs, max_costs, purp_to_acts,
     if purp_to_acts:
         trs = filter_by_acts(trs, purp_to_acts)
 
-    if target_distr is not None:
-        trs = filter_trs_by_target_distr(trs, target_distr, distr_dims, cost_bins)
+    if tgt_distr is not None:
+        trs = filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins)
 
     return trs
 
@@ -247,41 +245,7 @@ def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, tr
     return g
 
 
-def filter_nodes_by_dist(g, src, tgt, weight, cutoff):
-
-    if not isinstance(tgt, list):
-        tgts = [tgt]
-    else:
-        tgts = tgt
-
-    weights_cutoffs = list(zip(weight, cutoff))
-
-    to_rmv = set()
-
-    for w, c in weights_cutoffs:
-        from_src = nx.shortest_path_length(g, source=src, target=None, weight=w)
-
-        to_tgts = dict()
-        for tgt in tgts:
-            to_tgts[tgt] = nx.shortest_path_length(g, source=None, target=tgt, weight=w)
-
-        for n in (g.nodes() - ([src] + tgts)):
-            rmv = True
-            for tgt in tgts:
-                dist = from_src.get(n, float('inf')) + to_tgts[tgt].get(n, float('inf'))
-                if dist <= c:
-                    rmv = False
-                    break
-
-            if rmv:
-                to_rmv.add(n)
-
-    g.remove_nodes_from(to_rmv)
-
-    return g
-
-
-def extract_tour_times_used(optim_results):
+def extract_sol_timesused(optim_results, col_name='Timesused'):
     """
     Returns dictionary of the number times each tour is used for each solution
     :param optim_results:
@@ -291,13 +255,13 @@ def extract_tour_times_used(optim_results):
     d_tour_times_used = dict()
     for sol_id, sol in enumerate(solutions):
         for k, v in sol['Variable'].items():
-            tour_id = int(re.search('([\d]+)', k).group())
+            tour_id = int(re.search(r'([\d]+)', k).group())
             d_tour_times_used[(sol_id, tour_id)] = v['Value']
     if d_tour_times_used:
         # to df
         sr = pd.Series(d_tour_times_used).round(2).astype(int)
         sr.index.names = ['Solutionno', 'Tourid']
-        sr.name = 'Timesused'
+        sr.name = col_name
         return sr
     else:
         return None
