@@ -122,8 +122,8 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
             upper_lim = math.ceil(((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance)
                                    * m.ntrs))
 
-            expr = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
-            return (lower_lim, expr, upper_lim)
+            e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
+            return (lower_lim, e, upper_lim)
         else:
             return Constraint.Skip
 
