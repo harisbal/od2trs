@@ -270,6 +270,15 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         ncores = cpu_count()
     else:
         raise ValueError('ncores should be either an integer or null')
+    if isinstance(ncores, int):
+        if ncores == 0:
+            ncores = cpu_count()
+        elif ncores < 0:
+            ncores = cpu_count() + ncores
+        else:
+            pass
+    elif ncores.f_is_empty():
+        ncores = cpu_count() - 1
 
     print('Running on {} cores'.format(ncores))
     # clean the processing folder
