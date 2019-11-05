@@ -71,7 +71,7 @@ def prepare_model(descr, info, od, tgt_distr,
     model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
     model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
     model.tr_ubnds = _find_ubnds(model)
-    model.ntrs = ntrs
+    model.ntrs = Param(default=ntrs, mutable=True)
 
     model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
                          initialize=_init_solution)
@@ -92,13 +92,6 @@ def prepare_model(descr, info, od, tgt_distr,
 
     # TempfileManager.tempdir = r'./tmp'
 
-    return model
-
-
-def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
-              mip_strategy_file=2, mip_strategy_probe=3, mip_tolerances_lowercutoff=None,
-              timelimit=None):
-
     def maximise_used_trips(m):
         odsum = m.od['Dailytrips'].sum()
         nlegs = m.info['Nolegs'].to_dict()
@@ -117,10 +110,10 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     def distr_rule(m, grp_id):
         if m.tr_by_distr_grps[grp_id]:
             lower_lim = math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance)
-                                   * m.ntrs)
+                                   * m.ntrs.value)
 
             upper_lim = math.ceil(((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance)
-                                   * m.ntrs))
+                                   * m.ntrs.value))
 
             e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
             return (lower_lim, e, upper_lim)
@@ -130,18 +123,25 @@ def run_model(model, distr_constr_enabled, submit_to_neos=False, workmem=None,
     if distr_constr_enabled:
         model.distr_rule = Constraint(model.distr_grp_ids, rule=distr_rule)
 
-    opt = SolverFactory('cplex')
+    return model
+
+
+def run_model(model, submit_to_neos=False, workmem=None,
+              mip_strategy_file=2, mip_strategy_probe=3, mip_tolerances_lowercutoff=None,
+              timelimit=None, solver_factory='cplex', simplex_display=2):
+
+    opt = SolverFactory(solver_factory)
 
     if workmem:
         opt.options['workmem'] = workmem
 
     opt.options['mip strategy file'] = mip_strategy_file
     opt.options['mip strategy probe'] = mip_strategy_probe
-    opt.options['simplex display'] = 2
+    opt.options['simplex display'] = simplex_display
 
     if mip_tolerances_lowercutoff is not None:
         opt.options['mip tolerances lowercutoff'] = model.cutoff
-        opt.options['mip limits solutions'] = 1 # Will stop once the first feasible solution is achieved
+        opt.options['mip limits solutions'] = 1  # Will stop once the first feasible solution is achieved
 
     if timelimit:
         opt.options['timelimit'] = timelimit
@@ -193,13 +193,16 @@ def main(descr, info, od, tgt_distr=None,
         if timesused is not None:
             last_sol = timesused.index.unique(level='Solutionno').max()
             _timesused = timesused.xs(last_sol, level='Solutionno')
-            #_info = _info.join(_timesused).fillna({'Timesused': 0})
             _info.update(_timesused)
             _info.Timesused = _info['Timesused'].astype(int)
         return _info
 
-    # The expcted number of trs can be estimated
+    # The expected number of trs can be estimated
     ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
+
+    # TODO tests
+    #ntrs = int(ntrs * 1.5)
+
     print('sample_size ', ntrs)
 
     optim_method = 'bnb'
@@ -224,30 +227,41 @@ def main(descr, info, od, tgt_distr=None,
         if ntrs >= info.shape[0]:
             raise ValueError('The candidate tours are less than the expected number of result tours,'
                              'switch to bnb optim_method')
-        for i in range(pop_size):
-            sampled_info = _sample_trs_by_distr(info, tgt_distr,
-                                               _sample_size=ntrs)
+        for _ in range(pop_size):
+            sampled_info = _sample_trs_by_distr(info, tgt_distr, sample_size=ntrs)
             pop.append(sampled_info['Timesused'])
     else:
         raise ValueError('optim_method: {} not recognised'.format(optim_method))
 
     pop = gals.Pop(pop, fitness=None, avail_genes=info.index.tolist())
     evals = []
-    for gen_idx in range(generations):
-        for i, c in enumerate(pop.chromosomes):
-            c_info = info.query('Tourid in @c.gene_ids')
-            c_descr = descr.query('Tourid in @c.gene_ids')
-            print('Preparing the optimisation model: gen:{}, parent: {}'.format(gen_idx, i))
-            mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
-                                    distr_constr_enabled, distr_perc_tolerance,
-                                    mip_tolerances_lowercutoff, ntrs,
-                                    init_sol=init_sol)
+    mymodel = None
+    for i_gen in range(generations):
+        for i_c, c in enumerate(pop.chromosomes):
+            solution_feasible = False
+            i_feasible = 0
+            while not solution_feasible:
+                c_info = info.query('Tourid in @c.gene_ids')
+                c_descr = descr.query('Tourid in @c.gene_ids')
+                print('Preparing the optimisation model: gen:{}, parent: {}'.format(i_gen, i_c))
+                if mymodel is None:
+                    mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
+                                            distr_constr_enabled, distr_perc_tolerance,
+                                            mip_tolerances_lowercutoff, ntrs,
+                                            init_sol=init_sol)
 
-            print('Running the optimisation model: gen:{}'.format(i))
-            results = run_model(mymodel, distr_constr_enabled, submit_to_neos,
-                                workmem, mip_strategy_file, mip_strategy_probe,
-                                mip_tolerances_lowercutoff,
-                                timelimit=timelimit)
+                print('Running the optimisation model: gen:{}'.format(i_c))
+                results = run_model(mymodel, submit_to_neos,
+                                    workmem, mip_strategy_file, mip_strategy_probe,
+                                    mip_tolerances_lowercutoff,
+                                    timelimit=timelimit, solver_factory='cplex')
+
+                if results.solver.termination_condition != TerminationCondition.infeasible:
+                    solution_feasible = True
+                else:
+                    i_feasible += 1
+                    # change the expected number of trs and re-solve
+                    mymodel.ntrs = int(ntrs*(1-i_feasible*0.05))
 
             # evaluate
             c_info = _update_timesused(c_info, results)
