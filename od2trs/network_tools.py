@@ -43,10 +43,10 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = list()
 
-    g_hb_nhb = filters.filter_prepare_graph(g.copy(), srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
-    # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
+    #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
     # keep only the nhb trips
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
@@ -77,7 +77,7 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
                 # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
 
             weights = ['Length']
-            cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
+            cutoffs = [max_legs - 2]  # Two legs are devoted to successor and predecessor
 
             if max_costs:
                 for w, v in list(max_costs.items()):

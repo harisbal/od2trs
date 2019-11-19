@@ -147,7 +147,7 @@ def filter_by_acts(trs, purp_to_acts):
     return filt_trs
 
 
-def filter_prepare_graph(g, srcs, tgts, filter_edge_dirs):
+def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
