@@ -256,6 +256,15 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
+    if excl_edges_perc > 0:
+        cfbc = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
+        # cfbc = pd.Series(nx.current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
+        nx.set_node_attributes(G, cfbc, 'Betweenness')
+        print('before simplification', G.number_of_nodes())
+        G = filters.simplify_net(G, weight='Dailytrips',
+                                 excl_weight_perc=excl_edges_perc)
+        print('after simplification', G.number_of_nodes())
+
     descrs = list()
     infos = list()
     tr_id = 1

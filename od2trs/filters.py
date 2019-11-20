@@ -2,6 +2,7 @@ import re
 import itertools
 import pandas as pd
 import networkx as nx
+from collections import Counter
 
 
 def filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr):
@@ -209,35 +210,44 @@ def filter_connectors(g, keep=False):
     return g
 
 
-def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, weight=None):
+def simplify_net(g, keep_nodes=None,
+                 weight=None, excl_weight_perc=0.01):
 
-    """
-    :param g:
-    :param src:
-    :param n:
-    :param weight:
-    :param trips_thresh:
-    :return:
-    """
+    def _drop_by_excl_weight_perc(_g, centralities, attr, p):
 
-    if not isinstance(src, list):
-        src = [src]
+        _to_rmv = []
+        centralities = centralities.sort_values()
+        s_init = sum(nx.get_edge_attributes(_g, attr).values())
 
-    if nexcl > 0:
-        # edge betweenness
-        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, src, tgts, weight=weight))
-        eb.name = 'bc'
+        gc = _g.copy()
+        for k, v in centralities.iteritems():
+            gc.remove_node(k)
+            _to_rmv.append(k)
+            s = sum(nx.get_edge_attributes(gc, attr).values())
+            ip = s / s_init
+            if ip <= 1 - p:
+                #print('removed nodes perc {}'.format(len(_to_rmv)/g.number_of_nodes()))
+                return _to_rmv
 
-        # Exclude connectors
-        filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
-        # Exclude hb trips
-        filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr in hb_purps]
-        eb.drop(set(filter_edges), inplace=True)
+        return _to_rmv
 
-        n = eb.nsmallest(nexcl)
-        to_rmv = n.index.tolist()
+    if keep_nodes is None:
+        keep_nodes = []
 
-        g.remove_edges_from(to_rmv)
+    if excl_weight_perc == 0:
+        return g
+
+    if 0 < excl_weight_perc <= 1:
+        try:
+            bc = pd.Series(nx.get_node_attributes(g, 'Betweenness')).sort_values()
+            bc = bc.drop(set(keep_nodes), errors='ignore')
+            to_rmv = _drop_by_excl_weight_perc(g, bc, weight, excl_weight_perc)
+        except ZeroDivisionError:  # Not sure why this happens
+            print('zero division ')
+            to_rmv = []
+        g.remove_nodes_from(to_rmv)
+    else:
+        raise ValueError('excl_perc should be between 0 and 1')
 
     return g
 
