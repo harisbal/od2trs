@@ -23,7 +23,7 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
 
 
 def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
-                                  max_legs, max_costs, excl_edges_perc):
+                                  max_legs, max_costs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -43,8 +43,6 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
 
     g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
-
-    method = 'current_flow'
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 

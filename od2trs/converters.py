@@ -208,7 +208,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       purp_to_acts):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_costs, excl_edges_perc)
+                                                        max_legs, max_costs)
 
     if not zones_seqs:
         return None
