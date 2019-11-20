@@ -83,7 +83,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
         d_attrs = dict()
         d_info = zones_info.to_dict(orient='index')
         for n in g.nodes:
-            zone = g.node[n]['Zone']
+            zone = g.nodes[n]['Zone']
             d_attrs[n] = d_info[zone]
         nx.set_node_attributes(g, d_attrs)
 
