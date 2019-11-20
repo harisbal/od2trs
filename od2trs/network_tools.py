@@ -95,8 +95,9 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
 
                 #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
 
+            # Convert to dict
+            cutoffs = dict(zip(weights, cutoffs))
             zss = list(nx.all_simple_paths(g_nhb, succ, predecessors,
-                                           weight=weights,
                                            cutoff=cutoffs))
 
             if zss:
