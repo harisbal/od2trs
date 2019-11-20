@@ -208,7 +208,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       purp_to_acts):
 
     zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_costs, excl_edges_perc)
+                                                        max_legs, max_costs)
 
     if not zones_seqs:
         return None
@@ -255,6 +255,15 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
     G = od_to_graph(od, src_col='Source', tgt_col='Target',
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
+
+    if excl_edges_perc > 0:
+        cfbc = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
+        # cfbc = pd.Series(nx.current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
+        nx.set_node_attributes(G, cfbc, 'Betweenness')
+        print('before simplification', G.number_of_nodes())
+        G = filters.simplify_net(G, weight='Dailytrips',
+                                 excl_weight_perc=excl_edges_perc)
+        print('after simplification', G.number_of_nodes())
 
     descrs = list()
     infos = list()

@@ -23,7 +23,7 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
 
 
 def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
-                                  max_legs, max_costs, excl_edges_perc):
+                                  max_legs, max_costs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -34,8 +34,6 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
     :param filter_edge_purpose_names: the name of the trip purposes to look for
     :return: potential_tripchains
     """
-
-    hb_purps = [direction_names.from_home] + [direction_names.to_home]
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
@@ -48,8 +46,16 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
+    keep_nodes = []
+    for src in srcs:
+        keep_nodes.extend(g_hb_nhb.successors(src))
+        keep_nodes.extend(g_hb_nhb.predecessors(src))
+    keep_nodes = set(keep_nodes)
+
+    gf = g_hb_nhb.copy()
+
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
+    g_nhb = filters.filter_edges_by_direction(gf, direction_names.non_home,
                                               keep_connectors=True)
 
     for src in srcs:
@@ -64,35 +70,26 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
                 # If succ in predecessors all_simple_paths returns []
                 predecessors.extend(preds)
 
-            gf = g_nhb
-            # Use edge betweeneess centrality to simplify the graph
-            # TODO the number of nexcl_edges should be excluded from the optimisation
-            # TODO the decision about the number of edges to be excluded should be automated
-            # edges_bef = gf.number_of_edges()
-            nexcl_edges = int(g_hb_nhb.number_of_edges() * excl_edges_perc)
-            if nexcl_edges > 0:
-                gf = filters.filter_by_edge_betweenness_centrality(gf.copy(), succ, predecessors, nexcl_edges,
-                                                                   hb_purps=hb_purps,
-                                                                   weight='Length')
-                # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
-
             weights = ['Length']
             cutoffs = [max_legs - 2]  # Two legs are devoted to successor and predecessor
 
             if max_costs:
-                for w, v in list(max_costs.items()):
+                for w, mc in list(max_costs.items()):
                     weights.append(w)
                     dist_src_to_succ = g_hb_nhb[src][succ][w]
-                    costs_pred_to_tgt = list()
+                    costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
                     # predecessor to the tgt. Nonetheless I can reduce it my the minimum
                     for tgt in tgts:
                         for pred in g_hb_nhb.predecessors(tgt):
                             costs_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
-                    dist_pred_to_tgt = min(costs_pred_to_tgt)
+                    if len(costs_pred_to_tgt) > 0:
+                        dist_pred_to_tgt = min(costs_pred_to_tgt)
+                    else:
+                        dist_pred_to_tgt = 0
 
-                    cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
+                    cutoffs.append(mc - (dist_src_to_succ + dist_pred_to_tgt))
 
                 #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
 

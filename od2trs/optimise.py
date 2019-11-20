@@ -256,14 +256,19 @@ def main(descr, info, od, tgt_distr=None,
                                     mip_tolerances_lowercutoff,
                                     timelimit=timelimit, solver_factory='cplex')
 
-                if results.solver.termination_condition != TerminationCondition.infeasible:
-                    solution_feasible = True
+                if optim_method == 'hybrid':
+                    if results.solver.termination_condition != TerminationCondition.infeasible:
+                        solution_feasible = True
+                    else:
+                        i_feasible += 1
+                        # reduce the expected number of trs and re-solve
+                        mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
+                        mymodel.distr_rule.reconstruct()
+                        print(i_feasible, mymodel.ntrs.value)
+                        if mymodel.ntrs <= 0:
+                            break
                 else:
-                    i_feasible += 1
-                    # reduce the expected number of trs and re-solve
-                    mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
-                    mymodel.distr_rule.reconstruct()
-                    print(i_feasible, mymodel.ntrs.value)
+                    solution_feasible = True
 
             # evaluate
             c_info = _update_timesused(c_info, results)
