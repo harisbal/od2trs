@@ -106,12 +106,17 @@ def filter_by_acts(trs, purp_to_acts):
 
     filt_trs = list()
     for tr in trs:
+        # Create only the required combinations
+        purp_to_acts_tr = {}
+        for p, v in purp_to_acts.items():
+            if p in tr.purposes:
+                purp_to_acts_tr[p] = v
         # Trip purposes can connect different pairs of acts (e.g. NHBW: [('Work', 'Other'), ('Work', 'Work')]
         # Check all cases
-        purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts.values()]))
+        purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts_tr.values()]))
         for c in purp_to_acts_combs:
             tr = deepcopy(tr)
-            purp_to_acts_c = dict(zip(purp_to_acts.keys(), c))
+            purp_to_acts_c = dict(zip(purp_to_acts_tr.keys(), c))
             keep_tr = True
             # make sure that Home is first ( I could custom sort)
             acts = purp_to_acts_c[tr.legs[0].purpose].copy()
