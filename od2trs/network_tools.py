@@ -62,7 +62,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = []
 
-    g_hb_nhb = filters.prepare_graph(g, srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
@@ -73,8 +73,6 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     gf = g_nhb
 
     for src in srcs:
-        #if src != 'E01014387-OP1':
-        #    return []
         successors = set(g_hb_nhb.successors(src))
         for succ in successors:
             predecessors = set()
@@ -105,7 +103,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                             else:
                                 costs_pred_to_tgt.append(cost_pred_to_tgt)
 
-                    min_cost_pred_to_tgt = min(costs_pred_to_tgt, default=mc)
+                    min_cost_pred_to_tgt = min(costs_pred_to_tgt)
 
                     min_cost_firstlast_legs = cost_src_to_succ + min_cost_pred_to_tgt
                     cutoffs.append(max(mc - min_cost_firstlast_legs, 0))
