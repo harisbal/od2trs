@@ -186,9 +186,13 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     return g
 
 
-def filter_edges_by_direction(g, filt_direction, keep_connectors=True):
+def filter_edges_by_direction(g, filt_direction, keep_connectors=True, copy=True):
 
-    gf = g.copy()
+    if copy:
+        gf = g.copy()
+    else:
+        gf = g
+
     for u, v, direction in g.edges(data='Direction'):
         if (direction == 'Connector') and keep_connectors:
             continue
@@ -239,9 +243,9 @@ def simplify_net(g, keep_nodes=None,
 
     if 0 < excl_weight_perc <= 1:
         try:
-            bc = pd.Series(nx.get_node_attributes(g, 'Betweenness')).sort_values()
-            bc = bc.drop(set(keep_nodes), errors='ignore')
-            to_rmv = _drop_by_excl_weight_perc(g, bc, weight, excl_weight_perc)
+            centrality = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
+                            .drop(set(keep_nodes), errors='ignore'))
+            to_rmv = _drop_by_excl_weight_perc(g, centrality, weight, excl_weight_perc)
         except ZeroDivisionError:  # Not sure why this happens
             print('zero division ')
             to_rmv = []
