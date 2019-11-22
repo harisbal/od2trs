@@ -1,7 +1,28 @@
-from itertools import product
-
 import networkx as nx
+import pandas as pd
 import od2trs.filters as filters
+
+
+def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
+    to_rmv = []
+    centralities = centralities.sort_values()
+    s_init = sum(nx.get_edge_attributes(_g, attr).values())
+
+    if copy:
+        gf = _g.copy()
+    else:
+        gf = _g
+
+    for k, v in centralities.iteritems():
+        gf.remove_node(k)
+        to_rmv.append(k)
+        s = sum(nx.get_edge_attributes(gf, attr).values())
+        s_perc = s / s_init
+        if s_perc <= 1 - excl_perc:
+            gf.remove_nodes_from(to_rmv)
+            break
+
+    return gf
 
 
 def duplicate_nodes(g, nodes, suffix='-dupl'):
@@ -22,8 +43,8 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
     return gn
 
 
-def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
-                                  max_legs, max_costs):
+def identify_zones_sequences(g, src, direction_names, ordered_tps,
+                             max_legs, max_costs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -46,18 +67,12 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
-    keep_nodes = []
-    for src in srcs:
-        keep_nodes.extend(g_hb_nhb.successors(src))
-        keep_nodes.extend(g_hb_nhb.predecessors(src))
-    keep_nodes = set(keep_nodes)
-
-    gf = g_hb_nhb.copy()
-
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(gf, direction_names.non_home,
-                                              keep_connectors=True)
+    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
+                                              keep_connectors=True, copy=True)
+    gf = g_nhb
 
+    method = 'pgrnk'
     for src in srcs:
         successors = list(g_hb_nhb.successors(src))
         for succ in successors:
@@ -70,8 +85,11 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
                 # If succ in predecessors all_simple_paths returns []
                 predecessors.extend(preds)
 
-            weights = ['Length']
-            cutoffs = [max_legs - 2]  # Two legs are devoted to successor and predecessor
+            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
+            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
+
+            weights = ['Connector', 'Length']  # Tot number of connectors, Length excludes connectors
+            cutoffs = [tp_max-tp_min, max_legs-2]  # Two legs are devoted to successor and predecessor
 
             if max_costs:
                 for w, mc in list(max_costs.items()):
@@ -89,14 +107,13 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
                     else:
                         dist_pred_to_tgt = 0
 
-                    cutoffs.append(mc - (dist_src_to_succ + dist_pred_to_tgt))
+                    cutoffs.append(max(mc - (dist_src_to_succ + dist_pred_to_tgt), 0))
 
                 #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
 
             # Convert to dict
             cutoffs = dict(zip(weights, cutoffs))
-            zss = list(nx.all_simple_paths(g_nhb, succ, predecessors,
-                                           cutoff=cutoffs))
+            zss = list(nx.all_simple_paths(gf, succ, predecessors, cutoff=cutoffs))
 
             if zss:
                 # remove the src suffix

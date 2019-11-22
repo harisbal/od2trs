@@ -207,8 +207,8 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       tgt_distr, distr_dims, excl_edges_perc,
                       purp_to_acts):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_costs)
+    zones_seqs = nettools.identify_zones_sequences(G, src_zone, direction_names, ordered_tps,
+                                                   max_legs, max_costs)
 
     if not zones_seqs:
         return None
@@ -256,14 +256,22 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
+    method = 'pgrnk'
     if excl_edges_perc > 0:
-        cfbc = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
-        # cfbc = pd.Series(nx.current_flow_betweenness_centrality(G.to_undirected(), weight='Dailytrips'))
-        nx.set_node_attributes(G, cfbc, 'Betweenness')
+        if method == 'cfc':
+            cm = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(),
+                                                                              weight='Dailytrips'))
+        elif method == 'pgrnk':
+            cm = pd.Series(nx.pagerank(nx.DiGraph(G), alpha=1, weight='Dailytrips', max_iter=500))
+        else:
+            raise ValueError('Centrality measure not recognised')
+
+        nx.set_node_attributes(G, cm, 'Centrality')
         print('before simplification', G.number_of_nodes())
         G = filters.simplify_net(G, weight='Dailytrips',
                                  excl_weight_perc=excl_edges_perc)
         print('after simplification', G.number_of_nodes())
+        print('Updated Network density: {:.2%}'.format(nx.density(G)))
 
     descrs = list()
     infos = list()
