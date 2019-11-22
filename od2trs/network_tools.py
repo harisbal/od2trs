@@ -85,12 +85,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                 # If succ in predecessors all_simple_paths returns []
                 predecessors.extend(preds)
 
-            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
-            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
-
-            weights = ['Connector', 'Length']  # Tot number of connectors, Length excludes connectors
-            cutoffs = [tp_max-tp_min, max_legs-2]  # Two legs are devoted to successor and predecessor
-
+            weights = []
             if max_costs:
                 for w, mc in list(max_costs.items()):
                     weights.append(w)
@@ -109,7 +104,13 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
 
                     cutoffs.append(max(mc - (dist_src_to_succ + dist_pred_to_tgt), 0))
 
-                #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
+            # I have noticed that the distance related cutoffs have stronger influence than the rest
+            # therefore I prioritise them in the list
+            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
+            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
+
+            weights.extend(['Connector', 'Length'])  # Tot number of connectors, Length excludes connectors
+            cutoffs.extend([tp_max - tp_min, max_legs - 2])  # Two legs are devoted to successor and predecessor
 
             # Convert to dict
             cutoffs = dict(zip(weights, cutoffs))

@@ -50,7 +50,7 @@ def main(traj):
     try:
         costs = myio.import_costs(filepaths['in']['costs'])
     except FileNotFoundError:
-        pass
+        raise FileNotFoundError('costs file is required')
 
     if cost_bins:
         cost_bins = traj.par.trs.cost_bins.copy()
