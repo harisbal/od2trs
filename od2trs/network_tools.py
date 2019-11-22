@@ -60,7 +60,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
     tgts = srcs.copy()
-    zones_seqs = list()
+    zones_seqs = []
 
     g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
@@ -72,8 +72,9 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                                               keep_connectors=True, copy=True)
     gf = g_nhb
 
-    method = 'pgrnk'
     for src in srcs:
+        if src != 'E01014387-OP1':
+            return []
         successors = list(g_hb_nhb.successors(src))
         for succ in successors:
             predecessors = list()
