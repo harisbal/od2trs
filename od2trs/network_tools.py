@@ -72,29 +72,24 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                                               keep_connectors=True, copy=True)
     gf = g_nhb
 
-    method = 'pgrnk'
     for src in srcs:
         successors = list(g_hb_nhb.successors(src))
         for succ in successors:
-            predecessors = list()
+            predecessors = set()
             for tgt in tgts:
                 preds = list(g_hb_nhb.predecessors(tgt))
                 if succ in preds:
                     zones_seqs.append([src, succ, tgt])
                     preds.remove(succ)
                 # If succ in predecessors all_simple_paths returns []
-                predecessors.extend(preds)
+                predecessors.update(preds)
 
-            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
-            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
-
-            weights = ['Connector', 'Length']  # Tot number of connectors, Length excludes connectors
-            cutoffs = [tp_max-tp_min, max_legs-2]  # Two legs are devoted to successor and predecessor
-
+            weights = []
+            cutoffs = []
             if max_costs:
                 for w, mc in list(max_costs.items()):
                     weights.append(w)
-                    dist_src_to_succ = g_hb_nhb[src][succ][w]
+                    cost_src_to_succ = g_hb_nhb[src][succ][w]
                     costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
@@ -103,13 +98,20 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                         for pred in g_hb_nhb.predecessors(tgt):
                             costs_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
                     if len(costs_pred_to_tgt) > 0:
-                        dist_pred_to_tgt = min(costs_pred_to_tgt)
+                        min_cost_pred_to_tgt = min(costs_pred_to_tgt)
                     else:
-                        dist_pred_to_tgt = 0
+                        min_cost_pred_to_tgt = 0
 
-                    cutoffs.append(max(mc - (dist_src_to_succ + dist_pred_to_tgt), 0))
+                    min_cost_firstlast_legs = cost_src_to_succ + min_cost_pred_to_tgt
+                    cutoffs.append(max(mc - min_cost_firstlast_legs, 0))
 
-                #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
+            # I have noticed that the distance related cutoffs have stronger influence than the rest
+            # therefore I prioritise them in the list
+            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
+            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
+
+            weights.extend(['Connector', 'Length'])  # Tot number of connectors, Length excludes connectors
+            cutoffs.extend([tp_max - tp_min, max_legs - 2])  # Two legs are devoted to successor and predecessor
 
             # Convert to dict
             cutoffs = dict(zip(weights, cutoffs))
