@@ -62,7 +62,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = []
 
-    g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g, srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
@@ -73,38 +73,42 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     gf = g_nhb
 
     for src in srcs:
-        if src != 'E01014387-OP1':
-            return []
-        successors = list(g_hb_nhb.successors(src))
+        #if src != 'E01014387-OP1':
+        #    return []
+        successors = set(g_hb_nhb.successors(src))
         for succ in successors:
-            predecessors = list()
+            predecessors = set()
             for tgt in tgts:
                 preds = list(g_hb_nhb.predecessors(tgt))
                 if succ in preds:
                     zones_seqs.append([src, succ, tgt])
                     preds.remove(succ)
                 # If succ in predecessors all_simple_paths returns []
-                predecessors.extend(preds)
+                predecessors.update(preds)
 
             weights = []
             cutoffs = []
             if max_costs:
                 for w, mc in list(max_costs.items()):
                     weights.append(w)
-                    dist_src_to_succ = g_hb_nhb[src][succ][w]
+                    cost_src_to_succ = g_hb_nhb[src][succ][w]
                     costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
                     # predecessor to the tgt. Nonetheless I can reduce it my the minimum
                     for tgt in tgts:
                         for pred in g_hb_nhb.predecessors(tgt):
-                            costs_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
-                    if len(costs_pred_to_tgt) > 0:
-                        dist_pred_to_tgt = min(costs_pred_to_tgt)
-                    else:
-                        dist_pred_to_tgt = 0
+                            cost_pred_to_tgt = g_hb_nhb[pred][tgt][w]
+                            if cost_src_to_succ+cost_pred_to_tgt > mc:
+                                # no need to search for this predecessor
+                                predecessors.discard(pred)
+                            else:
+                                costs_pred_to_tgt.append(cost_pred_to_tgt)
 
-                    cutoffs.append(max(mc - (dist_src_to_succ + dist_pred_to_tgt), 0))
+                    min_cost_pred_to_tgt = min(costs_pred_to_tgt, default=mc)
+
+                    min_cost_firstlast_legs = cost_src_to_succ + min_cost_pred_to_tgt
+                    cutoffs.append(max(mc - min_cost_firstlast_legs, 0))
 
             # I have noticed that the distance related cutoffs have stronger influence than the rest
             # therefore I prioritise them in the list
