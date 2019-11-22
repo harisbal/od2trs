@@ -86,6 +86,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                 predecessors.extend(preds)
 
             weights = []
+            cutoffs = []
             if max_costs:
                 for w, mc in list(max_costs.items()):
                     weights.append(w)
