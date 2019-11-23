@@ -113,7 +113,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
             tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
             tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
 
-            weights.extend(['Connector', 'Length'])  # Tot number of connectors, Length excludes connectors
+            weights.extend(['HeightDiff', 'Length'])  # Number of intermediate time-periods, Length excludes connectors
             cutoffs.extend([tp_max - tp_min, max_legs - 2])  # Two legs are devoted to successor and predecessor
 
             # Convert to dict

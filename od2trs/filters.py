@@ -235,7 +235,6 @@ def simplify_net(g, keep_nodes=None,
             s = sum(nx.get_edge_attributes(gc, attr).values())
             ip = s / s_init
             if ip <= 1 - p:
-                #print('removed nodes perc {}'.format(len(_to_rmv)/g.number_of_nodes()))
                 return _to_rmv
 
         return _to_rmv
@@ -247,13 +246,9 @@ def simplify_net(g, keep_nodes=None,
         return g
 
     if 0 < excl_weight_perc <= 1:
-        try:
-            centrality = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
-                            .drop(set(keep_nodes), errors='ignore'))
-            to_rmv = _drop_by_excl_weight_perc(g, centrality, weight, excl_weight_perc)
-        except ZeroDivisionError:  # Not sure why this happens
-            print('zero division ')
-            to_rmv = []
+        centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
+                          .drop(set(keep_nodes), errors='ignore'))
+        to_rmv = _drop_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
         g.remove_nodes_from(to_rmv)
     else:
         raise ValueError('excl_perc should be between 0 and 1')
