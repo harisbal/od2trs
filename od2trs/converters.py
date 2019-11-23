@@ -22,9 +22,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     def _add_chron_connectors(_g, _ordered_tps):
 
         nx.set_edge_attributes(_g, False, 'Connector')
-        # nx.set_node_attributes(_g, False, 'Connector')
 
-        # dict with all the timeperiods a trip begins from each node
+        # dict with all the timeperiods a link starts/ends from/to each node
         zone_dts = dict()
         for n, z in _g.nodes(data='Zone'):
             dt = _g.nodes[n]['Timeperiod']
@@ -44,16 +43,18 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                     _d = dict(zip(costs.columns,
                                   len(costs.columns) * [0]))
 
+                # Time-periods between nodes
+                height_diff = ordered_tps.index(tgt_dt) - ordered_tps.index(src_dt)
                 _g.add_edge(src_name, tgt_name,
                             Connector=True,
                             Direction='Connector',
+                            HeightDiff=height_diff,
                             Length=0, **_d)
 
         return _g
 
     od = od.reset_index()
     od = od[[src_col, tgt_col] + attr_cols]
-    # od.dropna(axis=1, inplace=True)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_tps is not None:
@@ -67,10 +68,13 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     # add an artificial length for edges (connectors will have 0)
     nx.set_edge_attributes(g, 1, 'Length')
+    # Number of tps (height) between connected nodes
+    nx.set_edge_attributes(g, 0, 'HeightDiff')
 
     if ordered_tps:
         # Set the node attributes
-        d = {n: {'Zone': n.split('-', 1)[0], 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
+        d = {n: {'Zone': n.split('-', 1)[0],
+                 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
         nx.set_node_attributes(g, d)
         g = _add_chron_connectors(g, ordered_tps)
     else:
@@ -256,7 +260,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
-    method = 'pgrnk'
+    method = 'cfc'
     if excl_edges_perc > 0:
         if method == 'cfc':
             cm = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(),
@@ -267,14 +271,17 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
             raise ValueError('Centrality measure not recognised')
 
         nx.set_node_attributes(G, cm, 'Centrality')
-        print('before simplification', G.number_of_nodes())
+        print('nodes before simplification', G.number_of_nodes())
+        print('dailytrips before simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
+
         G = filters.simplify_net(G, weight='Dailytrips',
                                  excl_weight_perc=excl_edges_perc)
-        print('after simplification', G.number_of_nodes())
+        print('nodes after simplification', G.number_of_nodes())
         print('Updated Network density: {:.2%}'.format(nx.density(G)))
+        print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
 
-    descrs = list()
-    infos = list()
+    descrs = []
+    infos = []
     tr_id = 1
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
