@@ -202,7 +202,7 @@ def results_to_od(descr, info, idx_cols):
     idx_cols = [str.title(v) for v in idx_cols]
     info = info.rename(columns={'Timesused': 'Dailytrips'})
     jn = descr.join(info['Dailytrips'])
-    od = jn.groupby(idx_cols)['Dailytrips'].sum()
+    od = jn.groupby(idx_cols, observed=True)['Dailytrips'].sum()
     return od
 
 

@@ -60,7 +60,7 @@ def prepare_model(descr, info, od, tgt_distr,
     model.init_sol = init_sol
     model.distr_perc_tolerance = distr_perc_tolerance
 
-    #get the required precision
+    # get the required precision
     if tgt_distr is not None:
         prec = len(str(distr_perc_tolerance).split('.')[1])
         model.tgt_distr = tgt_distr.round(prec)
@@ -168,16 +168,12 @@ def main(descr, info, od, tgt_distr=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
 
-    def _sample_trs_by_distr(_info, _distr, _sample_size, _return_idx=False):
-        if _distr is not None:
-            jn_name = 'Distrgroupid'
-            usecols = ['Percentage', 'Distrgroupid']
-            sample = (pd.merge(_info.reset_index(), _distr[usecols], on=jn_name)
-                      .sample(n=_sample_size, replace=False, weights='Percentage')
-                      .set_index(_info.index.name))
-        else:
-            sample = _info.sample(n=_sample_size, replace=False)
-        return sample
+    def _append_weight(df, weights, jn_name='Distrgroupid', weight_name='Percentage'):
+        usecols = [weight_name, jn_name]
+        df = (pd.merge(df.reset_index(), weights[usecols], on=jn_name)
+                .set_index(df.index.name))
+        df = df.rename(columns={weight_name: 'Weight'})
+        return df
 
     def _prepare_init_sol_by_distr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
@@ -199,6 +195,9 @@ def main(descr, info, od, tgt_distr=None,
 
     # The expected number of trs can be estimated
     ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
+    print('sample size:', 2*ntrs)
+    # provide some flexibility into the solution
+    ntrs *= 2
 
     # If solution is infeasible for the current number of estimated trs
     # reduce them iteratively by this percentage
@@ -206,11 +205,14 @@ def main(descr, info, od, tgt_distr=None,
 
     # print('sample_size ', ntrs)
 
-    optim_method = 'hybrid'
+    optim_method = 'bnb'
     # The population is a list with the timesused (solution) of each candidate trs set
     pop = []
     init_sol = None
     info['Timesused'] = 0
+
+    # Append the weight for sampling
+    info = _append_weight(info, tgt_distr)
 
     if optim_method == 'bnb':
         generations = 1
@@ -219,8 +221,8 @@ def main(descr, info, od, tgt_distr=None,
         if tgt_distr is not None:
             init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
-        pop_size = 20
-        generations = 10
+        pop_size = 5
+        generations = 5
         #raise NotImplementedError('hybrid is not yet implemented')
         # The worst case scenario is to utilise trs only once (each tr to be unique)
         # Therefore we create a set of max_ntrs candidates
@@ -228,12 +230,13 @@ def main(descr, info, od, tgt_distr=None,
             raise ValueError('The candidate tours are less than the expected number of result tours,'
                              'switch to bnb optim_method')
         for _ in range(pop_size):
-            sampled_info = _sample_trs_by_distr(info, tgt_distr, ntrs)
+            sampled_info = info.sample(n=ntrs, replace=False, weights='Weight')
             pop.append(sampled_info['Timesused'])
     else:
         raise ValueError('optim_method: {} not recognised'.format(optim_method))
 
-    pop = gals.Pop(pop, fitness=None, avail_genes=info.index.tolist())
+    pop = gals.Pop(pop, fitness=None, mutation_weights=info['Weight'].to_dict())
+
     evals = []
     mymodel = None
     for i_gen in range(generations):
@@ -244,13 +247,11 @@ def main(descr, info, od, tgt_distr=None,
                 c_info = info.query('Tourid in @c.gene_ids')
                 c_descr = descr.query('Tourid in @c.gene_ids')
                 print('Preparing the optimisation model: gen:{}, parent: {}'.format(i_gen, i_chr))
-                if mymodel is None:
-                    mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
-                                            distr_constr_enabled, distr_perc_tolerance,
-                                            mip_tolerances_lowercutoff, ntrs,
-                                            init_sol=init_sol)
+                mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
+                                        distr_constr_enabled, distr_perc_tolerance,
+                                        mip_tolerances_lowercutoff, ntrs,
+                                        init_sol=init_sol)
 
-                print('Running the optimisation model: gen:{}'.format(i_chr))
                 results = run_model(mymodel, submit_to_neos,
                                     workmem, mip_strategy_file, mip_strategy_probe,
                                     mip_tolerances_lowercutoff,
@@ -271,11 +272,13 @@ def main(descr, info, od, tgt_distr=None,
                 else:
                     solution_feasible = True
 
-            # evaluate
-            c_info = _update_timesused(c_info, results)
-            idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-            p_od = converters.results_to_od(c_descr, c_info, idx_cols)
-            evals.append(od['Dailytrips'].sum() - p_od.sum())
+            if optim_method == 'hybrid':
+                print('Evaluation...')
+                # evaluate
+                c_info = _update_timesused(c_info, results)
+                idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+                p_od = converters.results_to_od(c_descr, c_info, idx_cols)
+                evals.append(p_od.sum()-od['Dailytrips'].sum())
 
         if optim_method == 'hybrid':
             pop.update_fitness(evals)
