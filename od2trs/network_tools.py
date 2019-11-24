@@ -1,7 +1,28 @@
-from itertools import product
-
 import networkx as nx
+import pandas as pd
 import od2trs.filters as filters
+
+
+def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
+    to_rmv = []
+    centralities = centralities.sort_values()
+    s_init = sum(nx.get_edge_attributes(_g, attr).values())
+
+    if copy:
+        gf = _g.copy()
+    else:
+        gf = _g
+
+    for k, v in centralities.iteritems():
+        gf.remove_node(k)
+        to_rmv.append(k)
+        s = sum(nx.get_edge_attributes(gf, attr).values())
+        s_perc = s / s_init
+        if s_perc <= 1 - excl_perc:
+            gf.remove_nodes_from(to_rmv)
+            break
+
+    return gf
 
 
 def duplicate_nodes(g, nodes, suffix='-dupl'):
@@ -22,8 +43,8 @@ def duplicate_nodes(g, nodes, suffix='-dupl'):
     return gn
 
 
-def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
-                                  max_legs, max_costs, excl_edges_perc):
+def identify_zones_sequences(g, src, direction_names, ordered_tps,
+                             max_legs, max_costs):
     """
     Create the potential zones sequences of trip chains. Reduce the feasible space by
     a) finding the basic cycles for each or the origin zones
@@ -35,71 +56,69 @@ def identify_tour_zones_sequences(g, src, direction_names, ordered_tps,
     :return: potential_tripchains
     """
 
-    hb_purps = [direction_names.from_home] + [direction_names.to_home]
-
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
 
     tgts = srcs.copy()
-    zones_seqs = list()
+    zones_seqs = []
 
-    g_hb_nhb = filters.filter_prepare_graph(g.copy(), srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
-    # nx.write_gpickle(gf, './nets/gf-net-{}.pcl'.format(src))
+    #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
     # keep only the nhb trips
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
-                                              keep_connectors=True)
+                                              keep_connectors=True, copy=True)
+    gf = g_nhb
 
     for src in srcs:
-        successors = list(g_hb_nhb.successors(src))
+        successors = set(g_hb_nhb.successors(src))
         for succ in successors:
-            predecessors = list()
+            predecessors = set()
             for tgt in tgts:
                 preds = list(g_hb_nhb.predecessors(tgt))
                 if succ in preds:
                     zones_seqs.append([src, succ, tgt])
                     preds.remove(succ)
                 # If succ in predecessors all_simple_paths returns []
-                predecessors.extend(preds)
+                predecessors.update(preds)
 
-            gf = g_nhb
-            # Use edge betweeneess centrality to simplify the graph
-            # TODO the number of nexcl_edges should be excluded from the optimisation
-            # TODO the decision about the number of edges to be excluded should be automated
-            # edges_bef = gf.number_of_edges()
-            nexcl_edges = int(g_hb_nhb.number_of_edges() * excl_edges_perc)
-            if nexcl_edges > 0:
-                gf = filters.filter_by_edge_betweenness_centrality(gf.copy(), succ, predecessors, nexcl_edges,
-                                                                   hb_purps=hb_purps,
-                                                                   trips_thresh=1,
-                                                                   weight='Length')
-                # print(edges_bef, gf.number_of_edges(), gf.number_of_edges() / edges_bef)
-
-            weights = ['Length']
-            cutoffs = [max_legs - 2]  # Two legs are devoted to sucessor and predecessor
-
+            weights = []
+            cutoffs = []
             if max_costs:
-                for w, v in list(max_costs.items()):
+                for w, mc in list(max_costs.items()):
                     weights.append(w)
-                    dist_src_to_succ = g_hb_nhb[src][succ][w]
-                    costs_pred_to_tgt = list()
+                    cost_src_to_succ = g_hb_nhb[src][succ][w]
+                    costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
                     # predecessor to the tgt. Nonetheless I can reduce it my the minimum
                     for tgt in tgts:
                         for pred in g_hb_nhb.predecessors(tgt):
-                            costs_pred_to_tgt.append(g_hb_nhb[pred][tgt][w])
-                    dist_pred_to_tgt = min(costs_pred_to_tgt)
+                            cost_pred_to_tgt = g_hb_nhb[pred][tgt][w]
+                            if cost_src_to_succ+cost_pred_to_tgt > mc:
+                                # no need to search for this predecessor
+                                predecessors.discard(pred)
+                            else:
+                                costs_pred_to_tgt.append(cost_pred_to_tgt)
 
-                    cutoffs.append(v - (dist_src_to_succ + dist_pred_to_tgt))
+                    min_cost_pred_to_tgt = min(costs_pred_to_tgt)
 
-                #gff = filters.filter_nodes_by_dist(gff, succ, pred, weights, cutoffs)
+                    min_cost_firstlast_legs = cost_src_to_succ + min_cost_pred_to_tgt
+                    cutoffs.append(max(mc - min_cost_firstlast_legs, 0))
 
-            zss = list(nx.all_simple_paths(gf, succ, predecessors,
-                                           weight=weights,
-                                           cutoff=cutoffs))
+            # I have noticed that the distance related cutoffs have stronger influence than the rest
+            # therefore I prioritise them in the list
+            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
+            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
+
+            weights.extend(['Length', 'HeightDiff'])  # Number of intermediate time-periods, Length excludes connectors
+            cutoffs.extend([max_legs - 2, tp_max - tp_min])  # Two legs are devoted to successor and predecessor
+
+            # Convert to dict
+            cutoffs = dict(zip(weights, cutoffs))
+            zss = list(nx.all_simple_paths(gf, succ, predecessors, cutoff=cutoffs))
 
             if zss:
                 # remove the src suffix

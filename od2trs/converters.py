@@ -22,9 +22,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     def _add_chron_connectors(_g, _ordered_tps):
 
         nx.set_edge_attributes(_g, False, 'Connector')
-        # nx.set_node_attributes(_g, False, 'Connector')
 
-        # dict with all the timeperiods a trip begins from each node
+        # dict with all the timeperiods a link starts/ends from/to each node
         zone_dts = dict()
         for n, z in _g.nodes(data='Zone'):
             dt = _g.nodes[n]['Timeperiod']
@@ -44,16 +43,18 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                     _d = dict(zip(costs.columns,
                                   len(costs.columns) * [0]))
 
+                # Time-periods between nodes
+                height_diff = ordered_tps.index(tgt_dt) - ordered_tps.index(src_dt)
                 _g.add_edge(src_name, tgt_name,
                             Connector=True,
                             Direction='Connector',
+                            HeightDiff=height_diff,
                             Length=0, **_d)
 
         return _g
 
     od = od.reset_index()
     od = od[[src_col, tgt_col] + attr_cols]
-    # od.dropna(axis=1, inplace=True)
 
     # Split the nodes of the networks in levels according to the time period of departure
     if ordered_tps is not None:
@@ -67,10 +68,13 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
     # add an artificial length for edges (connectors will have 0)
     nx.set_edge_attributes(g, 1, 'Length')
+    # Number of tps (height) between connected nodes
+    nx.set_edge_attributes(g, 0, 'HeightDiff')
 
     if ordered_tps:
         # Set the node attributes
-        d = {n: {'Zone': n.split('-', 1)[0], 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
+        d = {n: {'Zone': n.split('-', 1)[0],
+                 'Timeperiod': n.split('-', 1)[1]} for n in g.nodes}
         nx.set_node_attributes(g, d)
         g = _add_chron_connectors(g, ordered_tps)
     else:
@@ -83,7 +87,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
         d_attrs = dict()
         d_info = zones_info.to_dict(orient='index')
         for n in g.nodes:
-            zone = g.node[n]['Zone']
+            zone = g.nodes[n]['Zone']
             d_attrs[n] = d_info[zone]
         nx.set_node_attributes(g, d_attrs)
 
@@ -207,8 +211,8 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       tgt_distr, distr_dims, excl_edges_perc,
                       purp_to_acts):
 
-    zones_seqs = nettools.identify_tour_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                        max_legs, max_costs, excl_edges_perc)
+    zones_seqs = nettools.identify_zones_sequences(G, src_zone, direction_names, ordered_tps,
+                                                   max_legs, max_costs)
 
     if not zones_seqs:
         return None
@@ -256,8 +260,28 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
-    descrs = list()
-    infos = list()
+    method = 'cfc'
+    if excl_edges_perc > 0:
+        if method == 'cfc':
+            cm = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(),
+                                                                              weight='Dailytrips'))
+        elif method == 'pgrnk':
+            cm = pd.Series(nx.pagerank(nx.DiGraph(G), alpha=1, weight='Dailytrips', max_iter=500))
+        else:
+            raise ValueError('Centrality measure not recognised')
+
+        nx.set_node_attributes(G, cm, 'Centrality')
+        print('nodes before simplification', G.number_of_nodes())
+        print('dailytrips before simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
+
+        G = filters.simplify_net(G, weight='Dailytrips',
+                                 excl_weight_perc=excl_edges_perc)
+        print('nodes after simplification', G.number_of_nodes())
+        print('Updated Network density: {:.2%}'.format(nx.density(G)))
+        print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
+
+    descrs = []
+    infos = []
     tr_id = 1
 
     zones = list(set([z for k, z in G.nodes.data('Zone')]))
@@ -270,6 +294,15 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         ncores = cpu_count()
     else:
         raise ValueError('ncores should be either an integer or null')
+    if isinstance(ncores, int):
+        if ncores == 0:
+            ncores = cpu_count()
+        elif ncores < 0:
+            ncores = cpu_count() + ncores
+        else:
+            pass
+    elif ncores.f_is_empty():
+        ncores = cpu_count() - 1
 
     print('Running on {} cores'.format(ncores))
     # clean the processing folder

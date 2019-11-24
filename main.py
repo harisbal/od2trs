@@ -50,7 +50,7 @@ def main(traj):
     try:
         costs = myio.import_costs(filepaths['in']['costs'])
     except FileNotFoundError:
-        pass
+        raise FileNotFoundError('costs file is required')
 
     if cost_bins:
         cost_bins = traj.par.trs.cost_bins.copy()
@@ -93,8 +93,8 @@ def main(traj):
         except FileNotFoundError:
             obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
             tgt_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
-                                                         max_costs, distr_dims,
-                                                         cost_bins, od_perc_thresh)
+                                                      max_costs, distr_dims,
+                                                      cost_bins, od_perc_thresh)
 
         # max_legs = tgt_distr.index.get_level_values('Legs').max()
         # We can get the maximum distance and legs after filtering

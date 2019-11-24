@@ -2,6 +2,7 @@ import re
 import itertools
 import pandas as pd
 import networkx as nx
+from collections import Counter
 
 
 def filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr):
@@ -105,12 +106,17 @@ def filter_by_acts(trs, purp_to_acts):
 
     filt_trs = list()
     for tr in trs:
+        # Create only the required combinations
+        purp_to_acts_tr = {}
+        for p, v in purp_to_acts.items():
+            if p in tr.purposes:
+                purp_to_acts_tr[p] = v
         # Trip purposes can connect different pairs of acts (e.g. NHBW: [('Work', 'Other'), ('Work', 'Work')]
         # Check all cases
-        purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts.values()]))
+        purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts_tr.values()]))
         for c in purp_to_acts_combs:
             tr = deepcopy(tr)
-            purp_to_acts_c = dict(zip(purp_to_acts.keys(), c))
+            purp_to_acts_c = dict(zip(purp_to_acts_tr.keys(), c))
             keep_tr = True
             # make sure that Home is first ( I could custom sort)
             acts = purp_to_acts_c[tr.legs[0].purpose].copy()
@@ -147,7 +153,7 @@ def filter_by_acts(trs, purp_to_acts):
     return filt_trs
 
 
-def filter_prepare_graph(g, srcs, tgts, filter_edge_dirs):
+def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     """
     Reduces iteratively the network so that first and last edges of cycle are HB
     and the rest are NHB
@@ -185,9 +191,13 @@ def filter_prepare_graph(g, srcs, tgts, filter_edge_dirs):
     return g
 
 
-def filter_edges_by_direction(g, filt_direction, keep_connectors=True):
+def filter_edges_by_direction(g, filt_direction, keep_connectors=True, copy=True):
 
-    gf = g.copy()
+    if copy:
+        gf = g.copy()
+    else:
+        gf = g
+
     for u, v, direction in g.edges(data='Direction'):
         if (direction == 'Connector') and keep_connectors:
             continue
@@ -209,38 +219,39 @@ def filter_connectors(g, keep=False):
     return g
 
 
-def filter_by_edge_betweenness_centrality(g, src, tgts, nexcl, hb_purps=None, trips_thresh=1, weight=None):
+def simplify_net(g, keep_nodes=None,
+                 weight=None, excl_weight_perc=0.01):
 
-    """
+    def _drop_by_excl_weight_perc(_g, centralities, attr, p):
 
-    :param g:
-    :param src:
-    :param n:
-    :param weight:
-    :param trips_thresh:
-    :return:
-    """
+        _to_rmv = []
+        centralities = centralities.sort_values()
+        s_init = sum(nx.get_edge_attributes(_g, attr).values())
 
-    if not isinstance(src, list):
-        src = [src]
+        gc = _g.copy()
+        for k, v in centralities.iteritems():
+            gc.remove_node(k)
+            _to_rmv.append(k)
+            s = sum(nx.get_edge_attributes(gc, attr).values())
+            ip = s / s_init
+            if ip <= 1 - p:
+                return _to_rmv
 
-    if nexcl > 0:
-        # edge betweenness
-        eb = pd.Series(nx.edge_betweenness_centrality_subset(g, src, tgts, weight=weight))
-        eb.name = 'bc'
+        return _to_rmv
 
-        # Exclude connectors
-        filter_edges = [(u, v) for u, v, attr in g.edges(data='Connector') if attr is True]
-        # Exclude hb trips
-        filter_edges += [(u, v) for u, v, attr in g.edges(data='Purpose') if attr in hb_purps]
-        # Focus on single trips
-        filter_edges += [(u, v) for u, v, attr in g.edges(data='Dailytrips', default=0) if attr != trips_thresh]
-        eb.drop(set(filter_edges), inplace=True)
+    if keep_nodes is None:
+        keep_nodes = []
 
-        n = eb.nsmallest(nexcl)
-        to_rmv = n.index.tolist()
+    if excl_weight_perc == 0:
+        return g
 
-        g.remove_edges_from(to_rmv)
+    if 0 < excl_weight_perc <= 1:
+        centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
+                          .drop(set(keep_nodes), errors='ignore'))
+        to_rmv = _drop_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
+        g.remove_nodes_from(to_rmv)
+    else:
+        raise ValueError('excl_perc should be between 0 and 1')
 
     return g
 
