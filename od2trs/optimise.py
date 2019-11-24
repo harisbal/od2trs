@@ -202,11 +202,11 @@ def main(descr, info, od, tgt_distr=None,
 
     # If solution is infeasible for the current number of estimated trs
     # reduce them iteratively by this percentage
-    ntrs_step_reduction_perc = 0.05
+    ntrs_step_reduction_perc = 0.01
 
-    print('sample_size ', ntrs)
+    # print('sample_size ', ntrs)
 
-    optim_method = 'bnb'
+    optim_method = 'hybrid'
     # The population is a list with the timesused (solution) of each candidate trs set
     pop = []
     init_sol = None
@@ -219,7 +219,7 @@ def main(descr, info, od, tgt_distr=None,
         if tgt_distr is not None:
             init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
-        pop_size = 2
+        pop_size = 20
         generations = 10
         #raise NotImplementedError('hybrid is not yet implemented')
         # The worst case scenario is to utilise trs only once (each tr to be unique)
@@ -228,7 +228,7 @@ def main(descr, info, od, tgt_distr=None,
             raise ValueError('The candidate tours are less than the expected number of result tours,'
                              'switch to bnb optim_method')
         for _ in range(pop_size):
-            sampled_info = _sample_trs_by_distr(info, tgt_distr, sample_size=ntrs)
+            sampled_info = _sample_trs_by_distr(info, tgt_distr, ntrs)
             pop.append(sampled_info['Timesused'])
     else:
         raise ValueError('optim_method: {} not recognised'.format(optim_method))
@@ -263,9 +263,10 @@ def main(descr, info, od, tgt_distr=None,
                         i_feasible += 1
                         # reduce the expected number of trs and re-solve
                         mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
-                        mymodel.distr_rule.reconstruct()
+                        if distr_constr_enabled:
+                            mymodel.distr_rule.reconstruct()
                         print(i_feasible, mymodel.ntrs.value)
-                        if mymodel.ntrs <= 0:
+                        if mymodel.ntrs.value <= 0:
                             break
                 else:
                     solution_feasible = True
