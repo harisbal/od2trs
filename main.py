@@ -81,7 +81,7 @@ def main(traj):
     except FileNotFoundError:
         zones_info = None
 
-    if distr_constr_enabled:
+    if od_perc_thresh < 1:
         interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
@@ -96,11 +96,6 @@ def main(traj):
                                                       max_costs, distr_dims,
                                                       cost_bins, od_perc_thresh)
 
-        # max_legs = tgt_distr.index.get_level_values('Legs').max()
-        # We can get the maximum distance and legs after filtering
-        #maxdist = tgt_distr.index.get_level_values('Distancegroup').max().right
-        #if maxdist != float('inf'):
-        #    max_costs = maxdist
         myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
         tgt_distr = None
