@@ -238,7 +238,6 @@ def main(descr, info, od, tgt_distr=None,
     pop = gals.Pop(pop, fitness=None, mutation_weights=info['Weight'].to_dict())
 
     evals = []
-    mymodel = None
     for i_gen in range(generations):
         for i_chr, c in enumerate(pop.chromosomes):
             solution_feasible = False
