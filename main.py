@@ -81,7 +81,7 @@ def main(traj):
     except FileNotFoundError:
         zones_info = None
 
-    if od_perc_thresh < 1:
+    if distr_constr_enabled:
         interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
