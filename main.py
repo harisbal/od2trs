@@ -124,6 +124,7 @@ def main(traj):
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_descr, trs_info, od,
+                            ntrs=ntrs,
                             tgt_distr=tgt_distr,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,

@@ -155,7 +155,7 @@ def aggr_tolist(df, col_grpby, col_tolist):
     return df_list.squeeze()
 
 
-def estimate_ntrs(od, homebased_filt='HB'):
-    hb_purps = od.reset_index()['Purpose'].str.startswith(homebased_filt).values
-    # case of non symmetric fh and th
-    return int(od.loc[hb_purps]['Dailytrips'].sum() / 2) + 1
+def estimate_ntrs(_od, _filter={'Direction': 'FromHome'}, ntrs_col='Dailytrips'):
+    for k, v in _filter.items():
+        _od = _od.xs(v, level=k)
+    return int(_od[ntrs_col].sum())
