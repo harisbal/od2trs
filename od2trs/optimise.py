@@ -205,7 +205,7 @@ def main(descr, info, od, tgt_distr=None,
 
     # print('sample_size ', ntrs)
 
-    optim_method = 'bnb'
+    optim_method = 'hybrid'
     # The population is a list with the timesused (solution) of each candidate trs set
     pop = []
     init_sol = None
@@ -221,7 +221,7 @@ def main(descr, info, od, tgt_distr=None,
         if tgt_distr is not None:
             init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
     elif optim_method == 'hybrid':
-        pop_size = 5
+        pop_size = 10
         generations = 5
         #raise NotImplementedError('hybrid is not yet implemented')
         # The worst case scenario is to utilise trs only once (each tr to be unique)

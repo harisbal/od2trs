@@ -109,7 +109,7 @@ def filter_by_acts(trs, purp_to_acts):
         # Create only the required combinations
         purp_to_acts_tr = {}
         for p, v in purp_to_acts.items():
-            if p in tr.purposes:
+            if p in set(tr.purposes):
                 purp_to_acts_tr[p] = v
         # Trip purposes can connect different pairs of acts (e.g. NHBW: [('Work', 'Other'), ('Work', 'Work')]
         # Check all cases
