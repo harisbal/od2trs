@@ -155,7 +155,7 @@ def aggr_tolist(df, col_grpby, col_tolist):
     return df_list.squeeze()
 
 
-def estimate_ntrs(_od, _filter={'Direction': 'FromHome'}, ntrs_col='Dailytrips'):
-    for k, v in _filter.items():
-        _od = _od.xs(v, level=k)
-    return int(_od[ntrs_col].sum())
+def estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Dailytrips'):
+    for k, v in filter.items():
+        od = od.xs(v, level=k)
+    return int(od[ntrs_col].sum())

@@ -103,7 +103,10 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                             else:
                                 costs_pred_to_tgt.append(cost_pred_to_tgt)
 
-                    min_cost_pred_to_tgt = min(costs_pred_to_tgt)
+                    if costs_pred_to_tgt:
+                        min_cost_pred_to_tgt = min(costs_pred_to_tgt)
+                    else:
+                        min_cost_pred_to_tgt = 0
 
                     min_cost_firstlast_legs = cost_src_to_succ + min_cost_pred_to_tgt
                     cutoffs.append(max(mc - min_cost_firstlast_legs, 0))
