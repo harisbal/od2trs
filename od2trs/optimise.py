@@ -8,15 +8,13 @@ from pyomo.core.util import quicksum
 
 import od2trs.utilities as utils
 import od2trs.filters as filters
-import od2trs.converters as converters
-import od2trs.genetic_algos as gals
 
 from pyutilib.services import TempfileManager
 
 
-def prepare_model(descr, info, od, tgt_distr,
+def prepare_model(descr, info, od, ntrs, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
-                  mip_tolerances_lowercutoff, ntrs, init_sol=None):
+                  mip_tolerances_lowercutoff, init_sol=None):
 
     # TODO for some reason it passes 2 args
     def _init_descr_by_odpair(m, _):
@@ -161,19 +159,12 @@ def run_model(model, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(descr, info, od, tgt_distr=None,
+def main(descr, info, od, ntrs, tgt_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
          mip_strategy_file=2, mip_strategy_probe=3,
          mip_tolerances_lowercutoff=None, timelimit=None):
-
-    def _append_weight(df, weights, jn_name='Distrgroupid', weight_name='Percentage'):
-        usecols = [weight_name, jn_name]
-        df = (pd.merge(df.reset_index(), weights[usecols], on=jn_name)
-                .set_index(df.index.name))
-        df = df.rename(columns={weight_name: 'Weight'})
-        return df
 
     def _prepare_init_sol_by_distr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
@@ -193,95 +184,41 @@ def main(descr, info, od, tgt_distr=None,
             _info.Timesused = _info['Timesused'].astype(int)
         return _info
 
-    # The expected number of trs can be estimated
-    ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
-    print('sample size:', 2*ntrs)
-    # provide some flexibility into the solution
-    ntrs *= 2
-
     # If solution is infeasible for the current number of estimated trs
     # reduce them iteratively by this percentage
     ntrs_step_reduction_perc = 0.01
 
-    # print('sample_size ', ntrs)
-
-    optim_method = 'hybrid'
-    # The population is a list with the timesused (solution) of each candidate trs set
-    pop = []
     init_sol = None
     info['Timesused'] = 0
+    # The target distr can be utilised to create initial solutions
+    if tgt_distr is not None:
+        init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
 
-    # Append the weight for sampling
-    info = _append_weight(info, tgt_distr)
+    solution_feasible = False
+    i_feasible = 0
+    while not solution_feasible:
+        print('Preparing the optimisation model')
+        mymodel = prepare_model(descr, info, od, ntrs, tgt_distr,
+                                distr_constr_enabled, distr_perc_tolerance,
+                                mip_tolerances_lowercutoff,
+                                init_sol=init_sol)
 
-    if optim_method == 'bnb':
-        generations = 1
-        pop.append(info['Timesused'])
-        # The target distr can be utilised to create initial solutions
-        if tgt_distr is not None:
-            init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
-    elif optim_method == 'hybrid':
-        pop_size = 10
-        generations = 5
-        #raise NotImplementedError('hybrid is not yet implemented')
-        # The worst case scenario is to utilise trs only once (each tr to be unique)
-        # Therefore we create a set of max_ntrs candidates
-        if ntrs >= info.shape[0]:
-            raise ValueError('The candidate tours are less than the expected number of result tours,'
-                             'switch to bnb optim_method')
-        for _ in range(pop_size):
-            sampled_info = info.sample(n=ntrs, replace=False, weights='Weight')
-            pop.append(sampled_info['Timesused'])
-    else:
-        raise ValueError('optim_method: {} not recognised'.format(optim_method))
+        results = run_model(mymodel, submit_to_neos,
+                            workmem, mip_strategy_file, mip_strategy_probe,
+                            mip_tolerances_lowercutoff,
+                            timelimit=timelimit, solver_factory='cplex')
 
-    pop = gals.Pop(pop, fitness=None, mutation_weights=info['Weight'].to_dict())
-
-    evals = []
-    for i_gen in range(generations):
-        for i_chr, c in enumerate(pop.chromosomes):
-            solution_feasible = False
-            i_feasible = 0
-            while not solution_feasible:
-                c_info = info.query('Tourid in @c.gene_ids')
-                c_descr = descr.query('Tourid in @c.gene_ids')
-                print('Preparing the optimisation model: gen:{}, parent: {}'.format(i_gen, i_chr))
-                mymodel = prepare_model(c_descr, c_info, od, tgt_distr,
-                                        distr_constr_enabled, distr_perc_tolerance,
-                                        mip_tolerances_lowercutoff, ntrs,
-                                        init_sol=init_sol)
-
-                results = run_model(mymodel, submit_to_neos,
-                                    workmem, mip_strategy_file, mip_strategy_probe,
-                                    mip_tolerances_lowercutoff,
-                                    timelimit=timelimit, solver_factory='cplex')
-
-                if optim_method == 'hybrid':
-                    if results.solver.termination_condition != TerminationCondition.infeasible:
-                        solution_feasible = True
-                    else:
-                        i_feasible += 1
-                        # reduce the expected number of trs and re-solve
-                        mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
-                        if distr_constr_enabled:
-                            mymodel.distr_rule.reconstruct()
-                        print(i_feasible, mymodel.ntrs.value)
-                        if mymodel.ntrs.value <= 0:
-                            break
-                else:
-                    solution_feasible = True
-
-            if optim_method == 'hybrid':
-                print('Evaluation...')
-                # evaluate
-                c_info = _update_timesused(c_info, results)
-                idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-                p_od = converters.results_to_od(c_descr, c_info, idx_cols)
-                evals.append(p_od.sum()-od['Dailytrips'].sum())
-
-        if optim_method == 'hybrid':
-            pop.update_fitness(evals)
-            pop.crossover(mutate=True)
+        if results.solver.termination_condition != TerminationCondition.infeasible:
+            solution_feasible = True
+        else:
+            i_feasible += 1
+            # reduce the expected number of trs and re-solve
+            mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
+            if distr_constr_enabled:
+                mymodel.distr_rule.reconstruct()
+            print(i_feasible, mymodel.ntrs.value)
+            if mymodel.ntrs.value <= 0:
+                break
 
     info = _update_timesused(info, results)
 

@@ -71,8 +71,6 @@ def main(traj):
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
-    ntrs = utils.estimate_ntrs(od, homebased_filt='HB')
-
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
 
@@ -80,6 +78,9 @@ def main(traj):
         zones_info = myio.import_zones_info(filepaths['in']['zones_info'])
     except FileNotFoundError:
         zones_info = None
+
+    # Estimate the number of tours based on the FH trips in the OD
+    ntrs = utils.estimate_ntrs(od, _filter={'Direction': 'FromHome'})
 
     if distr_constr_enabled:
         interval_cols = [k + '_grp' for k in cost_bins]
@@ -129,6 +130,7 @@ def main(traj):
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_descr, trs_info, od,
+                            ntrs=ntrs,
                             tgt_distr=tgt_distr,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
