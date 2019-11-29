@@ -52,7 +52,7 @@ def main(traj):
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
 
-    cost_bins = traj.par.trs.cost_bins.copy()
+    cost_bins = traj.par.trs.cost_bins
     if cost_bins:
         cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
