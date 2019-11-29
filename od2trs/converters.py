@@ -6,13 +6,33 @@ from functools import partial
 import itertools
 import pandas as pd
 import networkx as nx
-
 import od2trs.utilities as utils
 import od2trs.network_tools as nettools
 import od2trs.filters as filters
 import od2trs.io as myio
-
 from od2trs.tc import Leg, TripChain
+
+
+def bins_to_interval(d_bins, max_costs=None):
+    cost_bins = {}
+    for cost_type, interval in d_bins.items():
+        if isinstance(interval, list):
+            cost_bins[cost_type] = interval
+        else:
+            if interval < max_costs[cost_type]:
+                cost_bins[cost_type] = list(range(0, max_costs[cost_type], interval))
+            else:
+                raise ValueError(
+                    f'Interval ({interval}) for cost ({cost_type}) is smaller than max cost ({max_costs[cost_type]})')
+        if max_costs:
+            cost_bins[cost_type].append(max_costs[cost_type])
+        else:
+            cost_bins[cost_type].append(float('inf'))
+
+        # Convert to pd.Interval
+        cost_bins[cost_type] = utils.list_to_interval(cost_bins[cost_type])
+
+    return cost_bins
 
 
 def od_to_graph(od, src_col, tgt_col, attr_cols,

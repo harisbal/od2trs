@@ -52,16 +52,9 @@ def main(traj):
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
 
+    cost_bins = traj.par.trs.cost_bins.copy()
     if cost_bins:
-        cost_bins = traj.par.trs.cost_bins.copy()
-        # Convert to pd.Interval
-        for cost_type, vs in cost_bins.items():
-            if max_costs:
-                cost_bins[cost_type].append(max_costs[cost_type])
-            else:
-                cost_bins[cost_type].append(float('inf'))
-
-            cost_bins[cost_type] = utils.list_to_interval(vs)
+        cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
     print('DistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
           .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))

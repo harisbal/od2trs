@@ -82,7 +82,6 @@ def prepare_traj_params(traj, cfg):
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
 
     max_costs = json.loads(cfg['TOURS']['max_costs'])
-    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
 
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
 
@@ -94,14 +93,7 @@ def prepare_traj_params(traj, cfg):
 
     purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
 
-    if not cost_bins:
-        cost_bins_interval = json.loads(cfg['TOURS']['cost_bins_interval'])
-        if cost_bins_interval is not None:
-            cost_bins = {}
-            for cost_type, interv in cost_bins_interval.items():
-                cost_bins[cost_type] = list(range(0, max_costs[cost_type], interv))
-        else:
-            cost_bins = None
+    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
 
     # optimisation config
     run_optimisation = json.loads(cfg['OPTIMISATION']['run_optimisation'])
@@ -133,15 +125,13 @@ def prepare_traj_params(traj, cfg):
     else:
         traj.par.trs.distr_dims = PickleParameter('distr_dims', distr_dims[0], comment='Distribution Dimensions')
 
-    traj.par.trs.ordered_tps = Parameter('ordered_tps', list(tps_durs.keys()),
-                                         comment='Distribution Dimensions')
-    traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs,
-                                            comment='Duration of timeperiods')
+    traj.par.trs.ordered_tps = Parameter('ordered_tps', list(tps_durs.keys()), comment='Distribution Dimensions')
+    traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs, comment='Duration of timeperiods')
     traj.par.trs.od_perc_thresh = Parameter('od_perc_thresh', od_perc_thresh[0],
                                             comment='Distribution Percentage Threshold')
-    traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
 
-    traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Distance bins')
+    traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
+    traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Cost bins')
 
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
                                                   comment='Dictionary as to how trip purposes are grouped')
@@ -185,22 +175,6 @@ def prepare_traj_params(traj, cfg):
     traj.par.optim.mip_strategy_file = Parameter('mip_strategy_file', mip_strategy_file, comment='MIP strategy probe')
 
     if explore:
-        # TODO read exploration space from file
-        """
-        # Explore
-        explore_d = {'data_source': ['tests'],
-                     'aggr_level': ['aggrlvl'],
-                     'perc_sample_size': [1.0],
-                     'distr_dims': [['Legs', 'Gencostgrp'], ['Legs', 'Distancegroup', 'Timeperiods']],
-                     'max_legs': [5],
-                     'trips_thresh': [50, 10, 5, 4, 3],
-                     'distr_constr_enabled': [False]}
-
-        explore_order = ('data_source', 'aggr_level', 'max_legs',
-                         'trips_thresh', 'perc_sample_size', 'distr_dims',
-                         'distr_constr_enabled')
-        """
-
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
                      'distr_perc_tolerance': distr_perc_tolerance,
