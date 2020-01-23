@@ -79,8 +79,8 @@ def prepare_model(descr, info, od, ntrs, tgt_distr,
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
-        model.distr_grp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
-        model.tgt_distr = model.tgt_distr.set_index('Distrgroupid')
+        model.distr_grp_ids = Set(initialize=model.tgt_distr.reset_index()['Distrgroupid'].unique().tolist())
+        model.tgt_distr = model.tgt_distr.reset_index().set_index('Distrgroupid')
 
         d_init = model.tgt_distr['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
