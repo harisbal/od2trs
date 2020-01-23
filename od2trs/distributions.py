@@ -35,6 +35,7 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
 
     obs_distr = pd.concat([sizes, percs], axis=1)
     obs_distr['Distrgroupid'] = obs_distr.reset_index().index.values
+    obs_distr = obs_distr.set_index('Distrgroupid', append=True)
 
     # Filter the low freq distr groups taking into account
     # the percentage which has been already excluded
