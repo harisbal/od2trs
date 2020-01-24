@@ -79,8 +79,8 @@ def prepare_model(descr, info, od, ntrs, tgt_distr,
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
 
     if distr_constr_enabled:
-        model.distr_grp_ids = Set(initialize=model.tgt_distr['Distrgroupid'].unique().tolist())
-        model.tgt_distr = model.tgt_distr.set_index('Distrgroupid')
+        model.distr_grp_ids = Set(initialize=model.tgt_distr.reset_index()['Distrgroupid'].unique().tolist())
+        model.tgt_distr = model.tgt_distr.reset_index().set_index('Distrgroupid')
 
         d_init = model.tgt_distr['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
@@ -168,9 +168,12 @@ def main(descr, info, od, ntrs, tgt_distr=None,
 
     def _prepare_init_sol_by_distr(_info, _distr, _ntrs):
         jn_name = 'Distrgroupid'
-        usecols = ['Percentage', 'Distrgroupid']
-        sample = (pd.merge(_info, _distr[usecols], on=jn_name)
-                  .sample(n=_ntrs, replace=True, weights='Percentage'))
+        #usecols = ['Percentage', 'Distrgroupid']
+        usecols = ['Percentage']
+        distr_tmp = _distr.reset_index().set_index(jn_name)[usecols]
+        sample = (_info.join(distr_tmp, on=jn_name)
+                  .sample(n=_ntrs, replace=True, weights='Percentage')
+                  .drop(usecols, axis=1))
 
         sol = sample.index.value_counts().to_dict()
         return sol
