@@ -35,6 +35,7 @@ def read_tgt_distr(infilepath, distr_cols, ntrs,
     # The distrgroupid column must exist in the input
     distr_cols += ['Distrgroupid']
     tgt_distr = tgt_distr.groupby(distr_cols)[percent_col].sum().to_frame()
+    tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
 
