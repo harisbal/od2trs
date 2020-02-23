@@ -115,7 +115,7 @@ def filter_by_acts(trs, purp_to_acts):
         # Check all cases
         purp_to_acts_combs = list(itertools.product(*[acts for acts in purp_to_acts_tr.values()]))
         for c in purp_to_acts_combs:
-            tr = deepcopy(tr)
+            tr_c = deepcopy(tr)
             purp_to_acts_c = dict(zip(purp_to_acts_tr.keys(), c))
             keep_tr = True
             # make sure that Home is first ( I could custom sort)
@@ -127,11 +127,11 @@ def filter_by_acts(trs, purp_to_acts):
             if acts[0] != 'Home':
                 raise ValueError('First Activity in tour is not Home!')
 
-            tr.legs[0].fromact = acts[0]
-            tr.legs[0].toact = acts[-1]
+            tr_c.legs[0].fromact = acts[0]
+            tr_c.legs[0].toact = acts[-1]
 
             # intermediate legs
-            for leg in tr.legs[1:]:
+            for leg in tr_c.legs[1:]:
                 act1, act2 = purp_to_acts_c[leg.purpose]
                 if act1 == acts[-1]:
                     acts.append(act2)
@@ -147,8 +147,8 @@ def filter_by_acts(trs, purp_to_acts):
                     break
 
             if keep_tr:
-                tr.acts = tuple(acts)
-                filt_trs.append(tr)
+                tr_c.acts = tuple(acts)
+                filt_trs.append(tr_c)
 
     return filt_trs
 
