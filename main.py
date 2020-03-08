@@ -20,7 +20,7 @@ def main(traj):
     param = traj.par.trs.max_costs
     max_costs = utils.retrieve_pypet_param(param)
 
-    excl_edges_perc = traj.par.trs.excl_edges_perc
+    excl_edges_od_perc = traj.par.trs.excl_edges_od_perc
 
     direction_names = traj.par.trs.direction_names
     ordered_tps = traj.par.ordered_tps
@@ -56,8 +56,8 @@ def main(traj):
     if cost_bins:
         cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
-    print('DistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_perc: {}'
-          .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_perc))
+    print('DistrDims: {} Legs:{}, trips_thresh:{}, percent_remain: {}, excl_edges_od_perc: {}'
+          .format(distr_dims, max_legs, trips_thresh, od_perc_thresh, excl_edges_od_perc))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
@@ -101,7 +101,7 @@ def main(traj):
                                                 cost_bins=cost_bins, distr_dims=distr_dims,
                                                 purp_to_acts=purp_to_acts,
                                                 tgt_distr=tgt_distr,
-                                                excl_edges_perc=excl_edges_perc,
+                                                excl_edges_od_perc=excl_edges_od_perc,
                                                 zones_info=zones_info,
                                                 ncores=ncores, low_memory=low_memory)
 

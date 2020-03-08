@@ -51,9 +51,9 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
 
     if od is not None:
         traj.f_add_result('od', od, comment='od')
-    traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
-    traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
-    traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
+        traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
+        traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
+        traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if tgt_distr is not None:
         # Cannot export categoricals
@@ -77,7 +77,7 @@ def prepare_traj_params(traj, cfg):
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
-    excl_edges_perc = json.loads(cfg['TOURS']['excl_edges_perc'])
+    excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
 
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
 
@@ -142,7 +142,7 @@ def prepare_traj_params(traj, cfg):
     traj.f_add_parameter('trs.direction_names.non_home', nh_direction,
                          comment='List of the directions to be filtered for the NonHomeBased trips')
 
-    traj.par.trs.excl_edges_perc = Parameter('excl_edges_perc', excl_edges_perc[0],
+    traj.par.trs.excl_edges_od_perc = Parameter('excl_edges_od_perc', excl_edges_od_perc[0],
                                              comment='Percentage of nhb edges to exclude during tours identification')
 
     traj.par.trs.purp_to_acts = PickleParameter('purp_to_acts', purp_to_acts,
@@ -178,7 +178,7 @@ def prepare_traj_params(traj, cfg):
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
                      'distr_perc_tolerance': distr_perc_tolerance,
-                     'excl_edges_perc': excl_edges_perc}
+                     'excl_edges_od_perc': excl_edges_od_perc}
 
         d_explore = {key: value for (key, value) in d_explore.items() if isinstance(value, list)}
         explore_order = list(d_explore.keys())

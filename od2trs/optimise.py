@@ -150,10 +150,10 @@ def run_model(model, submit_to_neos=False, workmem=None,
         model.solutions.store_to(results)
     else:
         try:
-            results = opt.solve(model, tee=True)
+            results = opt.solve(model, tee=True, keepfiles=True)
         except ApplicationError:
             opt.set_executable(r'/opt/ibm/ILOG/CPLEX_Studio128/cplex/bin/x86-64_linux/cplex')
-            results = opt.solve(model, tee=True)
+            results = opt.solve(model, tee=True, keepfiles=True)
 
     model.solutions.store_to(results)
     return results
