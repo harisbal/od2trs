@@ -2,24 +2,6 @@ import re
 import itertools
 import pandas as pd
 import networkx as nx
-from collections import Counter
-
-
-def filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr):
-
-    # I'll later join on these names but I need to reset the index
-    distr_dims = list(tgt_distr.index.names)
-    # I'll temporarily modify the tuples to strings
-    distr_copy = tgt_distr.reset_index()[distr_dims]  # we care only about the distr dims
-
-    trs_info = pd.merge(trs_info.reset_index(), distr_copy, on=distr_dims, how='right')
-    trs_info = trs_info.set_index('Tourid').sort_index()
-    # filter the trs_descr accordingly
-    mask = trs_descr.index.get_level_values('Tourid').isin(trs_info.index.tolist())
-    trs_descr = trs_descr.loc[mask]
-    print('Number of tours after filt:', trs_info.shape[0])
-
-    return trs_info, trs_descr
 
 
 def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):

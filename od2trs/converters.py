@@ -300,6 +300,9 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         print('Updated Network density: {:.2%}'.format(nx.density(G)))
         print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
 
+    # Export the filtered graph
+    nx.write_gml(G, filepaths['out']['graph'])
+
     descrs = []
     infos = []
     tr_id = 1
