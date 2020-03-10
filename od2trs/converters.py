@@ -301,7 +301,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
 
     # Export the filtered graph
-    nx.write_gml(G, filepaths['out']['graph'])
+    nx.write_gpickle(G, filepaths['out']['graph'])
 
     descrs = []
     infos = []
@@ -365,7 +365,8 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         if not info_df.index.is_unique:
             raise ValueError('Returned index is duplicated')
     else:
-        raise ValueError('No trs identified')
+        print('No trs identified')
+        return None, None, None
 
     print('Total trs after filtering: {:,}'.format(info_df.index.unique().size))
 

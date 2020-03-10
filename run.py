@@ -53,7 +53,7 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
         traj.f_add_result('od', od, comment='od')
         traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
         traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
-        traj.f_add_result('G', od, comment='Filtered graph')
+        traj.f_add_result('G', G, comment='Filtered graph')
         traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if tgt_distr is not None:

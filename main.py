@@ -103,7 +103,11 @@ def main(traj):
                                                    ncores=ncores, low_memory=low_memory)
 
         # Export the identified tours
-        myio.export_trs(trs_info, trs_descr, filepaths)
+        if trs_info is not None:
+            if zones_info is not None:
+                if 'Coords' in zones_info:
+                    trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
+            myio.export_trs(trs_info, trs_descr, filepaths)
     else:
         trs_descr, trs_info = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr
@@ -127,10 +131,6 @@ def main(traj):
 
         idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
         od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
-
-    if zones_info is not None:
-        if 'Coords' in zones_info:
-            trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
 
     results = [od_mdl, trs_descr, trs_info, tgt_distr, G]
 
