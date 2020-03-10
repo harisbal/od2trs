@@ -3,7 +3,7 @@ from od2trs import filters
 
 
 def prepare_distr_from_obs(obs_info, max_legs, max_costs,
-                           distr_dims, cost_bins, od_perc_thresh):
+                           distr_dims, cost_bins, excl_obs_trs_od_perc):
     """
     Create the distribution based on the tour data
     The distribution groups identified in the observed data may not match the
@@ -39,7 +39,7 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
 
     # Filter the low freq distr groups taking into account
     # the percentage which has been already excluded
-    tgt_distr = filters.filter_lowpercent_distr_groups(obs_distr, od_perc_thresh+perc_excl)
+    tgt_distr = filters.filter_lowpercent_distr_groups(obs_distr, excl_obs_trs_od_perc+perc_excl)
 
     return tgt_distr
 

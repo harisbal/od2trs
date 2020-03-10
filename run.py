@@ -42,7 +42,7 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     # Run simulation
     start_time = time.time()
     results = mn.main(traj)
-    (od, trs_mdl_descr, trs_mdl_info, tgt_distr) = results
+    (od, trs_mdl_descr, trs_mdl_info, tgt_distr, G) = results
     elapsed_time = time.time() - start_time
     print('Complete!')
 
@@ -53,6 +53,7 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
         traj.f_add_result('od', od, comment='od')
         traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
         traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
+        traj.f_add_result('G', od, comment='Filtered graph')
         traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if tgt_distr is not None:
@@ -75,7 +76,7 @@ def prepare_traj_params(traj, cfg):
     explore = json.loads(cfg['TOURS']['explore'])
 
     max_legs = json.loads(cfg['TOURS']['max_legs'])
-    od_perc_thresh = json.loads(cfg['TOURS']['od_percent_thresh'])
+    excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
 
@@ -127,7 +128,7 @@ def prepare_traj_params(traj, cfg):
 
     traj.par.trs.ordered_tps = Parameter('ordered_tps', list(tps_durs.keys()), comment='Distribution Dimensions')
     traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs, comment='Duration of timeperiods')
-    traj.par.trs.od_perc_thresh = Parameter('od_perc_thresh', od_perc_thresh[0],
+    traj.par.trs.excl_obs_trs_od_perc = Parameter('excl_obs_trs_od_perc', excl_obs_trs_od_perc[0],
                                             comment='Distribution Percentage Threshold')
 
     traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
@@ -176,7 +177,7 @@ def prepare_traj_params(traj, cfg):
 
     if explore:
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
-                     'distr_constr_enabled': distr_constr_enabled, 'od_perc_thresh': od_perc_thresh,
+                     'distr_constr_enabled': distr_constr_enabled, 'excl_obs_trs_od_perc': excl_obs_trs_od_perc,
                      'distr_perc_tolerance': distr_perc_tolerance,
                      'excl_edges_od_perc': excl_edges_od_perc}
 
