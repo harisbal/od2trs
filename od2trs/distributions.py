@@ -39,7 +39,7 @@ def prepare_distr_from_obs(obs_info, max_legs, max_costs,
 
     # Filter the low freq distr groups taking into account
     # the percentage which has been already excluded
-    tgt_distr = filters.filter_lowpercent_distr_groups(obs_distr, excl_obs_trs_od_perc+perc_excl)
+    tgt_distr = filters.filter_lowpercent_distr_groups(obs_distr, 1-excl_obs_trs_od_perc+perc_excl)
 
     return tgt_distr
 
