@@ -19,6 +19,7 @@ def main(traj):
     max_costs = utils.retrieve_pypet_param(param)
 
     excl_edges_od_perc = traj.par.trs.excl_edges_od_perc
+    simplify_net_method = traj.par.trs.simplify_net_method
 
     direction_names = traj.par.trs.direction_names
     ordered_tps = traj.par.ordered_tps
@@ -99,6 +100,7 @@ def main(traj):
                                                    purp_to_acts=purp_to_acts,
                                                    tgt_distr=tgt_distr,
                                                    excl_edges_od_perc=excl_edges_od_perc,
+                                                   simplify_net_method=simplify_net_method,
                                                    zones_info=zones_info,
                                                    ncores=ncores, low_memory=low_memory)
 

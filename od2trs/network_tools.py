@@ -3,6 +3,46 @@ import pandas as pd
 import od2trs.filters as filters
 
 
+def multigraph_to_graph(g, attrs, aggr_func):
+    if g.is_directed():
+        gs = nx.DiGraph()
+    else:
+        gs = nx.Graph()
+
+    for attr in attrs:
+        for u, v, k, w in g.edges(data=attr, keys=True, default=0):
+            if gs.has_edge(u, v):
+                if attr in gs[u][v]:
+                    gs[u][v][attr] = aggr_func([gs[u][v][attr], w])
+                else:
+                    gs[u][v][attr] = w
+            else:
+                # pitfall gm.add_edge(u, v, attr=w) dows not work because attr is used literaly
+                gs.add_edge(u, v)
+                gs[u][v].update({attr: w})
+    return gs
+
+
+def calculate_centralities(g, method, weight='Dailytrips'):
+    # The centrality measures do not work (at least for now) on multigraphs
+    gs = multigraph_to_graph(g, [weight], sum)
+    if method == 'pagerank':
+        cm = pd.Series(nx.pagerank(gs, alpha=1, weight=weight, max_iter=500))
+    elif method == 'current_flow_closeness':
+        gs = gs.to_undirected()
+        cm = pd.Series(nx.current_flow_closeness_centrality(gs, weight=weight))
+        # cm = pd.Series(nx.approximate_current_flow_betweenness_centrality(gs, weight=simplify_net_weight))
+    elif method == 'current_flow_betweeness':
+        gs = gs.to_undirected()
+        cm = pd.Series(nx.current_flow_betweenness_centrality(gs, weight=weight))
+    elif method == 'eigenvector':
+        cm = pd.Series(nx.eigenvector_centrality(gs, weight=weight, max_iter=500))
+    else:
+        raise ValueError('Centrality measure not recognised')
+
+    return cm
+
+
 def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
     to_rmv = []
     centralities = centralities.sort_values()

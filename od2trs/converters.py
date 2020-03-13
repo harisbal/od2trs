@@ -267,7 +267,7 @@ def init_multiproc_wrapper(_G):
 def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
            tgt_distr=None, distr_dims=None, cost_bins=None,
            costs=None, max_costs=None, purp_to_acts=None,
-           excl_edges_od_perc=0, zones_info=None,
+           excl_edges_od_perc=0, simplify_net_method='pagerank', zones_info=None,
            ncores=None, low_memory=False):
 
     if costs is not None:
@@ -280,24 +280,11 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
-    method = 'cfc'
     if excl_edges_od_perc > 0:
-        if method == 'cfc':
-            cm = pd.Series(nx.approximate_current_flow_betweenness_centrality(G.to_undirected(),
-                                                                              weight='Dailytrips'))
-        elif method == 'pgrnk':
-            cm = pd.Series(nx.pagerank(nx.DiGraph(G), alpha=1, weight='Dailytrips', max_iter=500))
-        else:
-            raise ValueError('Centrality measure not recognised')
-
+        simplify_net_weight = 'Dailytrips'
+        cm = nettools.calculate_centralities(g, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(G, cm, 'Centrality')
-        print('nodes before simplification', G.number_of_nodes())
-        print('dailytrips before simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
-
         G = filters.simplify_net(G, weight='Dailytrips', excl_weight_perc=excl_edges_od_perc)
-        print('nodes after simplification', G.number_of_nodes())
-        print('Updated Network density: {:.2%}'.format(nx.density(G)))
-        print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
 
     # Export the filtered graph
     nx.write_gpickle(G, filepaths['out']['graph'])

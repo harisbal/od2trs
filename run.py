@@ -79,13 +79,14 @@ def prepare_traj_params(traj, cfg):
     excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
+    if 'simplify_net_method' in cfg['TOURS']:
+        simplify_net_method = json.loads(cfg['TOURS']['simplify_net_method'])
+    else:
+        simplify_net_method = ['pagerank']  # Default method
 
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
-
     max_costs = json.loads(cfg['TOURS']['max_costs'])
-
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
-
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
     fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
@@ -129,7 +130,10 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.ordered_tps = Parameter('ordered_tps', list(tps_durs.keys()), comment='Distribution Dimensions')
     traj.par.trs.tps_durs = PickleParameter('tps_durs', tps_durs, comment='Duration of timeperiods')
     traj.par.trs.excl_obs_trs_od_perc = Parameter('excl_obs_trs_od_perc', excl_obs_trs_od_perc[0],
-                                            comment='Distribution Percentage Threshold')
+                                                  comment='Distribution Percentage Threshold')
+
+    traj.par.trs.simplify_net_method = Parameter('simplify_net_method', simplify_net_method[0],
+                                                 comment='Network simplification method')
 
     traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
     traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Cost bins')
@@ -178,6 +182,7 @@ def prepare_traj_params(traj, cfg):
     if explore:
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'excl_obs_trs_od_perc': excl_obs_trs_od_perc,
+                     'simplify_net_method': simplify_net_method,
                      'distr_perc_tolerance': distr_perc_tolerance,
                      'excl_edges_od_perc': excl_edges_od_perc}
 
