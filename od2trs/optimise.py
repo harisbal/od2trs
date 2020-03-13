@@ -211,6 +211,8 @@ def main(descr, info, od, ntrs, tgt_distr=None,
                             mip_tolerances_lowercutoff,
                             timelimit=timelimit, solver_factory='cplex')
 
+        # TODO not so sure about this approach (set always feasible)
+        solution_feasible = True
         if results.solver.termination_condition != TerminationCondition.infeasible:
             solution_feasible = True
         else:

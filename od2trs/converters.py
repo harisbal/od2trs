@@ -282,7 +282,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
 
     if excl_edges_od_perc > 0:
         simplify_net_weight = 'Dailytrips'
-        cm = nettools.calculate_centralities(g, simplify_net_method, simplify_net_weight)
+        cm = nettools.calculate_centralities(G, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(G, cm, 'Centrality')
         G = filters.simplify_net(G, weight='Dailytrips', excl_weight_perc=excl_edges_od_perc)
 
