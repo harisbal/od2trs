@@ -217,9 +217,7 @@ def simplify_net(g, keep_nodes=None,
             s = sum(nx.get_edge_attributes(gc, attr).values())
             ip = s / s_init
             if ip <= 1 - p:
-                break
-
-        return _to_rmv
+                return _to_rmv
 
     if keep_nodes is None:
         keep_nodes = []

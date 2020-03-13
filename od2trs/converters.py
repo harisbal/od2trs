@@ -294,8 +294,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         print('nodes before simplification', G.number_of_nodes())
         print('dailytrips before simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
 
-        G = filters.simplify_net(G, weight='Dailytrips',
-                                 excl_weight_perc=excl_edges_od_perc)
+        G = filters.simplify_net(G, weight='Dailytrips', excl_weight_perc=excl_edges_od_perc)
         print('nodes after simplification', G.number_of_nodes())
         print('Updated Network density: {:.2%}'.format(nx.density(G)))
         print('dailytrips after  simplification', sum(nx.get_edge_attributes(G, 'Dailytrips').values()))
