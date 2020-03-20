@@ -28,6 +28,12 @@ def calculate_centralities(g, method, weight='Dailytrips'):
     gs = multigraph_to_graph(g, [weight], sum)
     if method == 'pagerank':
         cm = pd.Series(nx.pagerank(gs, alpha=1, weight=weight, max_iter=500))
+    elif method == 'sugbraph_centrality':
+        gs = gs.to_undirected()
+        cm = pd.Series(nx.subgraph_centrality(gs))
+    elif method == 'sugbraph_centrality_exp':
+        gs = gs.to_undirected()
+        cm = pd.Series(nx.subgraph_centrality_exp(gs))
     elif method == 'communicability_betweenness':
         gs = gs.to_undirected()
         cm = pd.Series(nx.communicability_betweenness_centrality(gs))
