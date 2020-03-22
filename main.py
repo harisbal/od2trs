@@ -54,8 +54,8 @@ def main(traj):
     if cost_bins:
         cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
-    print('DistrDims: {} Legs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}'
-          .format(distr_dims, max_legs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc))
+    print('DistrDims: {} Legs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}'
+          .format(distr_dims, max_legs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols

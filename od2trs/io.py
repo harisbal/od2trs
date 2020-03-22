@@ -148,6 +148,9 @@ def combine_interm_results(filepaths, processfolder, purge=True):
         if purge:
             os.remove(f)
 
+    # remove the dir
+    os.rmdir(processfolder)
+
     descr = pd.concat(descrs)
     info = pd.concat(infos)
 
@@ -175,15 +178,17 @@ def export_tgt_distr(distr, filepath):
     distr.to_csv(os.path.join(filepath), index=False)
 
 
-def export_trs(info, descr, filepaths):
+def export_trs(info, descr, filepaths, low_memory=False):
     ext = filepaths['out']['trs_mdl_descr'].split('.')[-1]
     if ext == 'csv':
         info = utils.tuples_to_strings(info)
-        descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
         info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
+        if not low_memory:
+            descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
     elif ext == 'pkl':
-        descr.to_pickle(filepaths['out']['trs_mdl_descr'])
         info.to_pickle(filepaths['out']['trs_mdl_info'])
+        if not low_memory:
+            descr.to_pickle(filepaths['out']['trs_mdl_descr'])
     else:
         raise TypeError('Unknown export format')
 

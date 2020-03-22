@@ -141,21 +141,21 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     and the rest are NHB
     """
 
+    gf = g.copy()
     fh_names = filter_edge_dirs.from_home
     th_names = filter_edge_dirs.to_home
     nhb_names = filter_edge_dirs.non_home
 
-    src_zones = set()
-    for src in srcs:
-        src_zones.add(g.nodes[src]['Zone'])
+    # All srcs should point to the same zone
+    src_zone = gf.nodes[srcs[0]]['Zone']
 
     to_rmv = set()
     # Creates a graph that origins edges from and to
-    for s, t, k, attrs in g.edges(data=True, keys=True):
+    for s, t, k, attrs in gf.edges(data=True, keys=True):
         if not attrs['Connector']:
             if attrs['Direction'] in nhb_names:
                 # NHB trips should be removed from the src and in all dts
-                if (g.nodes[s]['Zone'] in src_zones) or (g.nodes[t]['Zone'] in src_zones):
+                if (gf.nodes[s]['Zone'] == src_zone) or (gf.nodes[t]['Zone'] == src_zone):
                     to_rmv.add((s, t, k))
             elif attrs['Direction'] in fh_names:
                 if s not in srcs:
@@ -165,21 +165,17 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
                     to_rmv.add((s, t, k))
         else:
             # Remove connectors linked to src_zone
-            if (g.nodes[s]['Zone'] in src_zones) or (g.nodes[t]['Zone'] in src_zones):
+            if (gf.nodes[s]['Zone'] == src_zone) or (gf.nodes[t]['Zone'] == src_zone):
                 to_rmv.add((s, t, k))
 
-    g.remove_edges_from(to_rmv)
+    gf.remove_edges_from(to_rmv)
 
-    return g
+    return gf
 
 
-def filter_edges_by_direction(g, filt_direction, keep_connectors=True, copy=True):
+def filter_edges_by_direction(g, filt_direction, keep_connectors=True):
 
-    if copy:
-        gf = g.copy()
-    else:
-        gf = g
-
+    gf = g.copy()
     for u, v, direction in g.edges(data='Direction'):
         if (direction == 'Connector') and keep_connectors:
             continue

@@ -3,29 +3,30 @@ import pandas as pd
 import od2trs.filters as filters
 
 
-def multigraph_to_graph(g, attrs, aggr_func):
+def multigraph_to_graph(g, aggr_func):
     if g.is_directed():
         gs = nx.DiGraph()
     else:
         gs = nx.Graph()
 
-    for attr in attrs:
+    for attr in aggr_func.keys():
         for u, v, k, w in g.edges(data=attr, keys=True, default=0):
             if gs.has_edge(u, v):
                 if attr in gs[u][v]:
-                    gs[u][v][attr] = aggr_func([gs[u][v][attr], w])
+                    gs[u][v][attr] = aggr_func[attr]([gs[u][v][attr], w])
                 else:
                     gs[u][v][attr] = w
             else:
-                # pitfall gm.add_edge(u, v, attr=w) dows not work because attr is used literaly
+                # pitfall gm.add_edge(u, v, attr=w) does not work because attr is used literally
                 gs.add_edge(u, v)
                 gs[u][v].update({attr: w})
     return gs
 
 
-def calculate_centralities(g, method, weight='Dailytrips'):
+def calculate_centralities(g, method, weight='Dailytrips', aggr_func=sum):
     # The centrality measures do not work (at least for now) on multigraphs
-    gs = multigraph_to_graph(g, [weight], sum)
+    aggr_func = {weight: aggr_func}
+    gs = multigraph_to_graph(g, aggr_func)
     if method == 'pagerank':
         cm = pd.Series(nx.pagerank(gs, alpha=1, weight=weight, max_iter=500))
     elif method == 'sugbraph_centrality':
@@ -74,24 +75,6 @@ def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
     return gf
 
 
-def duplicate_nodes(g, nodes, suffix='-dupl'):
-
-    gn = g.copy()
-    for node in nodes:
-        new_node = node + suffix
-        node_attrs = g.nodes[node]
-        for s, t, k, attrs in g.edges(data=True, keys=True):
-            if s == node:
-                gn.add_node(new_node, **node_attrs)
-                gn.add_edge(new_node, t, k, **attrs)
-
-            if t == node:
-                gn.add_node(new_node, **node_attrs)
-                gn.add_edge(s, new_node, k, **attrs)
-
-    return gn
-
-
 def identify_zones_sequences(g, src, direction_names, ordered_tps,
                              max_legs, max_costs):
     """
@@ -102,7 +85,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     :param start_zone:
     :param max_legs_chain:
     :param filter_edge_purpose_names: the name of the trip purposes to look for
-    :return: potential_tripchains
+    :return: potential_zone_sequences
     """
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
@@ -111,14 +94,14 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
     zones_seqs = []
 
-    g_hb_nhb = filters.prepare_graph(g.copy(), srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g, srcs, tgts, direction_names)
     g_hb_nhb = nx.DiGraph(g_hb_nhb)
 
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
     # keep only the nhb trips
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
-                                              keep_connectors=True, copy=True)
+                                              keep_connectors=True)
     gf = g_nhb
 
     for src in srcs:

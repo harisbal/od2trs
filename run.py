@@ -49,12 +49,13 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     if export_flat:
         myio.export_od_mdl(od, traj.conf.filepaths['out']['od'])
 
+    traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
+    traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
+    traj.f_add_result(PickleResult, 'G', G, comment='Filtered graph')
+    traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
+
     if od is not None:
         traj.f_add_result('od', od, comment='od')
-        traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
-        traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
-        traj.f_add_result(PickleResult, 'G', G, comment='Filtered graph')
-        traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if tgt_distr is not None:
         # Cannot export categoricals

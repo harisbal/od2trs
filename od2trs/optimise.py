@@ -74,6 +74,9 @@ def prepare_model(descr, info, od, ntrs, tgt_distr,
     model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
                          initialize=_init_solution)
 
+    # May reduce memory requirements
+    # del model.descr
+
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
