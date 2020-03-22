@@ -2,6 +2,7 @@ import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 from functools import partial
+from datetime import datetime
 
 import itertools
 import pandas as pd
@@ -228,7 +229,7 @@ def results_to_od(descr, info, idx_cols):
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       max_legs, max_costs, cost_bins,
-                      tgt_distr, distr_dims, excl_edges_od_perc,
+                      tgt_distr, distr_dims,
                       purp_to_acts):
 
     zones_seqs = nettools.identify_zones_sequences(G, src_zone, direction_names, ordered_tps,
@@ -315,7 +316,8 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
 
     print('Running on {} cores'.format(ncores))
     # clean the processing folder
-    filepaths['processfolder'] = r'./tmp/identification'
+    now = datetime.now().strftime('%Y%m%d%H%M%S')
+    filepaths['processfolder'] = os.path.join(r'./tmp/identification', now)
     myio.create_folders([filepaths['processfolder']], overwrite=True)
     with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
         for trs in tqdm(pool.imap_unordered(
@@ -327,8 +329,8 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                                 cost_bins=cost_bins,
                                 tgt_distr=tgt_distr,
                                 distr_dims=distr_dims,
-                                excl_edges_od_perc=excl_edges_od_perc,
                                 purp_to_acts=purp_to_acts), zones), total=len(zones)):
+
             if trs:
                 for tr in trs:
                     tr.id = tr_id
