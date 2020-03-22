@@ -102,6 +102,21 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     # keep only the nhb trips
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
                                               keep_connectors=True)
+
+    """
+    # The resulting filtered graphs may still be multigraph when multiple types of NHB trips exist
+    # we only need to ensure that the multigraph edges will collapse to edges with the maximum distance
+    # (the rest of the attributes are irrelevant)
+    if max_costs:
+        attrs = max_costs.keys()
+        aggr_funcs = dict(zip(attrs, len(attrs) * [max]))
+        gb = multigraph_to_graph(g_hb_nhb, aggr_funcs)
+        gf = multigraph_to_graph(g_nhb, aggr_funcs)
+    else:
+        gb = nx.DiGraph(g_hb_nhb)
+        gf = nx.DiGraph(g_nhb)
+    """
+
     gf = g_nhb
 
     for src in srcs:
