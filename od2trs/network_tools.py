@@ -20,6 +20,8 @@ def multigraph_to_graph(g, aggr_func):
                 # pitfall gm.add_edge(u, v, attr=w) does not work because attr is used literally
                 gs.add_edge(u, v)
                 gs[u][v].update({attr: w})
+
+    gs.add_nodes_from(list(nx.isolates(g)))
     return gs
 
 
@@ -90,20 +92,22 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
-
     tgts = srcs.copy()
+
     zones_seqs = []
-
     g_hb_nhb = filters.prepare_graph(g, srcs, tgts, direction_names)
-    g_hb_nhb = nx.DiGraph(g_hb_nhb)
-
+    g_hb_nhb.remove_nodes_from(list(nx.isolates(g_hb_nhb)))
     #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
-    # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home,
-                                              keep_connectors=True)
+    # Some of the srcs (or tgts) may became isolates due to filtering
+    srcs = [src for src in srcs if g_hb_nhb.has_node(src)]
+    tgts = srcs.copy()
 
-    """
+    # keep only the nhb trips
+    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home, keep_connectors=True)
+    # TODO removing isolates from g_nhb fails the tests
+    # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
+
     # The resulting filtered graphs may still be multigraph when multiple types of NHB trips exist
     # we only need to ensure that the multigraph edges will collapse to edges with the maximum distance
     # (the rest of the attributes are irrelevant)
@@ -111,20 +115,17 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
         attrs = max_costs.keys()
         aggr_funcs = dict(zip(attrs, len(attrs) * [max]))
         gb = multigraph_to_graph(g_hb_nhb, aggr_funcs)
-        gf = multigraph_to_graph(g_nhb, aggr_funcs)
+        # gf = multigraph_to_graph(g_nhb, aggr_funcs)
     else:
         gb = nx.DiGraph(g_hb_nhb)
-        gf = nx.DiGraph(g_nhb)
-    """
 
-    gf = g_nhb
-
+    gf = nx.DiGraph(g_nhb)
     for src in srcs:
-        successors = set(g_hb_nhb.successors(src))
+        successors = set(gb.successors(src))
         for succ in successors:
             predecessors = set()
             for tgt in tgts:
-                preds = list(g_hb_nhb.predecessors(tgt))
+                preds = list(gb.predecessors(tgt))
                 if succ in preds:
                     zones_seqs.append([src, succ, tgt])
                     preds.remove(succ)
@@ -136,14 +137,14 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
             if max_costs:
                 for w, mc in list(max_costs.items()):
                     weights.append(w)
-                    cost_src_to_succ = g_hb_nhb[src][succ][w]
+                    cost_src_to_succ = gb[src][succ][w]
                     costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
                     # predecessor to the tgt. Nonetheless I can reduce it my the minimum
                     for tgt in tgts:
-                        for pred in g_hb_nhb.predecessors(tgt):
-                            cost_pred_to_tgt = g_hb_nhb[pred][tgt][w]
+                        for pred in gb.predecessors(tgt):
+                            cost_pred_to_tgt = gb[pred][tgt][w]
                             if cost_src_to_succ+cost_pred_to_tgt > mc:
                                 # no need to search for this predecessor
                                 predecessors.discard(pred)
@@ -177,7 +178,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                     zs.insert(0, src)
                     # the tgt depends on the predecessor last zone of zs (zs[-1])
                     for tgt in tgts:
-                        if zs[-1] in list(g_hb_nhb.predecessors(tgt)):
+                        if zs[-1] in list(gb.predecessors(tgt)):
                             zs.append(tgt)
                             break
 

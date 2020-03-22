@@ -72,6 +72,7 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
                             HeightDiff=height_diff,
                             Length=0, **_d)
 
+        _g.remove_nodes_from(list(nx.isolates(_g)))
         return _g
 
     od = od.reset_index()
