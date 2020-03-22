@@ -3,7 +3,7 @@ import pandas as pd
 import od2trs.filters as filters
 
 
-def multigraph_to_graph(g, aggr_func):
+def multigraph_to_graph(g, aggr_func, remove_isolates=False):
     if g.is_directed():
         gs = nx.DiGraph()
     else:
@@ -21,7 +21,9 @@ def multigraph_to_graph(g, aggr_func):
                 gs.add_edge(u, v)
                 gs[u][v].update({attr: w})
 
-    gs.add_nodes_from(list(nx.isolates(g)))
+    # Restore the isolates
+    if not remove_isolates:
+        gs.add_nodes_from(list(nx.isolates(g)))
     return gs
 
 
@@ -79,16 +81,6 @@ def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
 
 def identify_zones_sequences(g, src, direction_names, ordered_tps,
                              max_legs, max_costs):
-    """
-    Create the potential zones sequences of trip chains. Reduce the feasible space by
-    a) finding the basic cycles for each or the origin zones
-    b) limiting the maximum number of legs for the returned zone_sequences
-
-    :param start_zone:
-    :param max_legs_chain:
-    :param filter_edge_purpose_names: the name of the trip purposes to look for
-    :return: potential_zone_sequences
-    """
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
@@ -141,7 +133,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                     costs_pred_to_tgt = []
 
                     # I'm searching for multiple tgts so I am not sure about the distance of the
-                    # predecessor to the tgt. Nonetheless I can reduce it my the minimum
+                    # predecessor to the tgt. Nonetheless, I can reduce it by the minimum
                     for tgt in tgts:
                         for pred in gb.predecessors(tgt):
                             cost_pred_to_tgt = gb[pred][tgt][w]

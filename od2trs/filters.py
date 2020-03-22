@@ -231,6 +231,9 @@ def simplify_net(g, keep_nodes=None,
     else:
         raise ValueError('excl_perc should be between 0 and 1')
 
+    # Remove the isolates
+    g.remove_nodes_from(list(nx.isolates(g)))
+
     print('nodes after simplification', g.number_of_nodes())
     print('Updated Network density: {:.2%}'.format(nx.density(g)))
     print('{} after simplification'.format(weight), sum(nx.get_edge_attributes(g, weight).values()))
