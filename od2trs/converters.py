@@ -346,8 +346,10 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     infos.append(info_df)
 
     if low_memory:
-        myio.combine_interm_results(filepaths, filepaths['processfolder'], purge=True)
+        myio.combine_interm_results(filepaths, filepaths['processfolder'], purge=False)
         descr_df, info_df = myio.import_trs(filepaths)
+        # Clear the descr dataframe to save space. Descrs can be retrieved from infos
+        # descr_df = descr_df.iloc[0:0]
     elif descrs:
         descr_df = pd.concat(descrs)
         info_df = pd.concat(infos)

@@ -148,14 +148,15 @@ def combine_interm_results(filepaths, processfolder, purge=True):
         if purge:
             os.remove(f)
 
-    # remove the dir
-    os.rmdir(processfolder)
+    if purge:
+        # remove the dir
+        os.rmdir(processfolder)
 
     descr = pd.concat(descrs)
     info = pd.concat(infos)
 
-    descr.to_pickle(os.path.join(filepaths['in']['trs_mdl_descr']))
-    info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
+    descr.to_pickle(os.path.join(filepaths['out']['trs_mdl_descr']))
+    info.to_pickle(os.path.join(filepaths['out']['trs_mdl_info']))
 
 
 def import_trs(filepaths):
