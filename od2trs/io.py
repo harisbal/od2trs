@@ -155,8 +155,9 @@ def combine_interm_results(filepaths, processfolder, purge=True):
     descr = pd.concat(descrs)
     info = pd.concat(infos)
 
-    descr.to_pickle(os.path.join(filepaths['out']['trs_mdl_descr']))
-    info.to_pickle(os.path.join(filepaths['out']['trs_mdl_info']))
+    # Export them to inputs folder so they can be used for the next step
+    descr.to_pickle(os.path.join(filepaths['in']['trs_mdl_descr']))
+    info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
 
 
 def import_trs(filepaths):
