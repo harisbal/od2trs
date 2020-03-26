@@ -186,7 +186,7 @@ def trs_to_df(trs, tgt_distr, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
-            'Acts', 'Departtimes', 'Loopscnt']
+            'Odpairids', 'Acts', 'Departtimes', 'Loopscnt']
 
     if tgt_distr is not None:
         keys.append('Distrgroupid')
@@ -207,25 +207,42 @@ def trs_to_df(trs, tgt_distr, max_costs):
         trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
-    trs_info_df = pd.DataFrame(d_trs_info)
+    info_df = pd.DataFrame(d_trs_info)
 
-    trs_info_df.set_index('Id', inplace=True)
-    trs_info_df.index.name = idxcol
+    info_df.set_index('Id', inplace=True)
+    info_df.index.name = idxcol
 
-    trs_descr_df = pd.DataFrame.from_dict(trs_decr, orient='index')
-    trs_descr_df.columns = trs_descr_df.columns.str.capitalize()
-    trs_descr_df.index.names = [idxcol, 'Legseqidx']
-    trs_descr_df.dropna(axis=1, inplace=True)
-
-    return trs_descr_df, trs_info_df
+    return info_df
 
 
-def results_to_od(descr, info, idx_cols):
+def results_to_od(info, od_obs, idx_cols):
     idx_cols = [str.title(v) for v in idx_cols]
-    info = info.rename(columns={'Timesused': 'Dailytrips'})
-    jn = descr.join(info['Dailytrips'])
-    od = jn.groupby(idx_cols, observed=True)['Dailytrips'].sum()
-    return od
+
+    # Repeat the infos based on timesused
+    df = info.reindex(info.index.repeat(info['Timesused']))
+    df = pd.DataFrame(df['Odpairids'].values.tolist(), index=df.index)
+
+    od_mdl = None
+    for c in df:
+        s = df[c].value_counts()
+        s.index.name = 'Tourid'
+        s.name = 'Timesused'
+        if od_mdl is None:
+            od_mdl = s.copy()
+        else:
+            od_mdl = od_mdl.add(s, fill_value=0)
+
+    od_mdl = od_mdl.reset_index().astype(int)
+    od_mdl.columns = ['Odpairid', 'Dailytrips']
+    od_mdl = od_mdl.set_index('Odpairid')
+    # Kepp only positive elements
+    od_mdl = od_mdl[od_mdl > 0]
+
+    od_mdl = pd.merge(od_obs.drop(columns=['Dailytrips']).reset_index(), od_mdl,
+                      on='Odpairid')
+
+    od_mdl = od_mdl.groupby(idx_cols, observed=True)['Dailytrips'].sum()
+    return od_mdl
 
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
@@ -291,7 +308,6 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
     # Export the filtered graph
     nx.write_gpickle(G, filepaths['out']['graph'])
 
-    descrs = []
     infos = []
     tr_id = 1
 
@@ -337,28 +353,25 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     tr.id = tr_id
                     tr_id += 1
 
-                descr_df, info_df, = trs_to_df(trs, tgt_distr, max_costs)
+                info_df = trs_to_df(trs, tgt_distr, max_costs)
 
                 if low_memory:
-                    myio.export_low_memory(descr_df, info_df, filepaths['processfolder'])
+                    myio.export_low_memory(info_df, filepaths['processfolder'])
                 else:
-                    descrs.append(descr_df)
                     infos.append(info_df)
 
     if low_memory:
         myio.combine_interm_results(filepaths, filepaths['processfolder'], purge=False)
-        descr_df, info_df = myio.import_trs(filepaths)
-        # Clear the descr dataframe to save space. Descrs can be retrieved from infos
-        # descr_df = descr_df.iloc[0:0]
-    elif descrs:
-        descr_df = pd.concat(descrs)
-        info_df = pd.concat(infos)
-        if not info_df.index.is_unique:
-            raise ValueError('Returned index is duplicated')
+        info_df = myio.import_trs(filepaths)
     else:
-        print('No trs identified')
-        return None, None, None
+        if infos:
+            info_df = pd.concat(infos)
+            if not info_df.index.is_unique:
+                raise ValueError('Returned index is duplicated')
+        else:
+            print('No trs identified')
+            return None, None
 
     print('Total trs after filtering: {:,}'.format(info_df.index.unique().size))
 
-    return descr_df, info_df, G
+    return info_df, G

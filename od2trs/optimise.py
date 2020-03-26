@@ -12,17 +12,29 @@ import od2trs.filters as filters
 from pyutilib.services import TempfileManager
 
 
-def prepare_model(descr, info, od, ntrs, tgt_distr,
+def prepare_model(info, od, ntrs, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, init_sol=None):
 
     # TODO for some reason it passes 2 args
     def _init_descr_by_odpair(m, _):
-        _descr = m.descr.reset_index()
-        d_trs_descr = (utils.aggr_tolist(_descr, 'Odpairid', 'Tourid')
-                            .set_index('Odpairid').squeeze()
-                            .to_dict())
-        return d_trs_descr
+        # Break the tuples to columns
+        df = pd.DataFrame(m.info['Odpairids'].values.tolist(),
+                          index=m.info.index).reset_index()
+
+        cols = list(df.columns)
+        cols.remove('Tourid')
+        dfs = []
+        for c in cols:
+            s = df[['Tourid', c]]
+            s.columns = ['Tourid', 'Odpairid']
+            s = s.dropna()
+            s = s.astype(int)
+            dfs.append(s)
+
+        df = pd.concat(dfs)
+        df = df.groupby('Odpairid')['Tourid'].apply(set).apply(list)
+        return df.to_dict()
 
     def _init_tr_by_distr_grps(m):
         _info = m.info.reset_index()
@@ -38,13 +50,10 @@ def prepare_model(descr, info, od, ntrs, tgt_distr,
             return m.init_sol.get(i, 0)
 
     def _find_ubnds(m):
-        d = m.descr
-        trips = m.od['Dailytrips']
-        df = pd.merge(d, trips,
-                      left_on=trips.index.names,
-                      right_index=True)['Dailytrips']
-        ubnds = df.groupby('Tourid').min().to_dict()
-        return ubnds
+        od = m.od.set_index('Odpairid')
+        s = m.info['Odpairids']
+        ubnds = s.apply(lambda x: od.loc[list(x), 'Dailytrips'].min())
+        return ubnds.to_dict()
 
     def _get_bnds(m, i):
         return (0, m.tr_ubnds[i])
@@ -53,7 +62,6 @@ def prepare_model(descr, info, od, ntrs, tgt_distr,
     model.od = od.copy()
     d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
 
-    model.descr = descr
     model.info = info
     model.init_sol = init_sol
     model.distr_perc_tolerance = distr_perc_tolerance
@@ -162,7 +170,7 @@ def run_model(model, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(descr, info, od, ntrs, tgt_distr=None,
+def main(info, od, ntrs, tgt_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
@@ -204,7 +212,7 @@ def main(descr, info, od, ntrs, tgt_distr=None,
     i_feasible = 0
     while not solution_feasible:
         print('Preparing the optimisation model')
-        mymodel = prepare_model(descr, info, od, ntrs, tgt_distr,
+        mymodel = prepare_model(info, od, ntrs, tgt_distr,
                                 distr_constr_enabled, distr_perc_tolerance,
                                 mip_tolerances_lowercutoff,
                                 init_sol=init_sol)

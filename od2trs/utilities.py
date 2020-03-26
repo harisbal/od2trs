@@ -117,14 +117,15 @@ def to_interval(x):
 
 def tuples_to_strings(df, sep=';', cols=None):
     # reformat the tuple sequences to strings
+    df_out = df.copy()
     if cols is None:
         cols = df.columns
 
     for c in cols:
         if all(isinstance(v, tuple) for v in df[c].values):
-            df[c] = df[c].apply(sep.join)
+            df_out[c] = df_out[c].astype(str).apply(sep.join)
 
-    return df
+    return df_out
 
 
 def calculate_excluded_trips(trs_info):

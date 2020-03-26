@@ -45,7 +45,7 @@ class TripChain:
         :param legs: list of Leg
         """
 
-        seqs = ['source', 'purpose', 'direction', 'timeperiod']
+        seqs = ['source', 'purpose', 'direction', 'timeperiod', 'odpairid']
 
         if len(legs) >= 2:
             self.legs = legs
@@ -118,7 +118,7 @@ class TripChain:
         seq = list()
         for leg in self.legs:
             attr = getattr(leg, seq_name)
-            if attr:
+            if attr is not None:
                 seq.append(attr)
             else:
                 return None
