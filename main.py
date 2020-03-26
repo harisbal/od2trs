@@ -20,6 +20,7 @@ def main(traj):
 
     excl_edges_od_perc = traj.par.trs.excl_edges_od_perc
     simplify_net_method = traj.par.trs.simplify_net_method
+    simplify_net_place = traj.par.trs.simplify_net_place
 
     direction_names = traj.par.trs.direction_names
     ordered_tps = traj.par.ordered_tps
@@ -54,8 +55,8 @@ def main(traj):
     if cost_bins:
         cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
-    print('DistrDims: {} Legs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}'
-          .format(distr_dims, max_legs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method))
+    print('DistrDims: {} Legs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
+          .format(distr_dims, max_legs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
 
     idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
@@ -101,6 +102,7 @@ def main(traj):
                                         tgt_distr=tgt_distr,
                                         excl_edges_od_perc=excl_edges_od_perc,
                                         simplify_net_method=simplify_net_method,
+                                        simplify_net_place=simplify_net_place,
                                         zones_info=zones_info,
                                         ncores=ncores, low_memory=low_memory)
 

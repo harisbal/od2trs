@@ -188,3 +188,8 @@ def export_od_mdl(od, filepaths):
         od = od.reset_index()
         od.to_csv(filepaths, index=False, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
+
+
+def export_config(cfg, outfilepath):
+    with open(outfilepath, 'w') as configfile:
+        cfg.write(configfile)
