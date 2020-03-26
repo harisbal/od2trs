@@ -118,9 +118,9 @@ def import_zones_info(infilepath):
     return df
 
 
-def export_low_memory(descr, info, outfolder):
+def export_low_memory(info, outfolder):
     import re
-    filefmt = '{}_{}.pkl'
+    filefmt = 'info_{}.pkl'
     files = [f for f in os.listdir(outfolder) if os.path.isfile(os.path.join(outfolder, f))]
     # max iteration
     if files:
@@ -128,21 +128,17 @@ def export_low_memory(descr, info, outfolder):
     else:
         fmax = 0
 
-    for name, df in zip(['descr', 'info'], [descr, info]):
-        fname = os.path.join(outfolder, filefmt.format(name, fmax+1))
-        df.to_pickle(fname)
+    fname = os.path.join(outfolder, filefmt.format(fmax+1))
+    info.to_pickle(fname)
 
 
 def combine_interm_results(filepaths, processfolder, purge=True):
     files = [f for f in os.listdir(processfolder) if os.path.isfile(os.path.join(processfolder, f))]
-    descrs = []
     infos = []
     for f in files:
         f = os.path.join(processfolder, f)
         df = pd.read_pickle(f)
-        if 'descr' in f:
-            descrs.append(df)
-        elif 'info' in f:
+        if 'info' in f:
             infos.append(df)
 
         if purge:
@@ -152,50 +148,43 @@ def combine_interm_results(filepaths, processfolder, purge=True):
         # remove the dir
         os.rmdir(processfolder)
 
-    descr = pd.concat(descrs)
     info = pd.concat(infos)
 
     # Export them to inputs folder so they can be used for the next step
-    descr.to_pickle(os.path.join(filepaths['in']['trs_mdl_descr']))
     info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
 
 
 def import_trs(filepaths):
-    #ext = filepaths['in']['trs_mdl_descr'].split('.')[-1]
-    _, ext = os.path.splitext(filepaths['in']['trs_mdl_descr'])
+    _, ext = os.path.splitext(filepaths['in']['trs_mdl_info'])
     if ext == '.pkl':
         info = pd.read_pickle(filepaths['in']['trs_mdl_info']).sort_index()
-        descr = pd.read_pickle(filepaths['in']['trs_mdl_descr']).sort_index()
     else:
         raise TypeError('Tours can be only imported in pkl format')
 
     print('Number of tours read:', info.shape[0])
-    return descr, info
+    return info
 
 
 def export_tgt_distr(distr, filepath):
     # reformat the tuple sequences to strings
     distr = distr.reset_index()
-    distr = utils.tuples_to_strings(distr)
-    distr.to_csv(os.path.join(filepath), index=False)
+    distr_out = utils.tuples_to_strings(distr)
+    distr_out.to_csv(os.path.join(filepath), index=False)
 
 
-def export_trs(info, descr, filepaths, low_memory=False):
-    ext = filepaths['out']['trs_mdl_descr'].split('.')[-1]
+def export_trs(info, filepaths):
+    ext = filepaths['out']['trs_mdl_info'].split('.')[-1]
     if ext == 'csv':
-        info = utils.tuples_to_strings(info)
-        info.to_csv(filepaths['out']['trs_mdl_info'], index=True)
-        if not low_memory:
-            descr.to_csv(filepaths['out']['trs_mdl_descr'], index=True)
+        info_out = utils.tuples_to_strings(info)
+        info_out.to_csv(filepaths['out']['trs_mdl_info'], index=True)
     elif ext == 'pkl':
         info.to_pickle(filepaths['out']['trs_mdl_info'])
-        if not low_memory:
-            descr.to_pickle(filepaths['out']['trs_mdl_descr'])
     else:
         raise TypeError('Unknown export format')
 
 
 def export_od_mdl(od, filepaths):
     if od is not None:
-        od.to_csv(filepaths, header=True)
+        od = od.reset_index()
+        od.to_csv(filepaths, index=False, header=True)
     #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))

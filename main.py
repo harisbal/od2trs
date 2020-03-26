@@ -92,26 +92,23 @@ def main(traj):
         tgt_distr = None
 
     if run_trs_identification:
-        trs_descr, trs_info, G = converters.od2trs(od=od, filepaths=filepaths,
-                                                   max_legs=max_legs, direction_names=direction_names,
-                                                   ordered_tps=ordered_tps,
-                                                   costs=costs, max_costs=max_costs,
-                                                   cost_bins=cost_bins, distr_dims=distr_dims,
-                                                   purp_to_acts=purp_to_acts,
-                                                   tgt_distr=tgt_distr,
-                                                   excl_edges_od_perc=excl_edges_od_perc,
-                                                   simplify_net_method=simplify_net_method,
-                                                   zones_info=zones_info,
-                                                   ncores=ncores, low_memory=low_memory)
+        trs_info, G = converters.od2trs(od=od, filepaths=filepaths,
+                                        max_legs=max_legs, direction_names=direction_names,
+                                        ordered_tps=ordered_tps,
+                                        costs=costs, max_costs=max_costs,
+                                        cost_bins=cost_bins, distr_dims=distr_dims,
+                                        purp_to_acts=purp_to_acts,
+                                        tgt_distr=tgt_distr,
+                                        excl_edges_od_perc=excl_edges_od_perc,
+                                        simplify_net_method=simplify_net_method,
+                                        zones_info=zones_info,
+                                        ncores=ncores, low_memory=low_memory)
 
         # Export the identified tours
         if trs_info is not None:
-            if zones_info is not None:
-                if 'Coords' in zones_info:
-                    trs_descr = utils.add_coords(trs_descr, zones_info['Coords'])
-            myio.export_trs(trs_info, trs_descr, filepaths)
+            myio.export_trs(trs_info, filepaths)
     else:
-        trs_descr, trs_info = myio.import_trs(filepaths)
+        trs_info = myio.import_trs(filepaths)
         # In case pcl were used to create info and descrs filter them with the new target_distr
         # can cause issues if parameters realted to tours_identification module are changed between runs
         # trs_info, trs_descr = filters.filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr)
@@ -119,7 +116,7 @@ def main(traj):
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
-        trs_info = opt.main(trs_descr, trs_info, od,
+        trs_info = opt.main(trs_info, od,
                             ntrs=ntrs,
                             tgt_distr=tgt_distr,
                             distr_constr_enabled=distr_constr_enabled,
@@ -132,9 +129,9 @@ def main(traj):
                             submit_to_neos=submit_to_neos)
 
         idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
-        od_mdl = converters.results_to_od(trs_descr, trs_info, idx_cols)
+        od_mdl = converters.results_to_od(trs_info, od, idx_cols)
 
-    results = [od_mdl, trs_descr, trs_info, tgt_distr, G]
+    results = [od_mdl, trs_info, tgt_distr, G]
 
     return results
 

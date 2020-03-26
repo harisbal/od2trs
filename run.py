@@ -42,19 +42,25 @@ def wrap_automaton(traj, single_run=True, export_flat=False):
     # Run simulation
     start_time = time.time()
     results = mn.main(traj)
-    (od, trs_mdl_descr, trs_mdl_info, tgt_distr, G) = results
+    (od, trs_mdl_info, tgt_distr, G) = results
     elapsed_time = time.time() - start_time
     print('Complete!')
 
     if export_flat:
         myio.export_od_mdl(od, traj.conf.filepaths['out']['od'])
 
-    traj.f_add_result('trs_mdl_descr', trs_mdl_descr, comment='trs_mdl_descr')
     traj.f_add_result('trs_mdl_info', trs_mdl_info, comment='trs_mdl_info')
     traj.f_add_result(PickleResult, 'G', G, comment='Filtered graph')
     traj.f_add_result('elapsed_time', elapsed_time, comment='elapsed_time')
 
     if od is not None:
+        idx_cols = od.index.names
+        od = od.reset_index()
+        # Reset the categorical (problem with export)
+        for c in od.select_dtypes(include=['category']):
+            od[c] = od[c].astype(str)
+
+        od = od.set_index(idx_cols)
         traj.f_add_result('od', od, comment='od')
 
     if tgt_distr is not None:
