@@ -91,6 +91,7 @@ def prepare_traj_params(traj, cfg):
     else:
         simplify_net_method = ['pagerank']  # Default method
 
+    simplify_net_place = json.loads(cfg['TOURS']['simplify_net_place'])
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
     max_costs = json.loads(cfg['TOURS']['max_costs'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
@@ -116,6 +117,9 @@ def prepare_traj_params(traj, cfg):
     mip_strategy_probe = json.loads(cfg['OPTIMISATION']['mip strategy probe'])
     mip_strategy_file = json.loads(cfg['OPTIMISATION']['mip strategy file'])
 
+    myio.export_config(cfg, filepaths['out']['config'])
+
+    # Trajectory preparation
     traj.f_add_parameter_group('trs', 'Parameter groups for trs')
     traj.f_add_parameter_group('optim', 'Parameter groups for optimisation')
     traj.f_add_config('ncores', ncores, 'Number of cores')
@@ -141,6 +145,9 @@ def prepare_traj_params(traj, cfg):
 
     traj.par.trs.simplify_net_method = Parameter('simplify_net_method', simplify_net_method[0],
                                                  comment='Network simplification method')
+
+    traj.par.trs.simplify_net_place = Parameter('simplify_net_place', simplify_net_place[0],
+                                                comment='Where the network simplification takes place')
 
     traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
     traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Cost bins')
@@ -189,7 +196,7 @@ def prepare_traj_params(traj, cfg):
     if explore:
         d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'excl_obs_trs_od_perc': excl_obs_trs_od_perc,
-                     'simplify_net_method': simplify_net_method,
+                     'simplify_net_method': simplify_net_method, 'simplify_net_place': simplify_net_place,
                      'distr_perc_tolerance': distr_perc_tolerance,
                      'excl_edges_od_perc': excl_edges_od_perc}
 

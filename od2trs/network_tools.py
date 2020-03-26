@@ -80,7 +80,9 @@ def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
 
 
 def identify_zones_sequences(g, src, direction_names, ordered_tps,
-                             max_legs, max_costs):
+                             max_legs, max_costs,
+                             simplify_net_method, simplify_net_place,
+                             excl_edges_od_perc):
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
@@ -97,6 +99,15 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
 
     # keep only the nhb trips
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home, keep_connectors=True)
+
+    if (simplify_net_place == 'iterative') and (excl_edges_od_perc > 0):
+        simplify_net_weight = 'Dailytrips'
+        cm = calculate_centralities(g_nhb, simplify_net_method, simplify_net_weight)
+        nx.set_node_attributes(g_nhb, cm, 'Centrality')
+        keep_nodes = srcs
+        g_nhb = filters.simplify_net(g_nhb, keep_nodes=keep_nodes, weight=simplify_net_weight,
+                                     excl_weight_perc=excl_edges_od_perc)
+
     # TODO removing isolates from g_nhb fails the tests
     # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
 

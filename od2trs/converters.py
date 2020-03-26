@@ -248,10 +248,14 @@ def results_to_od(info, od_obs, idx_cols):
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       max_legs, max_costs, cost_bins,
                       tgt_distr, distr_dims,
-                      purp_to_acts):
+                      purp_to_acts,
+                      simplify_net_method, simplify_net_place,
+                      excl_edges_od_perc):
 
     zones_seqs = nettools.identify_zones_sequences(G, src_zone, direction_names, ordered_tps,
-                                                   max_legs, max_costs)
+                                                   max_legs, max_costs,
+                                                   simplify_net_method, simplify_net_place,
+                                                   excl_edges_od_perc)
 
     if not zones_seqs:
         return None
@@ -286,7 +290,9 @@ def init_multiproc_wrapper(_G):
 def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
            tgt_distr=None, distr_dims=None, cost_bins=None,
            costs=None, max_costs=None, purp_to_acts=None,
-           excl_edges_od_perc=0, simplify_net_method='pagerank', zones_info=None,
+           excl_edges_od_perc=0,
+           simplify_net_method='pagerank', simplify_net_place='begin',
+           zones_info=None,
            ncores=None, low_memory=False):
 
     if costs is not None:
@@ -299,11 +305,11 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
-    if excl_edges_od_perc > 0:
+    if (simplify_net_place == 'begin') and (excl_edges_od_perc > 0):
         simplify_net_weight = 'Dailytrips'
         cm = nettools.calculate_centralities(G, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(G, cm, 'Centrality')
-        G = filters.simplify_net(G, weight='Dailytrips', excl_weight_perc=excl_edges_od_perc)
+        G = filters.simplify_net(G, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc)
 
     # Export the filtered graph
     nx.write_gpickle(G, filepaths['out']['graph'])
@@ -346,7 +352,10 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                                 cost_bins=cost_bins,
                                 tgt_distr=tgt_distr,
                                 distr_dims=distr_dims,
-                                purp_to_acts=purp_to_acts), zones), total=len(zones)):
+                                purp_to_acts=purp_to_acts,
+                                simplify_net_method=simplify_net_method,
+                                simplify_net_place=simplify_net_place,
+                                excl_edges_od_perc=excl_edges_od_perc), zones), total=len(zones)):
 
             if trs:
                 for tr in trs:
