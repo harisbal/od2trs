@@ -149,9 +149,7 @@ def combine_interm_results(filepaths, processfolder, purge=True):
         os.rmdir(processfolder)
 
     info = pd.concat(infos)
-
-    # Export them to inputs folder so they can be used for the next step
-    info.to_pickle(os.path.join(filepaths['in']['trs_mdl_info']))
+    return info
 
 
 def import_trs(filepaths):
