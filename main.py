@@ -9,6 +9,7 @@ def main(traj):
 
     filepaths = traj.conf.filepaths
     ncores = traj.conf.ncores
+    export_flat = traj.conf.export_flat
     low_memory = traj.conf.low_memory
 
     run_trs_identification = traj.par.trs.run_trs_identification
@@ -107,7 +108,7 @@ def main(traj):
                                         ncores=ncores, low_memory=low_memory)
 
         # Export the identified tours
-        if trs_info is not None:
+        if (trs_info is not None) and export_flat:
             myio.export_trs(trs_info, filepaths)
     else:
         trs_info = myio.import_trs(filepaths)

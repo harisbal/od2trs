@@ -77,6 +77,7 @@ def prepare_traj_params(traj, cfg):
 
     filepaths = utils.prepare_filepaths_from_config(cfg)
     low_memory = json.loads(cfg['DEFAULT']['low_memory'])
+    export_flat = json.loads(cfg.get('DEFAULT', 'export_flat'))
     ncores = json.loads(cfg['DEFAULT']['ncores'])
 
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
@@ -124,6 +125,7 @@ def prepare_traj_params(traj, cfg):
     traj.f_add_parameter_group('optim', 'Parameter groups for optimisation')
     traj.f_add_config('ncores', ncores, 'Number of cores')
     traj.f_add_config('low_memory', low_memory, 'Minimise memory use by exporting tours locally')
+    traj.f_add_config('export_flat', export_flat, 'Export flat as pkl or csv')
     traj.conf.filepaths = PickleParameter('filepaths', filepaths, comment='Filepaths')
 
     traj.par.trs.run_trs_identification = Parameter('run_trs_identification', run_trs_identification,
@@ -214,7 +216,6 @@ def main(configpath=r'config.ini'):
     configpath = os.path.join(os.getcwd(), configpath)
     cfg.read(configpath)
 
-    # do not explore solutions
     export_flat = json.loads(cfg.get('DEFAULT', 'export_flat'))
 
     # Now let's make use of logging
