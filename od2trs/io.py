@@ -132,7 +132,7 @@ def export_low_memory(info, outfolder):
     info.to_pickle(fname)
 
 
-def combine_interm_results(filepaths, processfolder, purge=True):
+def combine_interm_results(processfolder, purge=True):
     files = [f for f in os.listdir(processfolder) if os.path.isfile(os.path.join(processfolder, f))]
     infos = []
     for f in files:
