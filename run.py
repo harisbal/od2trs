@@ -151,7 +151,11 @@ def prepare_traj_params(traj, cfg):
     traj.par.trs.simplify_net_place = Parameter('simplify_net_place', simplify_net_place[0],
                                                 comment='Where the network simplification takes place')
 
-    traj.par.trs.max_costs = PickleParameter('max_costs', max_costs, comment='Maximum allowed distance for trs')
+    if max_costs is None:
+        traj.par.trs.max_costs = PickleParameter('max_costs', None, comment='Maximum allowed distance for trs')
+    else:
+        traj.par.trs.max_costs = PickleParameter('max_costs', max_costs[0], comment='Maximum allowed distance for trs')
+
     traj.par.trs.cost_bins = PickleParameter('cost_bins', cost_bins, comment='Cost bins')
 
     traj.par.trs.d_grp_purposes = PickleParameter('d_grp_purposes', d_grp_purposes,
@@ -196,7 +200,7 @@ def prepare_traj_params(traj, cfg):
     traj.par.optim.mip_strategy_file = Parameter('mip_strategy_file', mip_strategy_file, comment='MIP strategy probe')
 
     if explore:
-        d_explore = {'max_legs': max_legs, 'trips_thresh': trips_thresh,
+        d_explore = {'max_legs': max_legs, 'max_costs': max_costs, 'trips_thresh': trips_thresh,
                      'distr_constr_enabled': distr_constr_enabled, 'excl_obs_trs_od_perc': excl_obs_trs_od_perc,
                      'simplify_net_method': simplify_net_method, 'simplify_net_place': simplify_net_place,
                      'distr_perc_tolerance': distr_perc_tolerance,

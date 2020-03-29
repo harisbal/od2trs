@@ -198,7 +198,8 @@ def filter_connectors(g, keep=False):
 
 
 def simplify_net(g, keep_nodes=None,
-                 weight=None, excl_weight_perc=0.01):
+                 weight=None, excl_weight_perc=0.01,
+                 verbose=True):
 
     def _drop_by_excl_weight_perc(_g, centralities, attr, p):
         _to_rmv = []
@@ -220,8 +221,9 @@ def simplify_net(g, keep_nodes=None,
     if excl_weight_perc == 0:
         return g
 
-    print('nodes before simplification', g.number_of_nodes())
-    print('dailytrips before simplification', sum(nx.get_edge_attributes(g, weight).values()))
+    if verbose:
+        print('nodes before simplification', g.number_of_nodes())
+        print('dailytrips before simplification', sum(nx.get_edge_attributes(g, weight).values()))
 
     if 0 < excl_weight_perc <= 1:
         centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
@@ -234,9 +236,10 @@ def simplify_net(g, keep_nodes=None,
     # Remove the isolates
     g.remove_nodes_from(list(nx.isolates(g)))
 
-    print('nodes after simplification', g.number_of_nodes())
-    print('Updated Network density: {:.2%}'.format(nx.density(g)))
-    print('{} after simplification'.format(weight), sum(nx.get_edge_attributes(g, weight).values()))
+    if verbose:
+        print('nodes after simplification', g.number_of_nodes())
+        print('Updated Network density: {:.2%}'.format(nx.density(g)))
+        print('{} after simplification'.format(weight), sum(nx.get_edge_attributes(g, weight).values()))
 
     return g
 

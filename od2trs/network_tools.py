@@ -106,7 +106,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
         nx.set_node_attributes(g_nhb, cm, 'Centrality')
         keep_nodes = srcs
         g_nhb = filters.simplify_net(g_nhb, keep_nodes=keep_nodes, weight=simplify_net_weight,
-                                     excl_weight_perc=excl_edges_od_perc)
+                                     excl_weight_perc=excl_edges_od_perc, verbose=False)
 
     # TODO removing isolates from g_nhb fails the tests
     # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
@@ -172,7 +172,10 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
 
             # Convert to dict
             cutoffs = dict(zip(weights, cutoffs))
-            zss = list(nx.all_simple_paths(gf, succ, predecessors, cutoff=cutoffs))
+            if succ in gf:
+                zss = list(nx.all_simple_paths(gf, succ, predecessors, cutoff=cutoffs))
+            else:
+                zss = []
 
             if zss:
                 # remove the src suffix
