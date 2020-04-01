@@ -201,19 +201,26 @@ def simplify_net(g, keep_nodes=None,
                  weight=None, excl_weight_perc=0.01,
                  verbose=True):
 
-    def _drop_by_excl_weight_perc(_g, centralities, attr, p):
-        _to_rmv = []
+    def _remove_edges_by_excl_weight_perc(_g, centralities, attr, p):
+        _edges_to_rmv = []
         centralities = centralities.sort_values()
         s_init = sum(nx.get_edge_attributes(_g, attr).values())
 
         gc = _g.copy()
-        for k, v in centralities.iteritems():
-            gc.remove_node(k)
-            _to_rmv.append(k)
+        for k, _ in centralities.iteritems():
+            rmvs = []
+            outs = g.out_edges(k, data='Connector')
+            # Ensure that connectors will not be removed
+            for u, v, connector in outs:
+                if not connector:
+                    rmvs.append((u, v))
+
+            gc.remove_edges_from(rmvs)
+            _edges_to_rmv.extend(rmvs)
             s = sum(nx.get_edge_attributes(gc, attr).values())
             ip = s / s_init
             if ip <= 1 - p:
-                return _to_rmv
+                return _edges_to_rmv
 
     if keep_nodes is None:
         keep_nodes = []
@@ -228,8 +235,8 @@ def simplify_net(g, keep_nodes=None,
     if 0 < excl_weight_perc <= 1:
         centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
                           .drop(set(keep_nodes), errors='ignore'))
-        to_rmv = _drop_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
-        g.remove_nodes_from(to_rmv)
+        edges_to_rmv = _remove_edges_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
+        g.remove_edges_from(edges_to_rmv)
     else:
         raise ValueError('excl_perc should be between 0 and 1')
 
