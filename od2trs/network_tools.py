@@ -69,9 +69,10 @@ def simplify_net(g, keep_nodes=None,
         gc = _g.copy()
         for k, _ in centralities.iteritems():
             rmvs = []
-            outs = g.edges(k, data='Connector')
+            outs = set(g.out_edges(k, data='Connector'))
             # Ensure that connectors will not be removed
-            for u, v, connector in outs:
+            ins = set(g.in_edges(k, data='Connector'))
+            for u, v, connector in (ins | outs):
                 if not connector:
                     rmvs.append((u, v))
 
