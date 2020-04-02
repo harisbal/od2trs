@@ -57,28 +57,6 @@ def calculate_centralities(g, method, weight='Dailytrips', aggr_func=sum):
     return cm
 
 
-def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
-    to_rmv = []
-    centralities = centralities.sort_values()
-    s_init = sum(nx.get_edge_attributes(_g, attr).values())
-
-    if copy:
-        gf = _g.copy()
-    else:
-        gf = _g
-
-    for k, v in centralities.iteritems():
-        gf.remove_node(k)
-        to_rmv.append(k)
-        s = sum(nx.get_edge_attributes(gf, attr).values())
-        s_perc = s / s_init
-        if s_perc <= 1 - excl_perc:
-            gf.remove_nodes_from(to_rmv)
-            break
-
-    return gf
-
-
 def simplify_net(g, keep_nodes=None,
                  weight=None, excl_weight_perc=0.01,
                  verbose=True):
