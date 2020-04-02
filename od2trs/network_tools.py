@@ -79,6 +79,61 @@ def drop_by_excl_weight_perc(_g, centralities, attr, excl_perc, copy=True):
     return gf
 
 
+def simplify_net(g, keep_nodes=None,
+                 weight=None, excl_weight_perc=0.01,
+                 verbose=True):
+
+    def _remove_edges_by_excl_weight_perc(_g, centralities, attr, p):
+        _edges_to_rmv = []
+        centralities = centralities.sort_values()
+        s_init = sum(nx.get_edge_attributes(_g, attr).values())
+
+        gc = _g.copy()
+        for k, _ in centralities.iteritems():
+            rmvs = []
+            outs = g.edges(k, data='Connector')
+            # Ensure that connectors will not be removed
+            for u, v, connector in outs:
+                if not connector:
+                    rmvs.append((u, v))
+
+            gc.remove_edges_from(rmvs)
+            s = sum(nx.get_edge_attributes(gc, attr).values())
+            ip = s / s_init
+            if ip <= 1 - p:
+                g.remove_edges_from(_edges_to_rmv)
+                return g
+            else:
+                _edges_to_rmv.extend(rmvs)
+
+    if keep_nodes is None:
+        keep_nodes = []
+
+    if excl_weight_perc == 0:
+        return g
+
+    if verbose:
+        print('nodes before simplification', g.number_of_nodes())
+        print('dailytrips before simplification', sum(nx.get_edge_attributes(g, weight).values()))
+
+    if 0 < excl_weight_perc <= 1:
+        centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
+                          .drop(set(keep_nodes), errors='ignore'))
+        g = _remove_edges_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
+    else:
+        raise ValueError('excl_perc should be between 0 and 1')
+
+    # Remove the isolates
+    g.remove_nodes_from(list(nx.isolates(g)))
+
+    if verbose:
+        print('nodes after simplification', g.number_of_nodes())
+        print('Updated Network density: {:.2%}'.format(nx.density(g)))
+        print('{} after simplification'.format(weight), sum(nx.get_edge_attributes(g, weight).values()))
+
+    return g
+
+
 def identify_zones_sequences(g, src, direction_names, ordered_tps,
                              max_legs, max_costs,
                              simplify_net_method, simplify_net_place,
@@ -105,8 +160,8 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
         cm = calculate_centralities(g_nhb, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(g_nhb, cm, 'Centrality')
         keep_nodes = srcs
-        g_nhb = filters.simplify_net(g_nhb, keep_nodes=keep_nodes, weight=simplify_net_weight,
-                                     excl_weight_perc=excl_edges_od_perc, verbose=False)
+        g_nhb = simplify_net(g_nhb, keep_nodes=keep_nodes, weight=simplify_net_weight,
+                                      excl_weight_perc=excl_edges_od_perc, verbose=False)
 
     # TODO removing isolates from g_nhb fails the tests
     # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
