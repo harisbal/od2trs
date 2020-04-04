@@ -50,10 +50,15 @@ def prepare_model(info, od, ntrs, tgt_distr,
             return m.init_sol.get(i, 0)
 
     def _find_ubnds(m):
-        od = m.od.set_index('Odpairid')
+        odvals = m.od.set_index('Odpairid')['Dailytrips'].values
+
         s = m.info['Odpairids']
-        ubnds = s.apply(lambda x: od.loc[list(x), 'Dailytrips'].min())
-        return ubnds.to_dict()
+        idxs = s.index.get_level_values(0).values
+        vals = s.values
+        mins = [odvals[list(sv)].min() for sv in vals]
+
+        ubnds = dict(zip(idxs, mins))
+        return ubnds
 
     def _get_bnds(m, i):
         return (0, m.tr_ubnds[i])
