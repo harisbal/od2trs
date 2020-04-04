@@ -77,7 +77,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
         model.tgt_distr = tgt_distr.round(prec)
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
-    model.tr_ids = Set(initialize=model.info.index.unique().values.tolist())
+    model.tr_ids = Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
 
     model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
     model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
@@ -109,8 +109,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
     def maximise_used_trips(m):
         odsum = m.od['Dailytrips'].sum()
         nlegs = m.info['Nolegs'].to_dict()
-        return quicksum(m.trs_util[tr_id] * nlegs[tr_id]
-                        for tr_id in m.tr_ids) - odsum
+        return quicksum(m.trs_util[tr_id] * nlegs[tr_id] for tr_id in m.tr_ids) - odsum
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)
 
     def trips_rule(m, odpair_id):
@@ -123,12 +122,8 @@ def prepare_model(info, od, ntrs, tgt_distr,
 
     def distr_rule(m, grp_id):
         if m.tr_by_distr_grps[grp_id]:
-            lower_lim = math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance)
-                                   * m.ntrs.value)
-
-            upper_lim = math.ceil(((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance)
-                                   * m.ntrs.value))
-
+            lower_lim = math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance) * m.ntrs.value)
+            upper_lim = math.ceil((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance) * m.ntrs.value)
             e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
             return (lower_lim, e, upper_lim)
         else:
