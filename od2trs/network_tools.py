@@ -1,4 +1,5 @@
 import networkx as nx
+import numpy as np
 import pandas as pd
 import od2trs.filters as filters
 
@@ -77,8 +78,9 @@ def simplify_net(g, keep_nodes=None,
                     rmvs.append((u, v))
 
             gc.remove_edges_from(rmvs)
-            s = sum(nx.get_edge_attributes(gc, attr).values())
-            ip = s / s_init
+            ws = list(nx.get_edge_attributes(gc, attr).values())
+            ws = np.array(ws).sum()
+            ip = ws / s_init
             if ip <= 1 - p:
                 g.remove_edges_from(_edges_to_rmv)
                 return g
