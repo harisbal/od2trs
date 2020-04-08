@@ -1,7 +1,6 @@
 import re
 import itertools
 import pandas as pd
-import networkx as nx
 
 
 def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
@@ -51,6 +50,24 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
 
     if filtered:
         return filtered
+
+
+def filter_trs_info_by_tgt_distr(info, distr):
+    df = info.copy()
+    keep_cols = info.columns
+    # The interval cols must be reproduced
+    for d in distr.index.names:
+        if '_grp' in d:
+            name = d.rsplit('_grp')[0]
+            df[d] = pd.cut(df[name], distr.reset_index()[d].cat.categories)
+
+    # Check the match
+    info_filt = pd.merge(df, distr, how='inner',
+                         left_on=distr.index.names,
+                         right_index=True,
+                         suffixes=('', '__'))[keep_cols]
+
+    return info_filt
 
 
 def filter_trs(trs, max_costs, purp_to_acts,

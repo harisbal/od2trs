@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+import od2trs.filters as filters
 import od2trs.utilities as utils
 
 
@@ -152,12 +153,14 @@ def combine_interm_results(processfolder, purge=True):
     return info
 
 
-def import_trs(filepaths):
+def import_trs(filepaths, tgt_distr):
     _, ext = os.path.splitext(filepaths['in']['trs_mdl_info'])
     if ext == '.pkl':
         info = pd.read_pickle(filepaths['in']['trs_mdl_info']).sort_index()
     else:
         raise TypeError('Tours can be only imported in pkl format')
+
+    info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
 
     print('Number of tours read:', info.shape[0])
     return info
