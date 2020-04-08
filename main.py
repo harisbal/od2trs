@@ -112,9 +112,6 @@ def main(traj):
             myio.export_trs(trs_info, filepaths)
     else:
         trs_info = myio.import_trs(filepaths, tgt_distr)
-        # In case pcl were used to create info and descrs filter them with the new target_distr
-        # can cause issues if parameters realted to tours_identification module are changed between runs
-        # trs_info, trs_descr = filters.filter_pcl_by_remaining_tgt_distr(trs_info, trs_descr, tgt_distr)
 
     od_mdl = None
     if run_optim:

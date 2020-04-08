@@ -153,16 +153,18 @@ def combine_interm_results(processfolder, purge=True):
     return info
 
 
-def import_trs(filepaths, tgt_distr):
+def import_trs(filepaths, tgt_distr=None):
     _, ext = os.path.splitext(filepaths['in']['trs_mdl_info'])
     if ext == '.pkl':
         info = pd.read_pickle(filepaths['in']['trs_mdl_info']).sort_index()
     else:
         raise TypeError('Tours can be only imported in pkl format')
 
-    info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
-
     print('Number of tours read:', info.shape[0])
+    if tgt_distr is not None:
+        info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
+        print('Number of tours after tgt_distr filtering:', info.shape[0])
+
     return info
 
 

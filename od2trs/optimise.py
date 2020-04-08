@@ -81,14 +81,12 @@ def prepare_model(info, od, ntrs, tgt_distr,
 
     model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
     model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
+    print('get ubns')
     model.tr_ubnds = _find_ubnds(model)
     model.ntrs = Param(default=ntrs, mutable=True)
 
     model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
                          initialize=_init_solution)
-
-    # May reduce memory requirements
-    # del model.descr
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
