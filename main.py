@@ -1,6 +1,7 @@
 import od2trs.io as myio
 import od2trs.utilities as utils
 import od2trs.distributions as distrs
+import od2trs.filters as filters
 import od2trs.converters as converters
 import od2trs.optimise as opt
 
@@ -78,29 +79,34 @@ def main(traj):
         interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
-            # TODO IMPROVE (not too generic)
-            tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+            distr_tgt = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
                                             interval_cols=interval_cols,
                                             seq_cols=seq_cols)
-
+            distr_tgt = filters.filter_lowpercent_distr_groups(distr_tgt, max_legs, max_costs, excl_edges_od_perc)
         except FileNotFoundError:
-            obs_info = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            tgt_distr = distrs.prepare_distr_from_obs(obs_info, max_legs,
-                                                      max_costs, distr_dims,
-                                                      cost_bins, excl_obs_trs_od_perc)
+            info_obs = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
+            distr_obs = distrs.prepare_distr_from_info_obs(info_obs, distr_dims, cost_bins)
 
-        myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
+            # Filter the low freq distr groups taking into account
+            # the percentage which has been already excluded
+            distr_tgt = filters.filter_lowpercent_distr_groups(distr_obs, max_legs, max_costs, excl_edges_od_perc)
+
+        # Recalculate the number of tours after the filtering
+        ntrs = distr_tgt['Size'].sum()
+        myio.export_tgt_distr(distr_obs, filepaths['out']['tgt_distr'])
     else:
-        tgt_distr = None
+        distr_obs = None
 
+    G = None
     if run_trs_identification:
         trs_info, G = converters.od2trs(od=od, filepaths=filepaths,
-                                        max_legs=max_legs, direction_names=direction_names,
+                                        max_legs=max_legs,
+                                        cost_bins=cost_bins, costs=costs, max_costs=max_costs,
+                                        direction_names=direction_names,
                                         ordered_tps=ordered_tps,
-                                        costs=costs, max_costs=max_costs,
-                                        cost_bins=cost_bins, distr_dims=distr_dims,
+                                        tgt_distr=distr_obs,
+                                        distr_dims=distr_dims,
                                         purp_to_acts=purp_to_acts,
-                                        tgt_distr=tgt_distr,
                                         excl_edges_od_perc=excl_edges_od_perc,
                                         simplify_net_method=simplify_net_method,
                                         simplify_net_place=simplify_net_place,
@@ -111,14 +117,14 @@ def main(traj):
         if (trs_info is not None) and export_flat:
             myio.export_trs(trs_info, filepaths)
     else:
-        trs_info = myio.import_trs(filepaths, tgt_distr)
+        trs_info = myio.import_trs(filepaths, distr_obs)
 
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,
                             ntrs=ntrs,
-                            tgt_distr=tgt_distr,
+                            tgt_distr=distr_obs,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
                             workmem=workmem,
@@ -131,7 +137,7 @@ def main(traj):
         idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
         od_mdl = converters.results_to_od(trs_info, od, idx_cols)
 
-    results = [od_mdl, trs_info, tgt_distr, G]
+    results = [od_mdl, trs_info, distr_obs, G]
 
     return results
 

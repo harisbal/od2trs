@@ -83,7 +83,6 @@ def prepare_traj_params(traj, cfg):
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
     explore = json.loads(cfg['TOURS']['explore'])
 
-    max_legs = json.loads(cfg['TOURS']['max_legs'])
     excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
@@ -95,6 +94,7 @@ def prepare_traj_params(traj, cfg):
     simplify_net_place = json.loads(cfg['TOURS']['simplify_net_place'])
     tps_durs = json.loads(cfg['TOURS']['timeperiod_durations'])
     max_costs = json.loads(cfg['TOURS']['max_costs'])
+    max_legs = json.loads(cfg['TOURS']['max_legs'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
     d_grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 

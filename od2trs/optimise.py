@@ -196,44 +196,25 @@ def main(info, od, ntrs, tgt_distr=None,
             _info.Timesused = _info['Timesused'].astype(int)
         return _info
 
-    # If solution is infeasible for the current number of estimated trs
-    # reduce them iteratively by this percentage
-    ntrs_step_reduction_perc = 0.01
-
     init_sol = None
     info['Timesused'] = 0
     # The target distr can be utilised to create initial solutions
     if tgt_distr is not None:
         init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
 
-    solution_feasible = False
-    i_feasible = 0
-    while not solution_feasible:
-        print('Preparing the optimisation model')
-        mymodel = prepare_model(info, od, ntrs, tgt_distr,
-                                distr_constr_enabled, distr_perc_tolerance,
-                                mip_tolerances_lowercutoff,
-                                init_sol=init_sol)
-
-        results = run_model(mymodel, submit_to_neos,
-                            workmem, mip_strategy_file, mip_strategy_probe,
+    print('Preparing the optimisation model')
+    mymodel = prepare_model(info, od, ntrs, tgt_distr,
+                            distr_constr_enabled, distr_perc_tolerance,
                             mip_tolerances_lowercutoff,
-                            timelimit=timelimit, solver_factory='cplex')
+                            init_sol=init_sol)
 
-        # TODO not so sure about this approach (set always feasible)
-        solution_feasible = True
-        if results.solver.termination_condition != TerminationCondition.infeasible:
-            solution_feasible = True
-        else:
-            i_feasible += 1
-            # reduce the expected number of trs and re-solve
-            mymodel.ntrs = int(ntrs*(1-i_feasible*ntrs_step_reduction_perc))
-            if distr_constr_enabled:
-                mymodel.distr_rule.reconstruct()
-            print(i_feasible, mymodel.ntrs.value)
-            if mymodel.ntrs.value <= 0:
-                break
+    results = run_model(mymodel, submit_to_neos,
+                        workmem, mip_strategy_file, mip_strategy_probe,
+                        mip_tolerances_lowercutoff,
+                        timelimit=timelimit, solver_factory='cplex')
 
-    info = _update_timesused(info, results)
+    #    mymodel.distr_rule.reconstruct()
+    if results.solver.termination_condition != TerminationCondition.infeasible:
+        info = _update_timesused(info, results)
 
     return info

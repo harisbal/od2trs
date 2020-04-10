@@ -31,7 +31,7 @@ def bins_to_interval(d_bins, max_costs=None):
             cost_bins[cost_type].append(float('inf'))
 
         # Convert to pd.Interval
-        cost_bins[cost_type] = utils.list_to_interval(cost_bins[cost_type])
+        cost_bins[cost_type] = pd.IntervalIndex.from_breaks(cost_bins[cost_type])
 
     return cost_bins
 

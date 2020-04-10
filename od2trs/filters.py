@@ -3,22 +3,43 @@ import itertools
 import pandas as pd
 
 
-def filter_lowpercent_distr_groups(distr, thresh, percent_col='Percentage'):
+def filter_lowpercent_distr_groups(distr, max_legs, max_costs, thresh, percent_col='Percentage'):
+
+    df = distr.reset_index()
+    # Initial trips
+    trips0 = sum(df['Nolegs'] * df['Size'])
+
+    mask = df['Nolegs'] <= max_legs
+    for max_cost_type, max_cost_val in max_costs.items():
+        # Iteratively create a mask to identify excluded trs
+        max_cost_grp = max_cost_type+'_grp'
+        df.loc[:, 'Rbound'] = [interv.right for interv in df[max_cost_grp].array]
+        mask_upd = df['Rbound'] <= max_cost_val
+        mask = mask & mask_upd
+
+    # Apply filter
+    df = df.loc[mask]
+    trips = sum(df['Nolegs'] * df['Size'])
+
+    # This percentage has been already excluded due to max_costs
+    perc_excl = 1 - (trips / trips0)
 
     filter_col = 'Odpercentage'
     # Get the contribution of tours to the od (we know the number of legs thus the trips in od)
-    od_perc = distr.index.get_level_values('Nolegs') * distr['Percentage']
+    od_perc = df['Nolegs'] * df['Percentage']
     od_perc /= od_perc.sum()
-    distr[filter_col] = od_perc
-    distr = distr.sort_values(filter_col, ascending=False)
-    distr = distr[distr[filter_col].cumsum() <= thresh]
+    df[filter_col] = od_perc
+    df = df.sort_values(filter_col, ascending=False)
+    df = df[df[filter_col].cumsum() <= 1 - (thresh-perc_excl)]
     # Re-calculate the percentage
-    distr.loc(axis=1)[percent_col] /= distr[percent_col].sum()
+    df.loc(axis=1)[percent_col] /= df[percent_col].sum()
 
-    # Drop the filter column
-    distr = distr.drop(columns=filter_col)
+    # Ammend the index
+    idxs = list(distr.index.names)
+    cols = list(distr.columns)
+    distr_filt = df[idxs+cols].set_index(idxs)
 
-    return distr
+    return distr_filt
 
 
 def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
