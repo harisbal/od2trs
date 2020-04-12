@@ -68,6 +68,8 @@ def simplify_net(g, keep_nodes=None,
         s_init = sum(nx.get_edge_attributes(_g, attr).values())
 
         gc = _g.copy()
+
+        nx.set_node_attributes(g, False, name='Simplified')
         for k, _ in centralities.iteritems():
             rmvs = []
             outs = set(g.out_edges(k, data='Connector'))
@@ -76,6 +78,8 @@ def simplify_net(g, keep_nodes=None,
             for u, v, connector in (ins | outs):
                 if not connector:
                     rmvs.append((u, v))
+                    g[u]['Simplified'] = True
+                    g[v]['Simplified'] = True
 
             gc.remove_edges_from(rmvs)
             ws = list(nx.get_edge_attributes(gc, attr).values())
