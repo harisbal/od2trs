@@ -60,36 +60,57 @@ def calculate_centralities(g, method, weight='Dailytrips', aggr_func=sum):
 
 def simplify_net(g, keep_nodes=None,
                  weight=None, excl_weight_perc=0.01,
+                 direction_names=None,
                  verbose=True):
 
-    def _remove_edges_by_excl_weight_perc(_g, centralities, attr, p):
-        _edges_to_rmv = []
+    def _remove_edges_by_excl_weight_perc(_g, centralities, attr, perc):
+        edges_to_rmv = []
         centralities = centralities.sort_values()
         s_init = sum(nx.get_edge_attributes(_g, attr).values())
 
         gc = _g.copy()
 
         nx.set_node_attributes(g, False, name='Simplified')
+        nx.set_edge_attributes(g, False, name='Simplified')
         for k, _ in centralities.iteritems():
             rmvs = []
-            outs = set(g.out_edges(k, data='Connector'))
+            outs = set(gc.out_edges(k, data='Connector'))
             # Ensure that connectors will not be removed
-            ins = set(g.in_edges(k, data='Connector'))
+            ins = set(gc.in_edges(k, data='Connector'))
             for u, v, connector in (ins | outs):
                 if not connector:
-                    rmvs.append((u, v))
-                    g[u]['Simplified'] = True
-                    g[v]['Simplified'] = True
+                    if direction_names is not None:
+                        if gc.is_multigraph():
+                            for key in gc[u][v]:
+                                if gc[u][v][key]['Direction'] == direction_names.non_home:
+                                    rmvs.append((u, v, key))
+                        else:
+                            rmvs.append((u, v))
+                    else:
+                        rmvs.append((u, v))
 
             gc.remove_edges_from(rmvs)
             ws = list(nx.get_edge_attributes(gc, attr).values())
             ws = np.array(ws).sum()
             ip = ws / s_init
-            if ip <= 1 - p:
-                g.remove_edges_from(_edges_to_rmv)
-                return g
+            if ip <= 1 - perc:
+                _g.remove_edges_from(edges_to_rmv)
+                return _g
             else:
-                _edges_to_rmv.extend(rmvs)
+                edges_to_rmv.extend(rmvs)
+
+                if _g.is_multigraph():
+                    for u, v, key in rmvs:
+                        nx.set_node_attributes(_g, {u: {'Simplified': True},
+                                                    v: {'Simplified': True}})
+                        _g[u][v][key]['Simplified'] = True
+                else:
+                    for u, v in rmvs:
+                        nx.set_node_attributes(_g, {u: {'Simplified': True},
+                                                    v: {'Simplified': True}})
+                        _g[u][v]['Simplified'] = True
+
+        return _g
 
     if keep_nodes is None:
         keep_nodes = []

@@ -309,7 +309,8 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         simplify_net_weight = 'Dailytrips'
         cm = nettools.calculate_centralities(G, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(G, cm, 'Centrality')
-        G = nettools.simplify_net(G, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc)
+        G = nettools.simplify_net(G, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,
+                                  direction_names=direction_names)
 
     # Export the filtered graph
     nx.write_gpickle(G, filepaths['out']['graph'])
