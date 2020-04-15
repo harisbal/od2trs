@@ -80,8 +80,9 @@ def prepare_model(info, od, ntrs, tgt_distr,
     model.tr_ids = Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
 
     model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
-    model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None)
-    print('get ubns')
+    model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None,
+                                  within=AnyWithNone)
+
     model.tr_ubnds = _find_ubnds(model)
     model.ntrs = Param(default=ntrs, mutable=True)
 
