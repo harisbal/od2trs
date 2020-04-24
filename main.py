@@ -93,7 +93,7 @@ def main(traj):
 
         # Recalculate the number of tours after the filtering
         ntrs = distr_tgt['Size'].sum()
-        myio.export_tgt_distr(distr_obs, filepaths['out']['tgt_distr'])
+        myio.export_tgt_distr(distr_tgt, filepaths['out']['tgt_distr'])
     else:
         distr_obs = None
 
