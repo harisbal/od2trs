@@ -95,7 +95,7 @@ def main(traj):
         ntrs = tgt_distr['Size'].sum()
         myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
-        distr_obs = None
+        tgt_distr = None
 
     G = None
     if run_trs_identification:
@@ -117,14 +117,14 @@ def main(traj):
         if (trs_info is not None) and export_flat:
             myio.export_trs(trs_info, filepaths)
     else:
-        trs_info = myio.import_trs(filepaths, distr_obs)
+        trs_info = myio.import_trs(filepaths, tgt_distr)
 
     od_mdl = None
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,
                             ntrs=ntrs,
-                            tgt_distr=distr_obs,
+                            tgt_distr=tgt_distr,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
                             workmem=workmem,
@@ -137,7 +137,7 @@ def main(traj):
         idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
         od_mdl = converters.results_to_od(trs_info, od, idx_cols)
 
-    results = [od_mdl, trs_info, distr_obs, G]
+    results = [od_mdl, trs_info, tgt_distr, G]
 
     return results
 
