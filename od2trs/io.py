@@ -75,7 +75,7 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     od = od[mask]
     sum_aft = od['Dailytrips'].sum()
     print('after trips thresh filtering: {}'.format(sum_aft))
-    print(sum_aft/sum_bef)
+    print('ratio:', sum_aft/sum_bef)
     od.dropna(inplace=True)
 
     # Round
