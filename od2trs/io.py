@@ -70,7 +70,8 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     print('before trips thresh filtering: {}'.format(sum_bef))
     od = od[od.Dailytrips >= trips_thresh]
     # Remove intrazonals
-    mask = od.index.get_level_values('Source') != od.index.get_level_values('Target')
+    mask = (od.index.get_level_values('Source').astype(str) !=
+            od.index.get_level_values('Target').astype(str))
     od = od[mask]
     sum_aft = od['Dailytrips'].sum()
     print('after trips thresh filtering: {}'.format(sum_aft))
