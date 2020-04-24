@@ -79,21 +79,21 @@ def main(traj):
         interval_cols = [k + '_grp' for k in cost_bins]
         seq_cols = ['Timeperiods']
         try:
-            distr_tgt = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+            tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
                                             interval_cols=interval_cols,
                                             seq_cols=seq_cols)
-            distr_tgt = filters.filter_lowpercent_distr_groups(distr_tgt, max_legs, max_costs, excl_edges_od_perc)
+            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
         except FileNotFoundError:
             info_obs = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            distr_obs = distrs.prepare_distr_from_info_obs(info_obs, distr_dims, cost_bins)
+            tgt_distr = distrs.prepare_distr_from_info_obs(info_obs, distr_dims, cost_bins)
 
             # Filter the low freq distr groups taking into account
             # the percentage which has been already excluded
-            distr_tgt = filters.filter_lowpercent_distr_groups(distr_obs, max_legs, max_costs, excl_edges_od_perc)
+            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
 
         # Recalculate the number of tours after the filtering
-        ntrs = distr_tgt['Size'].sum()
-        myio.export_tgt_distr(distr_tgt, filepaths['out']['tgt_distr'])
+        ntrs = tgt_distr['Size'].sum()
+        myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
         distr_obs = None
 
@@ -104,7 +104,7 @@ def main(traj):
                                         cost_bins=cost_bins, costs=costs, max_costs=max_costs,
                                         direction_names=direction_names,
                                         ordered_tps=ordered_tps,
-                                        tgt_distr=distr_obs,
+                                        tgt_distr=tgt_distr,
                                         distr_dims=distr_dims,
                                         purp_to_acts=purp_to_acts,
                                         excl_edges_od_perc=excl_edges_od_perc,
