@@ -62,6 +62,7 @@ def simplify_net(g, keep_nodes=None,
                  weight=None, excl_weight_perc=0.01,
                  direction_names=None,
                  verbose=True):
+
     def _remove_edges_by_excl_weight_perc(_g, centralities, weight, perc):
         edges_to_rmv = []
         centralities = centralities.sort_values()
@@ -69,7 +70,7 @@ def simplify_net(g, keep_nodes=None,
 
         gc = _g.copy()
 
-        nx.set_node_attributes(g, False, name='Simplified')
+        # nx.set_node_attributes(g, False, name='Simplified')
         nx.set_edge_attributes(g, False, name='Simplified')
 
         excl_weight = 0
@@ -93,22 +94,22 @@ def simplify_net(g, keep_nodes=None,
                         excl_weight += gc[u][v][weight]
                         rmvs.append((u, v))
 
-            if (excl_weight / weight_init) <= 1 - perc:
-                _g.remove_edges_from(edges_to_rmv)
-                return _g
-            else:
-                edges_to_rmv.extend(rmvs)
-
+            if (excl_weight / weight_init) > perc:
                 if _g.is_multigraph():
-                    for u, v, key in rmvs:
+                    for u, v, key in edges_to_rmv:
                         nx.set_node_attributes(_g, {u: {'Simplified': True},
                                                     v: {'Simplified': True}})
                         _g[u][v][key]['Simplified'] = True
                 else:
-                    for u, v in rmvs:
+                    for u, v in edges_to_rmv:
                         nx.set_node_attributes(_g, {u: {'Simplified': True},
                                                     v: {'Simplified': True}})
                         _g[u][v]['Simplified'] = True
+
+                _g.remove_edges_from(edges_to_rmv)
+                return _g
+            else:
+                edges_to_rmv.extend(rmvs)
 
         return _g
 
