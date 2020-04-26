@@ -17,7 +17,7 @@ def create_folders(folder_list, overwrite=False):
             pass
 
 
-def read_tgt_distr(infilepath, distr_cols, ntrs,
+def read_tgt_distr(infilepath, distr_dims, ntrs,
                    interval_cols=None, seq_cols=None,
                    percent_col='Percentage'):
 
@@ -34,8 +34,7 @@ def read_tgt_distr(infilepath, distr_cols, ntrs,
             tgt_distr[c] = utils.to_sequence(tgt_distr[c])
 
     # The distrgroupid column must exist in the input
-    distr_cols += ['Distrgroupid']
-    tgt_distr = tgt_distr.groupby(distr_cols)[percent_col].sum().to_frame()
+    tgt_distr = tgt_distr.groupby(distr_dims+['Distrgroupid'])[percent_col].sum().to_frame()
     tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
