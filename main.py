@@ -118,6 +118,7 @@ def main(traj):
             myio.export_trs(trs_info, filepaths)
     else:
         trs_info = myio.import_trs(filepaths, tgt_distr)
+        myio.export_trs(trs_info, filepaths)
 
     od_mdl = None
     if run_optim:
