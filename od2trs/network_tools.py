@@ -63,15 +63,17 @@ def simplify_net(g, keep_nodes=None,
                  direction_names=None,
                  verbose=True):
 
-    def _remove_edges_by_excl_weight_perc(_g, centralities, attr, perc):
+    def _remove_edges_by_excl_weight_perc(_g, centralities, weight, perc):
         edges_to_rmv = []
         centralities = centralities.sort_values()
-        s_init = sum(nx.get_edge_attributes(_g, attr).values())
+        weight_init = sum(nx.get_edge_attributes(_g, weight).values())
 
         gc = _g.copy()
 
-        nx.set_node_attributes(g, False, name='Simplified')
+        # nx.set_node_attributes(g, False, name='Simplified')
         nx.set_edge_attributes(g, False, name='Simplified')
+
+        excl_weight = 0
         for k, _ in centralities.iteritems():
             rmvs = []
             outs = set(gc.out_edges(k, data='Connector'))
@@ -83,32 +85,31 @@ def simplify_net(g, keep_nodes=None,
                         if gc.is_multigraph():
                             for key in gc[u][v]:
                                 if gc[u][v][key]['Direction'] == direction_names.non_home:
+                                    excl_weight += gc[u][v][key][weight]
                                     rmvs.append((u, v, key))
                         else:
+                            excl_weight += gc[u][v][weight]
                             rmvs.append((u, v))
                     else:
+                        excl_weight += gc[u][v][weight]
                         rmvs.append((u, v))
 
-            gc.remove_edges_from(rmvs)
-            ws = list(nx.get_edge_attributes(gc, attr).values())
-            ws = np.array(ws).sum()
-            ip = ws / s_init
-            if ip <= 1 - perc:
-                _g.remove_edges_from(edges_to_rmv)
-                return _g
-            else:
-                edges_to_rmv.extend(rmvs)
-
+            if (excl_weight / weight_init) > perc:
                 if _g.is_multigraph():
-                    for u, v, key in rmvs:
+                    for u, v, key in edges_to_rmv:
                         nx.set_node_attributes(_g, {u: {'Simplified': True},
                                                     v: {'Simplified': True}})
                         _g[u][v][key]['Simplified'] = True
                 else:
-                    for u, v in rmvs:
+                    for u, v in edges_to_rmv:
                         nx.set_node_attributes(_g, {u: {'Simplified': True},
                                                     v: {'Simplified': True}})
                         _g[u][v]['Simplified'] = True
+
+                _g.remove_edges_from(edges_to_rmv)
+                return _g
+            else:
+                edges_to_rmv.extend(rmvs)
 
         return _g
 
@@ -124,7 +125,7 @@ def simplify_net(g, keep_nodes=None,
 
     if 0 < excl_weight_perc <= 1:
         centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
-                          .drop(set(keep_nodes), errors='ignore'))
+                        .drop(set(keep_nodes), errors='ignore'))
         g = _remove_edges_by_excl_weight_perc(g, centralities, weight, excl_weight_perc)
     else:
         raise ValueError('excl_perc should be between 0 and 1')
@@ -144,7 +145,6 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                              max_legs, max_costs,
                              simplify_net_method, simplify_net_place,
                              excl_edges_od_perc):
-
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
     tgts = srcs.copy()
@@ -167,7 +167,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
         nx.set_node_attributes(g_nhb, cm, 'Centrality')
         keep_nodes = srcs
         g_nhb = simplify_net(g_nhb, keep_nodes=keep_nodes, weight=simplify_net_weight,
-                                      excl_weight_perc=excl_edges_od_perc, verbose=False)
+                             excl_weight_perc=excl_edges_od_perc, verbose=False)
 
     # TODO removing isolates from g_nhb fails the tests
     # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
@@ -209,7 +209,7 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
                     for tgt in tgts:
                         for pred in gb.predecessors(tgt):
                             cost_pred_to_tgt = gb[pred][tgt][w]
-                            if cost_src_to_succ+cost_pred_to_tgt > mc:
+                            if cost_src_to_succ + cost_pred_to_tgt > mc:
                                 # no need to search for this predecessor
                                 predecessors.discard(pred)
                             else:
@@ -257,5 +257,5 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
 
         tgts.remove(src)
 
-    #print('len zones_seqs', len(zones_seqs))
+    # print('len zones_seqs', len(zones_seqs))
     return zones_seqs
