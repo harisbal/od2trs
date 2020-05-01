@@ -123,7 +123,10 @@ def tuples_to_strings(df, sep=';', cols=None):
 
     for c in cols:
         if all(isinstance(v, tuple) for v in df[c].values):
-            df_out[c] = df_out[c].astype(str).apply(sep.join)
+            if df_out.dtypes[c] == object:
+                df_out[c] = df_out[c].apply(sep.join)
+            else:
+                df_out[c] = df_out[c].astype(str).apply(sep.join)
 
     return df_out
 
