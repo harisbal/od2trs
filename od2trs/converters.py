@@ -371,7 +371,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     infos.append(info_df)
 
     if low_memory:
-        info_df = myio.combine_interm_results(filepaths['processfolder'], purge=True)
+        info_df = myio.combine_interm_results(filepaths['processfolder'], purge=False)
     else:
         if infos:
             info_df = pd.concat(infos)

@@ -177,11 +177,15 @@ def export_tgt_distr(distr, filepath):
 
 def export_trs(info, filepaths):
     ext = filepaths['out']['trs_mdl_info'].split('.')[-1]
+    fp = filepaths['out']['trs_mdl_info']
     if ext == 'csv':
         info_out = utils.tuples_to_strings(info)
-        info_out.to_csv(filepaths['out']['trs_mdl_info'], index=True)
+        info_out.to_csv(fp, index=True)
     elif ext == 'pkl':
-        info.to_pickle(filepaths['out']['trs_mdl_info'])
+        try:
+            info.to_pickle(fp)
+        except MemoryError:
+            info.to_hdf(fp, 'trs_mdl_info', mode='w')
     else:
         raise TypeError('Unknown export format')
 

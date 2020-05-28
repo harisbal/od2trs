@@ -81,7 +81,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
 
     model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
     model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None,
-                                  within=AnyWithNone)
+                                  within=Any)
 
     model.tr_ubnds = _find_ubnds(model)
     model.ntrs = Param(default=ntrs, mutable=True)
