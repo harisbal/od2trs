@@ -89,7 +89,7 @@ def main(traj):
 
             # Filter the low freq distr groups taking into account
             # the percentage which has been already excluded
-            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
+            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_obs_trs_od_perc)
 
         # Recalculate the number of tours after the filtering
         ntrs = tgt_distr['Size'].sum()
