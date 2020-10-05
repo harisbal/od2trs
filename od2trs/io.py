@@ -17,9 +17,9 @@ def create_folders(folder_list, overwrite=False):
             pass
 
 
-def read_tgt_distr(infilepath, distr_dims, ntrs,
-                   interval_cols=None, seq_cols=None,
-                   percent_col='Percentage'):
+def import_tgt_distr(infilepath, distr_dims, ntrs,
+                     interval_cols=None, seq_cols=None,
+                     percent_col='Percentage'):
 
     tgt_distr = pd.read_csv(infilepath)
 
@@ -33,36 +33,41 @@ def read_tgt_distr(infilepath, distr_dims, ntrs,
         for c in seq_cols:
             tgt_distr[c] = utils.to_sequence(tgt_distr[c])
 
-    # The distrgroupid column must exist in the input
-    tgt_distr = tgt_distr.groupby(distr_dims+['Distrgroupid'])[percent_col].sum().to_frame()
+    if 'Nolegs' not in tgt_distr.columns:
+        tgt_distr['Nolegs'] = tgt_distr[seq_cols[0]].apply(len)
+
+    if 'Distrgroupid' not in tgt_distr.columns:
+        tgt_distr.index.name = 'Distrgroupid'
+
+    tgt_distr = tgt_distr.groupby(distr_dims+['Nolegs', 'Distrgroupid'])[percent_col].sum().to_frame()
     tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
+    tgt_distr = tgt_distr.sort_index()
 
     return tgt_distr
 
 
-def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=None):
-    idx_cols = [str.capitalize(v) for v in idx_cols]
-    cat_cols = [str.capitalize(v) for v in cat_cols]
+def import_od(infilepath, trips_thresh, grps):
 
     od = pd.read_csv(infilepath).rename(columns=str.capitalize)
 
-    for c in cat_cols:
+    idx_cols = od.columns.tolist()[0:-1]  # all but the last which should be the number of trips
+    for c in od.columns[0:-1]:
         c = c.capitalize()
         od[c] = od[c].astype('category')
 
     od = od.set_index(idx_cols).squeeze()
+    od.index.names = [str.capitalize(v) for v in idx_cols]
 
-    # TODO this must become more generic
-    grp_keys = [None, None, grp_purposes, None, None, None]
+    grp_keys = [grps.get(name, None) for name in od.index.names]
     od = od.groupby(grp_keys, level=od.index.names, observed=True).sum()
 
     od = od.reset_index()
     od.index.name = 'Odpairid'
-    # Create a column called Odpairid / will be used to identify the OdPairs
-    od = od.reset_index()
-    od.set_index(idx_cols, inplace=True)
+
+    # Create a column called Odpairid
+    od = od.reset_index().set_index(idx_cols)
 
     # Reduce
     sum_bef = od['Trips'].sum()
@@ -84,14 +89,7 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     # Make sure Odpairid is int
     od['Odpairid'] = od['Odpairid'].astype(int)
 
-    # Odpairid as column
-    # od.set_index('Odpairid', append=True, inplace=True)
-
-    # test to exclude all nhb >1
-    #ask = (od.index.get_level_values('Purpose') == 'NHB') & (od != 1)
-    #od.loc[mask] = None
-    #od.dropna(inplace=True)
-
+    od = od.sort_index()
     return od
 
 
@@ -113,6 +111,8 @@ def import_costs(infilepath, col_name='Distance'):
         costs = pd.read_pickle(infilepath).to_frame()[col_name]
     else:
         raise ValueError('unrecognised data format for costs file')
+
+    costs = costs.sort_index().to_frame()
 
     return costs
 
@@ -200,7 +200,8 @@ def export_od(od, filepaths):
     if od is not None:
         od = od.reset_index()
         od.to_csv(filepaths, index=False, header=True)
-    #nx.write_gml(trs_descr_comp, os.path.join(outfolder, filepaths['trs_descr_comp_gml']))
+    #nx.write_gml(trs_descr_comp, os.path.join(outfolder,
+    #             filepaths['trs_descr_comp_gml']))
 
 
 def export_config(cfg, outfilepath):
