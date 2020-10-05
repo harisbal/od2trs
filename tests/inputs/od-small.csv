@@ -1,4 +1,4 @@
-Source,Target,Purpose,Direction,Timeperiod,Mode,Dailytrips
+Orig,Dest,Purpose,Direction,Timeperiod,Mode,Trips
 E01014370,E01014377,NHBO,NonHomeBased,PM,Motorised,1
 E01014370,E01014379,NHBO,NonHomeBased,PM,Motorised,1
 E01014370,E01014382,NHBO,NonHomeBased,IP2,Motorised,1

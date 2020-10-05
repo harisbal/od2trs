@@ -7,13 +7,13 @@ import od2trs.utilities as util
 
 class Leg:
     """
-    A leg is a trip between an Source and a Target
+    A leg is a trip between an Orig and a Dest
     """
-    def __init__(self, source, target, cost_types=None,
+    def __init__(self, orig, dest, cost_types=None,
                  **kwargs):
 
         allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
-                         'odpairid', 'fromact', 'toact', 'XsourceY', 'XtargetY']
+                         'odpairid', 'fromact', 'toact', 'OrigX', 'OrigY']
 
         if cost_types is None:
             cost_types = []
@@ -24,8 +24,8 @@ class Leg:
 
         # Tours deriving from multilevel graphs include the time level in the name
         # TODO rethink about the split technique
-        self.source = source.split('-', 1)[0]
-        self.target = target.split('-', 1)[0]
+        self.orig = orig.split('-', 1)[0]
+        self.dest = dest.split('-', 1)[0]
         self.cost_types = cost_types
         for key in kwargs:
             if key.lower() in allowed_attrs:
@@ -45,7 +45,7 @@ class TripChain:
         :param legs: list of Leg
         """
 
-        seqs = ['source', 'purpose', 'direction', 'timeperiod', 'odpairid']
+        seqs = ['orig', 'purpose', 'direction', 'timeperiod', 'odpairid']
 
         if len(legs) >= 2:
             self.legs = legs
@@ -77,8 +77,8 @@ class TripChain:
 
     def is_tour(self):
         # Tours deriving from multilevel graphs include the time level in the name
-        src = self.legs[0].source.split('-')[0]
-        tgt = self.legs[-1].target.split('-')[0]
+        src = self.legs[0].orig.split('-')[0]
+        tgt = self.legs[-1].dest.split('-')[0]
 
         if src == tgt:
             return True
@@ -87,7 +87,7 @@ class TripChain:
 
     def count_loops(self):
         # Tours deriving from multilevel graphs include the time level in the name
-        zns = [s.split('-')[0] for s in self.sources][:-1]  # to avoid counting the src twice
+        zns = [s.split('-')[0] for s in self.origs][:-1]  # to avoid counting the src twice
         loops_cnt = max(collections.Counter(zns).values()) - 1
         return loops_cnt
 

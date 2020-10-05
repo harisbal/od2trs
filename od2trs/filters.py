@@ -180,9 +180,7 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     """
 
     gf = g.copy()
-    fh_names = filter_edge_dirs.from_home
-    th_names = filter_edge_dirs.to_home
-    nhb_names = filter_edge_dirs.non_home
+    fh_names, th_names, nhb_names = filter_edge_dirs
 
     # All srcs should point to the same zone
     src_zone = gf.nodes[srcs[0]]['Zone']

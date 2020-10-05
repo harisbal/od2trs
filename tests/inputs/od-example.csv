@@ -1,4 +1,4 @@
-Source,Target,Purpose,Direction,Timeperiod,Dailytrips
+Orig,Dest,Purpose,Direction,Timeperiod,Trips
 Z,A,HB,FromHome,AM,3
 Z,A,HB,FromHome,IP,1
 Z,A,HB,ToHome,OP,2

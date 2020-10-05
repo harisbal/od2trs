@@ -1,3 +1,8 @@
+import os
+import json
+import time
+import configparser
+
 import od2trs.io as myio
 import od2trs.utilities as utils
 import od2trs.distributions as distrs
@@ -6,66 +11,84 @@ import od2trs.converters as converters
 import od2trs.optimise as opt
 
 
-def main(traj):
+def execute(configpath=r'./config.ini'):
 
-    filepaths = traj.conf.filepaths
-    ncores = traj.conf.ncores
-    export_flat = traj.conf.export_flat
-    low_memory = traj.conf.low_memory
+    start_time = time.time()
 
-    run_trs_identification = traj.par.trs.run_trs_identification
-    max_legs = traj.par.trs.max_legs
-    trips_thresh = traj.par.trs.trips_thresh
+    cfg = configparser.ConfigParser()
+    configpath = os.path.join(os.getcwd(), configpath)
+    cfg.read(configpath)
 
-    param = traj.par.trs.max_costs
-    max_costs = utils.retrieve_pypet_param(param)
+    # Create folders for data and plots
+    outfolder = os.path.join(os.getcwd(), cfg.get('FILEPATHS_OUT', 'outfolder'))
+    myio.create_folders([outfolder])
 
-    excl_edges_od_perc = traj.par.trs.excl_edges_od_perc
-    simplify_net_method = traj.par.trs.simplify_net_method
-    simplify_net_place = traj.par.trs.simplify_net_place
+    filepaths = utils.prepare_filepaths_from_config(cfg)
+    low_memory = json.loads(cfg['DEFAULT']['low_memory'])
+    export_flat = json.loads(cfg.get('DEFAULT', 'export_flat'))
+    ncores = json.loads(cfg['DEFAULT']['ncores'])
 
-    direction_names = traj.par.trs.direction_names
-    ordered_tps = traj.par.ordered_tps
+    run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
 
-    distr_dims = traj.par.trs.distr_dims
-    grp_purposes = traj.par.trs.d_grp_purposes
+    excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
+    trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
+    excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
+    if 'simplify_net_method' in cfg['TOURS']:
+        simplify_net_method = json.loads(cfg['TOURS']['simplify_net_method'])
+    else:
+        simplify_net_method = ['pagerank']  # Default method
 
-    excl_obs_trs_od_perc = traj.par.trs.excl_obs_trs_od_perc
-    distr_constr_enabled = traj.par.optim.distr_constr_enabled
-    distr_perc_tolerance = traj.par.optim.distr_perc_tolerance
+    simplify_net_place = json.loads(cfg['TOURS']['simplify_net_place'])
+    tp_durations = json.loads(cfg['TOURS']['timeperiod_durations'])
+    ordered_tps = list(tp_durations.keys())
 
-    run_optim = traj.par.optim.run_optim
-    submit_to_neos = traj.par.optim.submit_to_neos
+    max_costs = json.loads(cfg['TOURS']['max_costs'])
+    max_legs = json.loads(cfg['TOURS']['max_legs'])
+    distr_dims = json.loads(cfg['TOURS']['distr_dims'])
+    grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
-    param = traj.par.optim.mip_tolerances_lowercutoff
-    mip_tolerances_lowercutoff = utils.retrieve_pypet_param(param)
+    fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
+    th_direction = json.loads(cfg['TOURS']['tohome_direction'])
+    nh_direction = json.loads(cfg['TOURS']['nonhome_direction'])
 
-    param = traj.par.trs.purp_to_acts
-    purp_to_acts = utils.retrieve_pypet_param(param)
+    direction_names = {'from_home': fh_direction,
+                       'to_home': th_direction,
+                       'non_home': nh_direction}
 
-    timelimit = traj.par.optim.timelimit
-    workmem = traj.par.optim.workmem
-    mip_strategy_probe = traj.par.optim.mip_strategy_probe
-    mip_strategy_file = traj.par.optim.mip_strategy_file
+    purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
+
+    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
+
+    # optimisation config
+    run_optim = json.loads(cfg['OPTIMISATION']['run_optimisation'])
+    submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
+    distr_perc_tolerance = json.loads(cfg['OPTIMISATION']['distribution_percentage_tolerance'])
+    distr_constr_enabled = json.loads(cfg['OPTIMISATION']['distribution_constraints_enabled'])
+    mip_tolerances_lowercutoff = json.loads(cfg['OPTIMISATION']['mip tolerances lowercutoff'])
+    timelimit = json.loads(cfg['OPTIMISATION']['timelimit'])
+    workmem = json.loads(cfg['OPTIMISATION']['work memory'])
+    mip_strategy_probe = json.loads(cfg['OPTIMISATION']['mip strategy probe'])
+    mip_strategy_file = json.loads(cfg['OPTIMISATION']['mip strategy file'])
+
+    myio.export_config(cfg, filepaths['out']['config'])
 
     try:
         costs = myio.import_costs(filepaths['in']['costs'])
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
 
-    cost_bins = traj.par.trs.cost_bins
     if cost_bins:
         cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
-    print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
-          .format(distr_dims, max_legs, max_costs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
+    #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
+    #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
 
-    idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'TimePeriod']
+    idx_cols = ['Orig', 'Dest', 'Purpose', 'Direction', 'TimePeriod']
     cat_cols = idx_cols
     od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
                               grp_purposes, cat_cols=cat_cols)
 
-    ntrs = utils.estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Dailytrips')
+    ntrs = utils.estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Trips')
 
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
@@ -135,13 +158,18 @@ def main(traj):
                             mip_strategy_file=mip_strategy_file,
                             submit_to_neos=submit_to_neos)
 
-        idx_cols = ['Source', 'Target', 'Purpose', 'Direction', 'Timeperiod']
+        idx_cols = ['Orig', 'Dest', 'Purpose', 'Direction', 'Timeperiod']
         od_mdl = converters.results_to_od(trs_info, od, idx_cols)
 
-    results = [od_mdl, trs_info, tgt_distr, G]
+    elapsed_time = time.time() - start_time
+
+    if od is not None:
+        myio.export_od(od, filepaths['out']['od'])
+
+    results = [od_mdl, trs_info, tgt_distr, G, elapsed_time]
 
     return results
 
 
 if __name__ == '__main__':
-    main()
+    execute()

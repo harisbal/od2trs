@@ -56,7 +56,7 @@ def prepare_comparison(types,
 
     trs_comp = pd.concat(dfs, sort=False)
     # Ensure level order
-    trs_comp = trs_comp.reset_index()[['Source', 'Target'] + attr_cols]
+    trs_comp = trs_comp.reset_index()[['Orig', 'Dest'] + attr_cols]
     trs_comp = trs_comp.set_index(['Type', 'Tourid', 'Legseqidx'])
 
     timesused = trs_comp['Timesused'].unstack('Type').fillna(0)
@@ -79,12 +79,12 @@ def prepare_comparison(types,
         # split in X, Y cols
         coords = pd.DataFrame(coords.tolist(), index=coords.index, columns=['X', 'Y'])
 
-        trs_comp[['Xsource', 'Ysource']] = pd.merge(trs_comp, coords,
-                                                    left_on=['Source'],
+        trs_comp[['OrigX', 'OrigY']] = pd.merge(trs_comp, coords,
+                                                    left_on=['Orig'],
                                                     right_index=True)[coords.columns]
 
-        trs_comp[['Xtarget', 'Ytarget']] = pd.merge(trs_comp, coords,
-                                                    left_on=['Target'],
+        trs_comp[['DestX', 'DestY']] = pd.merge(trs_comp, coords,
+                                                    left_on=['Dest'],
                                                     right_index=True)[coords.columns]
 
     return trs_comp

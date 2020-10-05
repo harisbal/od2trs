@@ -28,7 +28,7 @@ def multigraph_to_graph(g, aggr_func, remove_isolates=False):
     return gs
 
 
-def calculate_centralities(g, method, weight='Dailytrips', aggr_func=sum):
+def calculate_centralities(g, method, weight='Trips', aggr_func=sum):
     # The centrality measures do not work (at least for now) on multigraphs
     aggr_func = {weight: aggr_func}
     gs = multigraph_to_graph(g, aggr_func)
@@ -84,7 +84,7 @@ def simplify_net(g, keep_nodes=None,
                     if direction_names is not None:
                         if gc.is_multigraph():
                             for key in gc[u][v]:
-                                if gc[u][v][key]['Direction'] == direction_names.non_home:
+                                if gc[u][v][key]['Direction'] == direction_names['non_home']:
                                     excl_weight += gc[u][v][key][weight]
                                     rmvs.append((u, v, key))
                         else:
@@ -121,7 +121,7 @@ def simplify_net(g, keep_nodes=None,
 
     if verbose:
         print('nodes before simplification', g.number_of_nodes())
-        print('dailytrips before simplification', sum(nx.get_edge_attributes(g, weight).values()))
+        print('Trips before simplification', sum(nx.get_edge_attributes(g, weight).values()))
 
     if 0 < excl_weight_perc <= 1:
         centralities = (pd.Series(nx.get_node_attributes(g, 'Centrality')).sort_values()
@@ -159,10 +159,10 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
 
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names.non_home, keep_connectors=True)
+    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names['non_home'], keep_connectors=True)
 
     if (simplify_net_place == 'iterative') and (excl_edges_od_perc > 0):
-        simplify_net_weight = 'Dailytrips'
+        simplify_net_weight = 'Trips'
         cm = calculate_centralities(g_nhb, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(g_nhb, cm, 'Centrality')
         keep_nodes = srcs

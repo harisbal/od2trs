@@ -50,7 +50,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
             return m.init_sol.get(i, 0)
 
     def _find_ubnds(m):
-        odvals = m.od.set_index('Odpairid')['Dailytrips'].values
+        odvals = m.od.set_index('Odpairid')['Trips'].values
 
         s = m.info['Odpairids']
         idxs = s.index.get_level_values(0).values
@@ -65,7 +65,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
 
     model = ConcreteModel()
     model.od = od.copy()
-    d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Dailytrips'].to_dict()
+    d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Trips'].to_dict()
 
     model.info = info
     model.init_sol = init_sol
@@ -91,7 +91,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
-        model.cutoff = -mip_tolerances_lowercutoff * model.od['Dailytrips'].sum()
+        model.cutoff = -mip_tolerances_lowercutoff * model.od['Trips'].sum()
 
     if distr_constr_enabled:
         model.distr_grp_ids = Set(initialize=model.tgt_distr.reset_index()['Distrgroupid'].unique().tolist())
@@ -106,7 +106,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
     # TempfileManager.tempdir = r'./tmp'
 
     def maximise_used_trips(m):
-        odsum = m.od['Dailytrips'].sum()
+        odsum = m.od['Trips'].sum()
         nlegs = m.info['Nolegs'].to_dict()
         return quicksum(m.trs_util[tr_id] * nlegs[tr_id] for tr_id in m.tr_ids) - odsum
     model.objective = Objective(rule=maximise_used_trips, sense=maximize)

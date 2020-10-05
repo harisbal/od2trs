@@ -130,24 +130,20 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
         _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
         return _leg_attrs
 
-    def prepare_leg_attrs(G, source, target, filter_directions):
-        _leg_attrs = G.get_edge_data(source, target).values()
+    def prepare_leg_attrs(G, orig, dest, filter_directions):
+        _leg_attrs = G.get_edge_data(orig, dest).values()
         _leg_attrs = filter_leg_attrs_by_purpose(_leg_attrs, filter_directions)
 
         return _leg_attrs
-
-    filter_dir_orig = direction_names.from_home
-    filter_dir_dest = direction_names.to_home
-    filter_dir_interm = direction_names.non_home
 
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
     leg_attrs = prepare_leg_attrs(G, zones_seq[0], zones_seq[1],
-                                  filter_dir_orig)
+                                  direction_names['from_home'])
     avail_legs = list()
     for la in leg_attrs:
-        leg = Leg(source=zones_seq[0], target=zones_seq[1],
+        leg = Leg(orig=zones_seq[0], dest=zones_seq[1],
                   cost_types=cost_types, **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
@@ -155,9 +151,9 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
         for src, tgt in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(G, src, tgt, filter_dir_interm)
+            leg_attrs = prepare_leg_attrs(G, src, tgt, direction_names['non_home'])
             for la in leg_attrs:
-                leg = Leg(source=src, target=tgt, cost_types=cost_types, **la)
+                leg = Leg(orig=src, dest=tgt, cost_types=cost_types, **la)
                 avail_legs.append(leg)
             # case for connectors
             if avail_legs:
@@ -165,10 +161,10 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
 
     # Last leg attrs
     leg_attrs = prepare_leg_attrs(G, zones_seq[-2], zones_seq[-1],
-                                  filter_dir_dest)
+                                  direction_names['to_home'])
     avail_legs.clear()
     for la in leg_attrs:
-        leg = Leg(source=zones_seq[-2], target=zones_seq[-1],
+        leg = Leg(orig=zones_seq[-2], dest=zones_seq[-1],
                   cost_types=cost_types, **la)
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
@@ -185,7 +181,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
 def trs_to_df(trs, tgt_distr, max_costs):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Sources', 'Purposes', 'Directions', 'Timeperiods',
+    keys = ['Id', 'Nolegs', 'Origs', 'Purposes', 'Directions', 'Timeperiods',
             'Odpairids', 'Acts', 'Departtimes', 'Loopscnt']
 
     if tgt_distr is not None:
@@ -233,15 +229,15 @@ def results_to_od(info, od_obs, idx_cols):
             od_mdl = od_mdl.add(s, fill_value=0)
 
     od_mdl = od_mdl.reset_index().astype(int)
-    od_mdl.columns = ['Odpairid', 'Dailytrips']
+    od_mdl.columns = ['Odpairid', 'Trips']
     od_mdl = od_mdl.set_index('Odpairid')
     # Kepp only positive elements
     od_mdl = od_mdl[od_mdl > 0]
 
-    od_mdl = pd.merge(od_obs.drop(columns=['Dailytrips']).reset_index(), od_mdl,
+    od_mdl = pd.merge(od_obs.drop(columns=['Trips']).reset_index(), od_mdl,
                       on='Odpairid')
 
-    od_mdl = od_mdl.groupby(idx_cols, observed=True)['Dailytrips'].sum()
+    od_mdl = od_mdl.groupby(idx_cols, observed=True)['Trips'].sum()
     return od_mdl
 
 
@@ -300,13 +296,13 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         # TODO Drop missing values (could cause problems)
         od = od.dropna(axis=1)
 
-    attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Source', 'Target']]
-    G = od_to_graph(od, src_col='Source', tgt_col='Target',
+    attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Orig', 'Dest']]
+    G = od_to_graph(od, src_col='Orig', tgt_col='Dest',
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
 
     if (simplify_net_place == 'begin') and (excl_edges_od_perc > 0):
-        simplify_net_weight = 'Dailytrips'
+        simplify_net_weight = 'Trips'
         cm = nettools.calculate_centralities(G, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(G, cm, 'Centrality')
         G = nettools.simplify_net(G, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,

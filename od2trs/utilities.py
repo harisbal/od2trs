@@ -123,9 +123,9 @@ def tuples_to_strings(df, sep=';', cols=None):
 
     for c in cols:
         if all(isinstance(v, tuple) for v in df[c].values):
-            if df_out.dtypes[c] == object:
+            try:
                 df_out[c] = df_out[c].apply(sep.join)
-            else:
+            except:
                 df_out[c] = df_out[c].astype(str).apply(sep.join)
 
     return df_out
@@ -141,11 +141,11 @@ def add_coords(df, coords):
     # Split the tuple (XY columns)
     coords = pd.DataFrame(coords.to_list(), columns=['X', 'Y'], index=coords.index)
 
-    df['Xsource'] = pd.merge(df['Source'], coords, left_on='Source', right_index=True)['X']
-    df['Ysource'] = pd.merge(df['Source'], coords, left_on='Source', right_index=True)['Y']
+    df['Orig_X'] = pd.merge(df['Orig'], coords, left_on='Orig', right_index=True)['X']
+    df['Orig_Y'] = pd.merge(df['Orig'], coords, left_on='Orig', right_index=True)['Y']
 
-    df['Xtarget'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['X']
-    df['Ytarget'] = pd.merge(df['Target'], coords, left_on='Target', right_index=True)['Y']
+    df['Dest_X'] = pd.merge(df['Dest'], coords, left_on='Dest', right_index=True)['X']
+    df['Dest_Y'] = pd.merge(df['Dest'], coords, left_on='Dest', right_index=True)['Y']
     return df
 
 
@@ -159,7 +159,7 @@ def aggr_tolist(df, col_grpby, col_tolist):
     return df_list.squeeze()
 
 
-def estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Dailytrips'):
+def estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Trips'):
     for k, v in filter.items():
         od = od.xs(v, level=k)
     return int(od[ntrs_col].sum())

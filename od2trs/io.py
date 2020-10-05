@@ -65,21 +65,21 @@ def read_prepare_od(infilepath, trips_thresh, idx_cols, grp_purposes, cat_cols=N
     od.set_index(idx_cols, inplace=True)
 
     # Reduce
-    sum_bef = od['Dailytrips'].sum()
+    sum_bef = od['Trips'].sum()
     print('before trips thresh filtering: {}'.format(sum_bef))
-    od = od[od.Dailytrips >= trips_thresh]
+    od = od[od['Trips'] >= trips_thresh]
     # Remove intrazonals
-    mask = (od.index.get_level_values('Source').astype(str) !=
-            od.index.get_level_values('Target').astype(str))
+    mask = (od.index.get_level_values('Orig').astype(str) !=
+            od.index.get_level_values('Dest').astype(str))
     od = od[mask]
-    sum_aft = od['Dailytrips'].sum()
+    sum_aft = od['Trips'].sum()
     print('after trips thresh filtering: {}'.format(sum_aft))
     print('ratio:', sum_aft/sum_bef)
     od.dropna(inplace=True)
 
     # Round
-    od.Dailytrips = od.Dailytrips.round()
-    od.Dailytrips = od.Dailytrips.astype(int)
+    od['Trips'] = od['Trips'].round()
+    od['Trips'] = od['Trips'].astype(int)
 
     # Make sure Odpairid is int
     od['Odpairid'] = od['Odpairid'].astype(int)
@@ -103,11 +103,17 @@ def import_trs_info_obs(infilepath, seq_cols):
     return obs_info
 
 
-def import_costs(infilepath):
-    # can contain all types of costs such as km distance, travel time, etc
-    costs = pd.read_csv(infilepath, index_col=['Source', 'Target'])
-    costs = costs.astype(float)
-    costs.index.names = ['Source', 'Target']
+def import_costs(infilepath, col_name='Distance'):
+    if infilepath.endswith('.csv'):
+        # can contain all types of costs such as km distance, travel time, etc
+        costs = pd.read_csv(infilepath, index_col=['Orig', 'Dest'])
+        costs = costs.astype(float)
+        costs.index.names = ['Orig', 'Dest']
+    elif infilepath.endswith('.pkl'):
+        costs = pd.read_pickle(infilepath).to_frame()[col_name]
+    else:
+        raise ValueError('unrecognised data format for costs file')
+
     return costs
 
 
@@ -190,7 +196,7 @@ def export_trs(info, filepaths):
         raise TypeError('Unknown export format')
 
 
-def export_od_mdl(od, filepaths):
+def export_od(od, filepaths):
     if od is not None:
         od = od.reset_index()
         od.to_csv(filepaths, index=False, header=True)
