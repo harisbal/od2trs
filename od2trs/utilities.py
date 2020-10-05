@@ -78,6 +78,7 @@ def to_sequence(s, sep=';'):
 def reorder_idx_catcol(df, idx_cat_col, order):
     init_idx_order = list(df.index.names)
     df = df.reset_index(level=idx_cat_col)
+    order = [o for o in order if o in df[idx_cat_col].cat.categories.tolist()]
     df[idx_cat_col] = df[idx_cat_col].cat.reorder_categories(order, ordered=True)
     df.set_index(idx_cat_col, append=True, inplace=True)
     # Restore the initial idx order

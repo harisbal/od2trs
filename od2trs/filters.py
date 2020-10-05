@@ -57,6 +57,9 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
         if 'Timeperiods' in distr_dims:
             d_dims['Timeperiods'] = tr.timeperiods
 
+        if 'Transports' in distr_dims:
+            d_dims['Transports'] = tr.transports
+
         key = list()
         for dd in distr_dims:
             key.append(d_dims[dd])

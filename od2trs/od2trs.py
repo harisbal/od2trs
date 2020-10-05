@@ -45,7 +45,6 @@ def execute(configpath=r'./config.ini'):
     max_costs = json.loads(cfg['TOURS']['max_costs'])
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
-    grp_purposes = json.loads(cfg['TOURS']['d_grp_purposes'])
 
     fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
     th_direction = json.loads(cfg['TOURS']['tohome_direction'])
@@ -83,10 +82,8 @@ def execute(configpath=r'./config.ini'):
     #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
     #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
 
-    idx_cols = ['Orig', 'Dest', 'Purpose', 'Direction', 'TimePeriod']
-    cat_cols = idx_cols
-    od = myio.read_prepare_od(filepaths['in']['od'], trips_thresh, idx_cols,
-                              grp_purposes, cat_cols=cat_cols)
+    grps = json.loads(cfg['TOURS']['d_grps'])
+    od = myio.import_od(filepaths['in']['od'], trips_thresh, grps)
 
     ntrs = utils.estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Trips')
 
@@ -100,19 +97,12 @@ def execute(configpath=r'./config.ini'):
 
     if distr_constr_enabled:
         interval_cols = [k + '_grp' for k in cost_bins]
-        seq_cols = ['Timeperiods']
-        try:
-            tgt_distr = myio.read_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
-                                            interval_cols=interval_cols,
-                                            seq_cols=seq_cols)
-            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
-        except FileNotFoundError:
-            info_obs = myio.import_trs_info_obs(filepaths['in']['trs_obs_info'], seq_cols)
-            tgt_distr = distrs.prepare_distr_from_info_obs(info_obs, distr_dims, cost_bins)
+        seq_cols = [dd for dd in distr_dims if '_grp' not in dd]
 
-            # Filter the low freq distr groups taking into account
-            # the percentage which has been already excluded
-            tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_obs_trs_od_perc)
+        tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+                                          interval_cols=interval_cols,
+                                          seq_cols=seq_cols)
+        tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
 
         # Recalculate the number of tours after the filtering
         ntrs = tgt_distr['Size'].sum()

@@ -12,7 +12,7 @@ class Leg:
     def __init__(self, orig, dest, cost_types=None,
                  **kwargs):
 
-        allowed_attrs = ['purpose', 'direction', 'timeperiod', 'departtime',
+        allowed_attrs = ['timeperiod', 'purpose', 'direction', 'transport', 'departtime',
                          'odpairid', 'fromact', 'toact', 'OrigX', 'OrigY']
 
         if cost_types is None:
@@ -45,7 +45,7 @@ class TripChain:
         :param legs: list of Leg
         """
 
-        seqs = ['orig', 'purpose', 'direction', 'timeperiod', 'odpairid']
+        seqs = ['orig', 'purpose', 'direction', 'timeperiod', 'transport', 'odpairid']
 
         if len(legs) >= 2:
             self.legs = legs

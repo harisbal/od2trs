@@ -126,13 +126,13 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
 def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
 
-    def filter_leg_attrs_by_purpose(_leg_attrs, filter_directions):
+    def filter_leg_attrs_by_direction(_leg_attrs, filter_directions):
         _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
         return _leg_attrs
 
     def prepare_leg_attrs(G, orig, dest, filter_directions):
         _leg_attrs = G.get_edge_data(orig, dest).values()
-        _leg_attrs = filter_leg_attrs_by_purpose(_leg_attrs, filter_directions)
+        _leg_attrs = filter_leg_attrs_by_direction(_leg_attrs, filter_directions)
 
         return _leg_attrs
 
@@ -148,7 +148,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
         avail_legs.append(leg)
     legs_combs.append(avail_legs.copy())
 
-    if len(zones_seq) >= 4: # A tr containing intermediate zones visits at least 4
+    if len(zones_seq) >= 4:  # A tr containing intermediate zones visits at least 4
         for src, tgt in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
             leg_attrs = prepare_leg_attrs(G, src, tgt, direction_names['non_home'])
@@ -297,6 +297,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
         od = od.dropna(axis=1)
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Orig', 'Dest']]
+    print('Preparing the graph')
     G = od_to_graph(od, src_col='Orig', tgt_col='Dest',
                     ordered_tps=ordered_tps, costs=costs,
                     attr_cols=attr_cols, zones_info=zones_info)
