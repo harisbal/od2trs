@@ -47,9 +47,6 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
     for tr in trs:
         d_dims = dict()
 
-        nolegs = tr.nolegs
-        d_dims['Nolegs'] = nolegs
-
         if cost_bins is not None:
             for cost_type, bins in cost_bins.items():
                 d_dims[cost_type+'_grp'] = tr.get_cost_grp(cost_type, bins)
@@ -60,12 +57,20 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
         if 'Transports' in distr_dims:
             d_dims['Transports'] = tr.transports
 
+        nolegs = tr.nolegs
+        d_dims['Nolegs'] = nolegs
+
         key = list()
-        for dd in distr_dims:
+        for dd in distr_dims+['Nolegs']:
             key.append(d_dims[dd])
 
         key = tuple(key)
-        perc = tgt_distr['Percentage'].get(key, 0)
+        try:
+            perc = tgt_distr['Percentage'].get(key, 0)
+        except:
+            print(key)
+            a=1
+
         if perc > 0:
             tr.distrgroupid = int(tgt_distr.loc[key]['Distrgroupid'])
             filtered.append(tr)
@@ -104,6 +109,7 @@ def filter_trs(trs, max_costs, purp_to_acts,
         trs = filter_by_acts(trs, purp_to_acts)
 
     if tgt_distr is not None:
+        tgt_distr = tgt_distr.sort_index()
         trs = filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins)
 
     return trs

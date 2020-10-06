@@ -43,6 +43,7 @@ def import_tgt_distr(infilepath, distr_dims, ntrs,
     tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
+    tgt_distr = tgt_distr.sort_index()
 
     return tgt_distr
 
