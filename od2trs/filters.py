@@ -65,11 +65,7 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
             key.append(d_dims[dd])
 
         key = tuple(key)
-        try:
-            perc = tgt_distr['Percentage'].get(key, 0)
-        except:
-            print(key)
-            a=1
+        perc = tgt_distr['Percentage'].get(key, 0)
 
         if perc > 0:
             tr.distrgroupid = int(tgt_distr.loc[key]['Distrgroupid'])
