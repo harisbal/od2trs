@@ -124,14 +124,14 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
     return g
 
 
-def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
+def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
 
     def filter_leg_attrs_by_direction(_leg_attrs, filter_directions):
         _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
         return _leg_attrs
 
-    def prepare_leg_attrs(G, orig, dest, filter_directions):
-        _leg_attrs = G.get_edge_data(orig, dest).values()
+    def prepare_leg_attrs(net, orig, dest, filter_directions):
+        _leg_attrs = net.get_edge_data(orig, dest).values()
         _leg_attrs = filter_leg_attrs_by_direction(_leg_attrs, filter_directions)
 
         return _leg_attrs
@@ -139,7 +139,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
-    leg_attrs = prepare_leg_attrs(G, zones_seq[0], zones_seq[1],
+    leg_attrs = prepare_leg_attrs(net, zones_seq[0], zones_seq[1],
                                   direction_names['from_home'])
     avail_legs = list()
     for la in leg_attrs:
@@ -151,7 +151,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
     if len(zones_seq) >= 4:  # A tr containing intermediate zones visits at least 4
         for src, tgt in utils.pairwise(zones_seq[1:-1]):
             avail_legs.clear()
-            leg_attrs = prepare_leg_attrs(G, src, tgt, direction_names['non_home'])
+            leg_attrs = prepare_leg_attrs(net, src, tgt, direction_names['non_home'])
             for la in leg_attrs:
                 leg = Leg(orig=src, dest=tgt, cost_types=cost_types, **la)
                 avail_legs.append(leg)
@@ -160,7 +160,7 @@ def zones_seq_to_trs(zones_seq, G, direction_names, cost_types):
                 legs_combs.append(avail_legs.copy())
 
     # Last leg attrs
-    leg_attrs = prepare_leg_attrs(G, zones_seq[-2], zones_seq[-1],
+    leg_attrs = prepare_leg_attrs(net, zones_seq[-2], zones_seq[-1],
                                   direction_names['to_home'])
     avail_legs.clear()
     for la in leg_attrs:
@@ -248,7 +248,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       simplify_net_method, simplify_net_place,
                       excl_edges_od_perc):
 
-    zones_seqs = nettools.identify_zones_sequences(G, src_zone, direction_names, ordered_tps,
+    zones_seqs = nettools.identify_zones_sequences(net, src_zone, direction_names, ordered_tps,
                                                    max_legs, max_costs,
                                                    simplify_net_method, simplify_net_place,
                                                    excl_edges_od_perc)
@@ -263,7 +263,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
 
     filt_trs = list()
     for zs in zones_seqs:
-        trs = zones_seq_to_trs(zs, G, direction_names, cost_types=cost_types)
+        trs = zones_seq_to_trs(zs, net, direction_names, cost_types=cost_types)
 
         trs = filters.filter_trs(trs, max_costs, purp_to_acts,
                                  tgt_distr, distr_dims, cost_bins)
@@ -278,9 +278,9 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
         return None
 
 
-def init_multiproc_wrapper(_G):
-    global G
-    G = _G
+def init_multiproc_wrapper(_net):
+    global net
+    net = _net
 
 
 def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
@@ -298,24 +298,24 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
 
     attr_cols = [c for c in od.reset_index().columns.tolist() if c not in ['Orig', 'Dest']]
     print('Preparing the graph')
-    G = od_to_graph(od, src_col='Orig', tgt_col='Dest',
-                    ordered_tps=ordered_tps, costs=costs,
-                    attr_cols=attr_cols, zones_info=zones_info)
+    net = od_to_graph(od, src_col='Orig', tgt_col='Dest',
+                      ordered_tps=ordered_tps, costs=costs,
+                      attr_cols=attr_cols, zones_info=zones_info)
 
     if (simplify_net_place == 'begin') and (excl_edges_od_perc > 0):
         simplify_net_weight = 'Trips'
-        cm = nettools.calculate_centralities(G, simplify_net_method, simplify_net_weight)
-        nx.set_node_attributes(G, cm, 'Centrality')
-        G = nettools.simplify_net(G, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,
-                                  direction_names=direction_names)
+        cm = nettools.calculate_centralities(net, simplify_net_method, simplify_net_weight)
+        nx.set_node_attributes(net, cm, 'Centrality')
+        net = nettools.simplify_net(net, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,
+                                    direction_names=direction_names)
 
     # Export the filtered graph
-    nx.write_gpickle(G, filepaths['out']['graph'])
+    nx.write_gpickle(net, filepaths['out']['graph'])
 
     infos = []
     tr_id = 1
 
-    zones = list(set([z for k, z in G.nodes.data('Zone')]))
+    zones = list(set([z for k, z in net.nodes.data('Zone')]))
     zones.sort()
 
     if isinstance(ncores, int):
@@ -340,7 +340,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
     now = datetime.now().strftime('%Y%m%d%H%M%S')
     filepaths['processfolder'] = os.path.join(r'./tmp/identification', now)
     myio.create_folders([filepaths['processfolder']], overwrite=True)
-    with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[G]) as pool:
+    with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[net]) as pool:
         for trs in tqdm(pool.imap_unordered(
                         partial(multiproc_wrapper,
                                 direction_names=direction_names,
@@ -380,4 +380,4 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
 
     print('Total trs after filtering: {:,}'.format(info_df.index.unique().size))
 
-    return info_df, G
+    return info_df, net

@@ -117,21 +117,21 @@ def execute(configpath=r'./config.ini'):
         cost_bins = None
         tgt_distr = None
 
-    G = None
+    net = None
     if run_trs_identification:
-        trs_info, G = converters.od2trs(od=od, filepaths=filepaths,
-                                        max_legs=max_legs,
-                                        cost_bins=cost_bins, costs=costs, max_costs=max_costs,
-                                        direction_names=direction_names,
-                                        ordered_tps=ordered_tps,
-                                        tgt_distr=tgt_distr,
-                                        distr_dims=distr_dims,
-                                        purp_to_acts=purp_to_acts,
-                                        excl_edges_od_perc=excl_edges_od_perc,
-                                        simplify_net_method=simplify_net_method,
-                                        simplify_net_place=simplify_net_place,
-                                        zones_info=zones_info,
-                                        ncores=ncores, low_memory=low_memory)
+        trs_info, net = converters.od2trs(od=od, filepaths=filepaths,
+                                          max_legs=max_legs,
+                                          cost_bins=cost_bins, costs=costs, max_costs=max_costs,
+                                          direction_names=direction_names,
+                                          ordered_tps=ordered_tps,
+                                          tgt_distr=tgt_distr,
+                                          distr_dims=distr_dims,
+                                          purp_to_acts=purp_to_acts,
+                                          excl_edges_od_perc=excl_edges_od_perc,
+                                          simplify_net_method=simplify_net_method,
+                                          simplify_net_place=simplify_net_place,
+                                          zones_info=zones_info,
+                                          ncores=ncores, low_memory=low_memory)
 
         # Export the identified tours
         if (trs_info is not None) and export_flat:
@@ -163,7 +163,7 @@ def execute(configpath=r'./config.ini'):
     if od is not None:
         myio.export_od(od, filepaths['out']['od'])
 
-    results = [od_mdl, trs_info, tgt_distr, G, elapsed_time]
+    results = [od_mdl, trs_info, tgt_distr, net, elapsed_time]
 
     return results
 
