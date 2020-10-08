@@ -29,9 +29,8 @@ def execute(configpath=r'./config.ini'):
     ncores = json.loads(cfg['DEFAULT']['ncores'])
 
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
-
-    #  excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
+    excl_distr_od_perc = json.loads(cfg['TOURS']['excl_distr_od_perc'])
     excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
     if 'simplify_net_method' in cfg['TOURS']:
         simplify_net_method = json.loads(cfg['TOURS']['simplify_net_method'])
@@ -82,8 +81,8 @@ def execute(configpath=r'./config.ini'):
     # if cost_bins:
     #    cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
-    #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
-    #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
+    #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_distr_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
+    #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_distr_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
 
     grps = json.loads(cfg['TOURS']['d_grps'])
     od = myio.import_od(filepaths['in']['od'], trips_thresh, grps)
@@ -106,7 +105,7 @@ def execute(configpath=r'./config.ini'):
                                           interval_cols=interval_cols,
                                           seq_cols=seq_cols)
         # Remove the _grp suffix
-        tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
+        tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_distr_od_perc)
 
         cost_bins = {ic.replace('_grp', ''): tgt_distr.index.unique(ic) for ic in interval_cols}
 
