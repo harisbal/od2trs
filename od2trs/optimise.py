@@ -101,7 +101,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
         model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
 
         d_init = _init_tr_by_distr_grps(model)
-        model.tr_by_distr_grps = Param(model.distr_grp_ids, initialize=d_init, default=None)
+        model.tr_by_distr_grps = Param(model.distr_grp_ids, initialize=d_init, default=None, within=Any)
 
     # TempfileManager.tempdir = r'./tmp'
 

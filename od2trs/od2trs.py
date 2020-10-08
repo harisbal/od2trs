@@ -30,7 +30,7 @@ def execute(configpath=r'./config.ini'):
 
     run_trs_identification = json.loads(cfg['TOURS']['run_tours_identification'])
 
-    excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
+    #  excl_obs_trs_od_perc = json.loads(cfg['TOURS']['excl_obs_trs_od_perc'])
     trips_thresh = json.loads(cfg['TOURS']['trips_thresh'])
     excl_edges_od_perc = json.loads(cfg['TOURS']['excl_edges_od_perc'])
     if 'simplify_net_method' in cfg['TOURS']:
@@ -56,7 +56,7 @@ def execute(configpath=r'./config.ini'):
 
     purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
 
-    cost_bins = json.loads(cfg['TOURS']['cost_bins'])
+    # cost_bins = json.loads(cfg['TOURS']['cost_bins'])
 
     # optimisation config
     run_optim = json.loads(cfg['OPTIMISATION']['run_optimisation'])
@@ -76,8 +76,8 @@ def execute(configpath=r'./config.ini'):
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
 
-    if cost_bins:
-        cost_bins = converters.bins_to_interval(cost_bins, max_costs)
+    # if cost_bins:
+    #    cost_bins = converters.bins_to_interval(cost_bins, max_costs)
 
     #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_obs_trs_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
     #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_obs_trs_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
@@ -96,13 +96,16 @@ def execute(configpath=r'./config.ini'):
         zones_info = None
 
     if distr_constr_enabled:
-        interval_cols = [k + '_grp' for k in cost_bins]
+        interval_cols = [dd for dd in distr_dims if '_grp' in dd]
         seq_cols = [dd for dd in distr_dims if '_grp' not in dd]
 
         tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
                                           interval_cols=interval_cols,
                                           seq_cols=seq_cols)
+        # Remove the _grp suffix
         tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_edges_od_perc)
+
+        cost_bins = {ic.replace('_grp', ''): tgt_distr.index.unique(ic) for ic in interval_cols}
 
         # Recalculate the number of tours after the filtering
         ntrs = tgt_distr['Size'].sum()

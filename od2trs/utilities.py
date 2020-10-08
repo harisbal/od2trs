@@ -80,10 +80,10 @@ def reorder_idx_catcol(df, idx_cat_col, order):
     df = df.reset_index(level=idx_cat_col)
     order = [o for o in order if o in df[idx_cat_col].cat.categories.tolist()]
     df[idx_cat_col] = df[idx_cat_col].cat.reorder_categories(order, ordered=True)
-    df.set_index(idx_cat_col, append=True, inplace=True)
+    df = df.set_index(idx_cat_col, append=True)
     # Restore the initial idx order
     df.index = df.index.reorder_levels(init_idx_order)
-    df = df.squeeze()
+    df = df.squeeze().sort_index()
     return df
 
 
