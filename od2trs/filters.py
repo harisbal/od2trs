@@ -51,11 +51,11 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
             for cost_type, bins in cost_bins.items():
                 d_dims[cost_type+'_grp'] = tr.get_cost_grp(cost_type, bins)
 
-        if 'Timeperiods' in distr_dims:
-            d_dims['Timeperiods'] = tr.timeperiods
+        if 'Timeperiods_seq' in distr_dims:
+            d_dims['Timeperiods_seq'] = tr.timeperiods
 
-        if 'Transports' in distr_dims:
-            d_dims['Transports'] = tr.transports
+        if 'Transports_seq' in distr_dims:
+            d_dims['Transports_seq'] = tr.transports
 
         nolegs = tr.nolegs
         d_dims['Nolegs'] = nolegs

@@ -45,6 +45,9 @@ def execute(configpath=r'./config.ini'):
     max_costs = json.loads(cfg['TOURS']['max_costs'])
     max_legs = json.loads(cfg['TOURS']['max_legs'])
     distr_dims = json.loads(cfg['TOURS']['distr_dims'])
+    if distr_dims is not None:
+        if 'Nolegs' in distr_dims:
+            distr_dims.remove('Nolegs')
 
     fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
     th_direction = json.loads(cfg['TOURS']['tohome_direction'])
@@ -97,7 +100,7 @@ def execute(configpath=r'./config.ini'):
 
     if distr_constr_enabled:
         interval_cols = [dd for dd in distr_dims if '_grp' in dd]
-        seq_cols = [dd for dd in distr_dims if '_grp' not in dd]
+        seq_cols = [dd for dd in distr_dims if '_seq' in dd]
 
         tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
                                           interval_cols=interval_cols,
@@ -111,6 +114,7 @@ def execute(configpath=r'./config.ini'):
         ntrs = tgt_distr['Size'].sum()
         myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
     else:
+        cost_bins = None
         tgt_distr = None
 
     G = None

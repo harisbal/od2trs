@@ -39,7 +39,11 @@ def import_tgt_distr(infilepath, distr_dims, ntrs,
     if 'Distrgroupid' not in tgt_distr.columns:
         tgt_distr.index.name = 'Distrgroupid'
 
-    tgt_distr = tgt_distr.groupby(distr_dims+['Nolegs', 'Distrgroupid'])[percent_col].sum().to_frame()
+    # Order of distr_dims is important
+    dds = [dd for dd in distr_dims if dd not in ['Nolegs', 'Distrgroupid']]
+    dds += ['Nolegs', 'Distrgroupid']
+
+    tgt_distr = tgt_distr.groupby(dds)[percent_col].sum().to_frame()
     tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
@@ -112,7 +116,9 @@ def import_costs(infilepath, col_name='Distance'):
     else:
         raise ValueError('unrecognised data format for costs file')
 
-    costs = costs.sort_index().to_frame()
+    costs = costs.sort_index()
+    if isinstance(costs, pd.Series):
+        costs = costs.to_frame()
 
     return costs
 

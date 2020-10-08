@@ -26,6 +26,7 @@ class Leg:
         # TODO rethink about the split technique
         self.orig = orig.split('-', 1)[0]
         self.dest = dest.split('-', 1)[0]
+        self.transport = None
         self.cost_types = cost_types
         for key in kwargs:
             if key.lower() in allowed_attrs:
