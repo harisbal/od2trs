@@ -181,7 +181,7 @@ def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
 def trs_to_df(trs, tgt_distr, max_costs):
 
     # the first keys are always set
-    keys = ['Id', 'Nolegs', 'Origs', 'Purposes', 'Directions', 'Timeperiods',
+    keys = ['Id', 'Nolegs', 'Origs', 'Purposes', 'Directions', 'Timeperiods', 'Transports',
             'Odpairids', 'Acts', 'Departtimes', 'Loopscnt']
 
     if tgt_distr is not None:
@@ -194,13 +194,10 @@ def trs_to_df(trs, tgt_distr, max_costs):
     for k in keys:
         d_trs_info[k] = list()
 
-    trs_decr = dict()
     for tr in trs:
         for k in keys:
             attr = getattr(tr, k.lower(), None)
             d_trs_info[k].append(attr)
-
-        trs_decr.update(tr.to_dict())
 
     idxcol = 'Tourid'
     info_df = pd.DataFrame(d_trs_info)
