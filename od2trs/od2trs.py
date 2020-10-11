@@ -5,7 +5,6 @@ import configparser
 
 import od2trs.io as myio
 import od2trs.utilities as utils
-import od2trs.distributions as distrs
 import od2trs.filters as filters
 import od2trs.converters as converters
 import od2trs.optimise as opt
@@ -77,12 +76,6 @@ def execute(configpath=r'./config.ini'):
         costs = myio.import_costs(filepaths['in']['costs'])
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
-
-    # if cost_bins:
-    #    cost_bins = converters.bins_to_interval(cost_bins, max_costs)
-
-    #print('DistrDims: {} Legs:{}, max_costs:{}, trips_thresh:{}, excl_distr_od_perc: {}, excl_edges_od_perc: {}, simplify_net_method: {}, simplify_net_place: {}'
-    #      .format(distr_dims, max_legs, max_costs, trips_thresh, excl_distr_od_perc, excl_edges_od_perc, simplify_net_method, simplify_net_place))
 
     grps = json.loads(cfg['TOURS']['d_grps'])
     od = myio.import_od(filepaths['in']['od'], trips_thresh, grps)

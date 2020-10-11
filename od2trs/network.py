@@ -1,7 +1,31 @@
 import networkx as nx
-import numpy as np
 import pandas as pd
 import od2trs.filters as filters
+
+
+def assess_obfuscation(g, srcs, tgts, k=5):
+    for src in srcs:
+        for tgt in tgts:
+
+            if src == tgt:
+                continue
+
+            if not nx.has_path(g, src, tgt):
+                continue
+
+            paths = nx.all_simple_paths(g, src, tgt)
+            cnt = 0
+            test_passed = False
+            for _ in paths:
+                cnt += 1
+                if cnt == k:
+                    test_passed = True
+                    break
+
+            if not test_passed:
+                print(f'\n pair {src} --  {tgt} has {cnt} alternatives.'
+                      f'Threshold is {k} alternative paths')
+
 
 
 def multigraph_to_graph(g, aggr_func, remove_isolates=False):
@@ -184,6 +208,11 @@ def identify_zones_sequences(g, src, direction_names, ordered_tps,
         gb = nx.DiGraph(g_hb_nhb)
 
     gf = nx.DiGraph(g_nhb)
+
+    check_net_obfuscation = True
+    if check_net_obfuscation:
+        assess_obfuscation(gf, srcs, tgts, k=5)
+
     for src in srcs:
         successors = set(gb.successors(src))
         for succ in successors:
