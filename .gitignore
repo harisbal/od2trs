@@ -65,3 +65,5 @@ target/
 ./outputs/
 
 optimisation\results\.txt
+/inputs/
+/outputs/

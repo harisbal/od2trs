@@ -335,7 +335,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
     print('Running on {} cores'.format(ncores))
     # clean the processing folder
     now = datetime.now().strftime('%Y%m%d%H%M%S')
-    filepaths['processfolder'] = os.path.join(r'./tmp/identification', now)
+    filepaths['processfolder'] = os.path.join(r'./misc/identification', now)
     myio.create_folders([filepaths['processfolder']], overwrite=True)
     with Pool(ncores, initializer=init_multiproc_wrapper, initargs=[net]) as pool:
         for trs in tqdm(pool.imap_unordered(
