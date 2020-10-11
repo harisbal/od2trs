@@ -8,7 +8,7 @@ import itertools
 import pandas as pd
 import networkx as nx
 import od2trs.utilities as utils
-import od2trs.network_tools as nettools
+import od2trs.network as network
 import od2trs.filters as filters
 import od2trs.io as myio
 from od2trs.tc import Leg, TripChain
@@ -245,10 +245,10 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       simplify_net_method, simplify_net_place,
                       excl_edges_od_perc):
 
-    zones_seqs = nettools.identify_zones_sequences(net, src_zone, direction_names, ordered_tps,
-                                                   max_legs, max_costs,
-                                                   simplify_net_method, simplify_net_place,
-                                                   excl_edges_od_perc)
+    zones_seqs = network.identify_zones_sequences(net, src_zone, direction_names, ordered_tps,
+                                                  max_legs, max_costs,
+                                                  simplify_net_method, simplify_net_place,
+                                                  excl_edges_od_perc)
 
     if not zones_seqs:
         return None
@@ -301,10 +301,10 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
 
     if (simplify_net_place == 'begin') and (excl_edges_od_perc > 0):
         simplify_net_weight = 'Trips'
-        cm = nettools.calculate_centralities(net, simplify_net_method, simplify_net_weight)
+        cm = network.calculate_centralities(net, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(net, cm, 'Centrality')
-        net = nettools.simplify_net(net, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,
-                                    direction_names=direction_names)
+        net = network.simplify_net(net, weight=simplify_net_weight, excl_weight_perc=excl_edges_od_perc,
+                                   direction_names=direction_names)
 
     # Export the filtered graph
     nx.write_gpickle(net, filepaths['out']['graph'])
