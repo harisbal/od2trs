@@ -77,9 +77,9 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
         return filtered
 
 
-def filter_trs_info_by_tgt_distr(info, distr):
+def filter_trs_info_by_distr(info, distr):
     df = info.copy()
-    keep_cols = info.columns
+    cols_keep = info.columns
     # The interval cols must be reproduced
     for d in distr.index.names:
         if '_grp' in d:
@@ -87,10 +87,15 @@ def filter_trs_info_by_tgt_distr(info, distr):
             df[d] = pd.cut(df[name], distr.reset_index()[d].cat.categories)
 
     # Check the match
+    # TODO there is a mismatch between the names in distr ending in '_seq' and in the respectives in info
+    #  (ie.g. Timeperiods_seq-->Timeperiods)
+    cols_jn = [c.replace('_seq', '') for c in distr.index.names]
     info_filt = pd.merge(df, distr, how='inner',
-                         left_on=distr.index.names,
-                         right_index=True,
-                         suffixes=('', '__'))[keep_cols]
+                         left_on=cols_jn, right_index=True,
+                         suffixes=('', '__'))[cols_keep]
+
+    if info_filt['Distrgroupid'].isna().sum() > 0:
+        raise ValueError('join contains NaNs')
 
     return info_filt
 

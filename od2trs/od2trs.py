@@ -57,8 +57,6 @@ def main(configpath=r'./config.ini'):
 
     purp_to_acts = json.loads(cfg['TOURS']['purpose_to_activities'])
 
-    # cost_bins = json.loads(cfg['TOURS']['cost_bins'])
-
     # optimisation config
     run_optim = json.loads(cfg['OPTIMISATION']['run_optimisation'])
     submit_to_neos = json.loads(cfg['OPTIMISATION']['submit_to_neos'])
@@ -162,4 +160,4 @@ def main(configpath=r'./config.ini'):
 
 
 if __name__ == '__main__':
-    main()
+    execute()
