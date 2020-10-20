@@ -3,17 +3,11 @@ import pandas as pd
 import od2trs.filters as filters
 
 
-def assess_obfuscation(g, srcs, tgts, ordered_tps, k=5):
-    for src in srcs:
-        for tgt in tgts:
+def assess_obfuscation(g, srcs, k=5):
+    for i, src in enumerate(srcs):
+        for tgt in srcs[i:]:
+
             if src == tgt:
-                continue
-
-            # Check for backwards in time paths
-            idx_tp_src = ordered_tps.index(src.split('-')[-1])
-            idx_tp_tgt = ordered_tps.index(tgt.split('-')[-1])
-
-            if idx_tp_src > idx_tp_tgt:
                 continue
 
             if not nx.has_path(g, src, tgt):
@@ -29,7 +23,7 @@ def assess_obfuscation(g, srcs, tgts, ordered_tps, k=5):
                     break
 
             if not test_passed:
-                print(f'\n pair {src} -- {tgt} has {cnt} alternatives.'
+                print(f'\n pair {src} --  {tgt} has {cnt} alternatives.'
                       f'Threshold is {k} alternative paths')
 
 
@@ -170,19 +164,18 @@ def simplify_net(g, keep_nodes=None,
     return g
 
 
-def identify_zones_sequences(net, src, direction_names, ordered_tps,
-                             max_legs, max_costs,
-                             simplify_net_method, simplify_net_place,
-                             excl_edges_od_perc):
+def identify_zone_sequences(g, src, direction_names, ordered_tps,
+                            max_legs, max_costs,
+                            simplify_net_method, simplify_net_place,
+                            excl_edges_od_perc):
 
-    srcs = [n for n, z in net.nodes(data='Zone') if z == src]
+    srcs = [n for n, z in g.nodes(data='Zone') if z == src]
     srcs.sort(key=lambda z: ordered_tps.index(z.split('-', 1)[1]))
     tgts = srcs.copy()
 
     zones_seqs = []
-    g_hb_nhb = filters.prepare_graph(net, srcs, tgts, direction_names)
+    g_hb_nhb = filters.prepare_graph(g, srcs, tgts, direction_names)
     g_hb_nhb.remove_nodes_from(list(nx.isolates(g_hb_nhb)))
-    #  nx.write_gpickle(g_hb_nhb, './nets/gf-net-{}.pkl'.format(src))
 
     # Some of the srcs (or tgts) may became isolates due to filtering
     srcs = [src for src in srcs if g_hb_nhb.has_node(src)]
@@ -202,22 +195,23 @@ def identify_zones_sequences(net, src, direction_names, ordered_tps,
     # TODO removing isolates from g_nhb fails the tests
     # g_nhb.remove_nodes_from(list(nx.isolates(g_nhb)))
 
-    # The resulting filtered graphs may still be multigraph when multiple types of NHB trips exist
-    # we only need to ensure that the multigraph edges will collapse to edges with the maximum distance
+    # The resulting filtered graphs may still be multi-graph when multiple types of NHB trips exist
+    # we only need to ensure that the multi-graph edges will collapse to edges with the maximum distance
     # (the rest of the attributes are irrelevant)
     if max_costs:
         attrs = max_costs.keys()
         aggr_funcs = dict(zip(attrs, len(attrs) * [max]))
         gb = multigraph_to_graph(g_hb_nhb, aggr_funcs)
-        # gf = multigraph_to_graph(g_nhb, aggr_funcs)
     else:
         gb = nx.DiGraph(g_hb_nhb)
 
     gf = nx.DiGraph(g_nhb)
 
-    check_net_obfuscation = False
+    check_net_obfuscation = True
     if check_net_obfuscation:
-        assess_obfuscation(gf, srcs, tgts, k=5)
+        print('start check')
+        assess_obfuscation(gb, srcs, k=5)
+        print('end check')
 
     for src in srcs:
         successors = set(gb.successors(src))
@@ -260,8 +254,8 @@ def identify_zones_sequences(net, src, direction_names, ordered_tps,
 
             # I have noticed that the distance related cutoffs have stronger influence than the rest
             # therefore I prioritise them in the list
-            tp_min = min([ordered_tps.index(net.nodes[src]['Timeperiod']) for src in srcs])
-            tp_max = max([ordered_tps.index(net.nodes[tgt]['Timeperiod']) for tgt in tgts])
+            tp_min = min([ordered_tps.index(g.nodes[src]['Timeperiod']) for src in srcs])
+            tp_max = max([ordered_tps.index(g.nodes[tgt]['Timeperiod']) for tgt in tgts])
 
             weights.extend(['Length', 'HeightDiff'])  # Number of intermediate time-periods, Length excludes connectors
             cutoffs.extend([max_legs - 2, tp_max - tp_min])  # Two legs are devoted to successor and predecessor

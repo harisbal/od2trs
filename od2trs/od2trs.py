@@ -10,7 +10,7 @@ import od2trs.converters as converters
 import od2trs.optimise as opt
 
 
-def execute(configpath=r'./config.ini'):
+def main(configpath=r'./config.ini'):
 
     start_time = time.time()
 
@@ -73,6 +73,7 @@ def execute(configpath=r'./config.ini'):
     myio.export_config(cfg, filepaths['out']['config'])
 
     try:
+        print('Reading costs..')
         costs = myio.import_costs(filepaths['in']['costs'])
     except FileNotFoundError:
         raise FileNotFoundError('costs file is required')
@@ -161,4 +162,4 @@ def execute(configpath=r'./config.ini'):
 
 
 if __name__ == '__main__':
-    execute()
+    main()

@@ -245,10 +245,10 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       simplify_net_method, simplify_net_place,
                       excl_edges_od_perc):
 
-    zones_seqs = network.identify_zones_sequences(net, src_zone, direction_names, ordered_tps,
-                                                  max_legs, max_costs,
-                                                  simplify_net_method, simplify_net_place,
-                                                  excl_edges_od_perc)
+    zones_seqs = network.identify_zone_sequences(net, src_zone, direction_names, ordered_tps,
+                                                 max_legs, max_costs,
+                                                 simplify_net_method, simplify_net_place,
+                                                 excl_edges_od_perc)
 
     if not zones_seqs:
         return None

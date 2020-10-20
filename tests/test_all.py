@@ -7,7 +7,7 @@ from od2trs import utilities as utils, od2trs
 def test_example():
 
     configpath = r'tests/config_test_example.ini'
-    od2trs.execute(configpath)
+    od2trs.main(configpath)
 
     cfg = configparser.ConfigParser()
     cfg.read(configpath)
@@ -24,7 +24,7 @@ def test_example():
 def test_small():
 
     configpath = r'tests/config_test_small.ini'
-    od2trs.execute(configpath)
+    od2trs.main(configpath)
 
     cfg = configparser.ConfigParser()
     cfg.read(configpath)
