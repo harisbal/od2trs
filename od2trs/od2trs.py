@@ -98,9 +98,9 @@ def main(configpath=r'./config.ini'):
         tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
                                           interval_cols=interval_cols,
                                           seq_cols=seq_cols)
-        # Remove the _grp suffix
         tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_distr_od_perc)
 
+        # Remove the _grp suffix
         cost_bins = {ic.replace('_grp', ''): tgt_distr.index.unique(ic) for ic in interval_cols}
 
         # Recalculate the number of tours after the filtering
