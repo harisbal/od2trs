@@ -207,7 +207,7 @@ def identify_zone_sequences(g, src, direction_names, ordered_tps,
 
     gf = nx.DiGraph(g_nhb)
 
-    check_net_obfuscation = True
+    check_net_obfuscation = False
     if check_net_obfuscation:
         print('start check')
         assess_obfuscation(gb, srcs, k=5)
