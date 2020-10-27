@@ -1,7 +1,7 @@
 import math
 import pandas as pd
 
-from pyomo.environ import *
+import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
 from pyutilib.common._exceptions import ApplicationError
 from pyomo.core.util import quicksum
@@ -12,7 +12,7 @@ import od2trs.filters as filters
 from pyutilib.services import TempfileManager
 
 
-def prepare_model(info, od, ntrs, distr_obs,
+def prepare_model(info, od, ntrs, tgt_distr,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, init_sol=None):
 
@@ -50,20 +50,15 @@ def prepare_model(info, od, ntrs, distr_obs,
             return m.init_sol.get(i, 0)
 
     def _find_ubnds(m):
-        odvals = m.od.set_index('Odpairid')['Trips'].values
-
+        odvals = m.od.set_index('Odpairid')['Trips']
         s = m.info['Odpairids']
-        idxs = s.index.get_level_values(0).values
-        vals = s.values
-        mins = [odvals[list(sv)].min() for sv in vals]
-
-        ubnds = dict(zip(idxs, mins))
+        ubnds = s.apply(lambda x: min([odvals.at[e] for e in x])).to_dict()
         return ubnds
 
     def _get_bnds(m, i):
         return (0, m.tr_ubnds[i])
 
-    model = ConcreteModel()
+    model = pyo.ConcreteModel()
     model.od = od.copy()
     d_leg_ntrips = model.od.reset_index().set_index('Odpairid')['Trips'].to_dict()
 
@@ -72,36 +67,36 @@ def prepare_model(info, od, ntrs, distr_obs,
     model.distr_perc_tolerance = distr_perc_tolerance
 
     # get the required precision
-    if distr_obs is not None:
+    if tgt_distr is not None:
         prec = len(str(distr_perc_tolerance).split('.')[1])
-        model.distr_obs = distr_obs.round(prec)
+        model.tgt_distr = tgt_distr.round(prec)
 
-    model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
-    model.tr_ids = Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
+    model.odpair_ids = pyo.Set(initialize=model.od['Odpairid'].unique().tolist())
+    model.tr_ids = pyo.Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
 
-    model.trips = Param(model.odpair_ids, initialize=d_leg_ntrips, within=NonNegativeIntegers)
-    model.descr_by_odpair = Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None,
-                                  within=Any)
+    model.trips = pyo.Param(model.odpair_ids, initialize=d_leg_ntrips, within=pyo.NonNegativeIntegers)
+    model.descr_by_odpair = pyo.Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None,
+                                      within=pyo.Any)
 
     model.tr_ubnds = _find_ubnds(model)
-    model.ntrs = Param(default=ntrs, mutable=True)
+    model.ntrs = pyo.Param(default=ntrs, mutable=True)
 
-    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
-                         initialize=_init_solution)
+    model.trs_util = pyo.Var(model.tr_ids, within=pyo.NonNegativeIntegers, bounds=_get_bnds,
+                             initialize=_init_solution)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Trips'].sum()
 
     if distr_constr_enabled:
-        model.distr_grp_ids = Set(initialize=model.distr_obs.reset_index()['Distrgroupid'].unique().tolist())
-        model.distr_obs = model.distr_obs.reset_index().set_index('Distrgroupid')
+        model.distr_grp_ids = pyo.Set(initialize=model.tgt_distr.reset_index()['Distrgroupid'].unique().tolist())
+        model.tgt_distr = model.tgt_distr.reset_index().set_index('Distrgroupid')
 
-        d_init = model.distr_obs['Percentage'].to_dict()
-        model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
+        d_init = model.tgt_distr['Percentage'].to_dict()
+        model.distr_grp_percs = pyo.Param(model.distr_grp_ids, initialize=d_init, default=0)
 
         d_init = _init_tr_by_distr_grps(model)
-        model.tr_by_distr_grps = Param(model.distr_grp_ids, initialize=d_init, default=None, within=Any)
+        model.tr_by_distr_grps = pyo.Param(model.distr_grp_ids, initialize=d_init, default=None, within=pyo.Any)
 
     # TempfileManager.tempdir = r'./misc'
 
@@ -109,15 +104,15 @@ def prepare_model(info, od, ntrs, distr_obs,
         odsum = m.od['Trips'].sum()
         nlegs = m.info['Nolegs'].to_dict()
         return quicksum(m.trs_util[tr_id] * nlegs[tr_id] for tr_id in m.tr_ids) - odsum
-    model.objective = Objective(rule=maximise_used_trips, sense=maximize)
+    model.objective = pyo.Objective(rule=maximise_used_trips, sense=pyo.maximize)
 
     def trips_rule(m, odpair_id):
         if m.descr_by_odpair[odpair_id]:
             e = quicksum(m.trs_util[tr_id] for tr_id in m.descr_by_odpair[odpair_id])
             return e <= model.trips[odpair_id]
         else:
-            return Constraint.Skip
-    model.od_trips_rule = Constraint(model.odpair_ids, rule=trips_rule)
+            return pyo.Constraint.Skip
+    model.od_trips_rule = pyo.Constraint(model.odpair_ids, rule=trips_rule)
 
     def distr_rule(m, grp_id):
         if m.tr_by_distr_grps[grp_id]:
@@ -126,10 +121,10 @@ def prepare_model(info, od, ntrs, distr_obs,
             e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
             return (lower_lim, e, upper_lim)
         else:
-            return Constraint.Skip
+            return pyo.Constraint.Skip
 
     if distr_constr_enabled:
-        model.distr_rule = Constraint(model.distr_grp_ids, rule=distr_rule)
+        model.distr_rule = pyo.Constraint(model.distr_grp_ids, rule=distr_rule)
 
     return model
 
@@ -155,7 +150,7 @@ def run_model(model, submit_to_neos=False, workmem=None,
         opt.options['timelimit'] = timelimit
 
     if submit_to_neos:
-        solver_manager = SolverManagerFactory('neos')
+        solver_manager = pyo.SolverManagerFactory('neos')
         results = solver_manager.solve(model, opt=opt)
         model.solutions.store_to(results)
     else:
@@ -169,7 +164,7 @@ def run_model(model, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(info, od, ntrs, distr_obs=None,
+def main(info, od, ntrs, tgt_distr=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
@@ -200,11 +195,11 @@ def main(info, od, ntrs, distr_obs=None,
     init_sol = None
     info['Timesused'] = 0
     # The target distr can be utilised to create initial solutions
-    if distr_obs is not None:
-        init_sol = _prepare_init_sol_by_distr(info, distr_obs, ntrs)
+    if tgt_distr is not None:
+        init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
 
     print('Preparing the optimisation model')
-    mymodel = prepare_model(info, od, ntrs, distr_obs,
+    mymodel = prepare_model(info, od, ntrs, tgt_distr,
                             distr_constr_enabled, distr_perc_tolerance,
                             mip_tolerances_lowercutoff,
                             init_sol=init_sol)
@@ -215,7 +210,7 @@ def main(info, od, ntrs, distr_obs=None,
                         timelimit=timelimit, solver_factory='cplex')
 
     #    mymodel.distr_rule.reconstruct()
-    if results.solver.termination_condition != TerminationCondition.infeasible:
+    if results.solver.termination_condition != pyo.TerminationCondition.infeasible:
         info = _update_timesused(info, results)
 
     return info

@@ -5,6 +5,9 @@ import pandas as pd
 
 def filter_lowpercent_distr_groups(distr, max_legs, max_costs, thresh, percent_col='Percentage'):
 
+    if thresh == 0:
+        return distr
+
     df = distr.reset_index()
     # Initial trips
     trips0 = sum(df['Nolegs'] * df['Size'])
