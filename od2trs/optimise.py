@@ -12,7 +12,7 @@ import od2trs.filters as filters
 from pyutilib.services import TempfileManager
 
 
-def prepare_model(info, od, ntrs, tgt_distr,
+def prepare_model(info, od, ntrs, distr_obs,
                   distr_constr_enabled, distr_perc_tolerance,
                   mip_tolerances_lowercutoff, init_sol=None):
 
@@ -72,9 +72,9 @@ def prepare_model(info, od, ntrs, tgt_distr,
     model.distr_perc_tolerance = distr_perc_tolerance
 
     # get the required precision
-    if tgt_distr is not None:
+    if distr_obs is not None:
         prec = len(str(distr_perc_tolerance).split('.')[1])
-        model.tgt_distr = tgt_distr.round(prec)
+        model.distr_obs = distr_obs.round(prec)
 
     model.odpair_ids = Set(initialize=model.od['Odpairid'].unique().tolist())
     model.tr_ids = Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
@@ -94,10 +94,10 @@ def prepare_model(info, od, ntrs, tgt_distr,
         model.cutoff = -mip_tolerances_lowercutoff * model.od['Trips'].sum()
 
     if distr_constr_enabled:
-        model.distr_grp_ids = Set(initialize=model.tgt_distr.reset_index()['Distrgroupid'].unique().tolist())
-        model.tgt_distr = model.tgt_distr.reset_index().set_index('Distrgroupid')
+        model.distr_grp_ids = Set(initialize=model.distr_obs.reset_index()['Distrgroupid'].unique().tolist())
+        model.distr_obs = model.distr_obs.reset_index().set_index('Distrgroupid')
 
-        d_init = model.tgt_distr['Percentage'].to_dict()
+        d_init = model.distr_obs['Percentage'].to_dict()
         model.distr_grp_percs = Param(model.distr_grp_ids, initialize=d_init, default=0)
 
         d_init = _init_tr_by_distr_grps(model)
@@ -169,7 +169,7 @@ def run_model(model, submit_to_neos=False, workmem=None,
     return results
 
 
-def main(info, od, ntrs, tgt_distr=None,
+def main(info, od, ntrs, distr_obs=None,
          distr_constr_enabled=False,
          distr_perc_tolerance=0.01,
          submit_to_neos=False, workmem=None,
@@ -200,11 +200,11 @@ def main(info, od, ntrs, tgt_distr=None,
     init_sol = None
     info['Timesused'] = 0
     # The target distr can be utilised to create initial solutions
-    if tgt_distr is not None:
-        init_sol = _prepare_init_sol_by_distr(info, tgt_distr, ntrs)
+    if distr_obs is not None:
+        init_sol = _prepare_init_sol_by_distr(info, distr_obs, ntrs)
 
     print('Preparing the optimisation model')
-    mymodel = prepare_model(info, od, ntrs, tgt_distr,
+    mymodel = prepare_model(info, od, ntrs, distr_obs,
                             distr_constr_enabled, distr_perc_tolerance,
                             mip_tolerances_lowercutoff,
                             init_sol=init_sol)

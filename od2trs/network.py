@@ -1,9 +1,12 @@
 import networkx as nx
 import pandas as pd
 import od2trs.filters as filters
+from itertools import islice
 
 
-def assess_obfuscation(g, srcs, k=5):
+def assess_anonymity_func(g, srcs, k=5):
+
+    problems = []
     for i, src in enumerate(srcs):
         for tgt in srcs[i:]:
 
@@ -13,18 +16,15 @@ def assess_obfuscation(g, srcs, k=5):
             if not nx.has_path(g, src, tgt):
                 continue
 
-            paths = nx.all_simple_paths(g, src, tgt)
-            cnt = 0
-            test_passed = False
-            for _ in paths:
-                cnt += 1
-                if cnt == k:
-                    test_passed = True
-                    break
+            paths = list(islice(nx.shortest_simple_paths(g, src, tgt), k))
+            if len(paths) < k:
+                problems.append(f'{src};{tgt}'+'\n')
+                # print(f'\n pair {src} --  {tgt} has {len(paths)} alternatives. Limit is {k}')
 
-            if not test_passed:
-                print(f'\n pair {src} --  {tgt} has {cnt} alternatives.'
-                      f'Threshold is {k} alternative paths')
+    name = srcs[0].split('-')[0]
+    if problems:
+        with open(f'./problems/{name}.txt', 'w') as f:
+            f.writelines(problems)
 
 
 def multigraph_to_graph(g, aggr_func, remove_isolates=False):
@@ -167,6 +167,7 @@ def simplify_net(g, keep_nodes=None,
 def identify_zone_sequences(g, src, direction_names, ordered_tps,
                             max_legs, max_costs,
                             simplify_net_method, simplify_net_place,
+                            assess_anonymity,
                             excl_edges_od_perc):
 
     srcs = [n for n, z in g.nodes(data='Zone') if z == src]
@@ -207,11 +208,9 @@ def identify_zone_sequences(g, src, direction_names, ordered_tps,
 
     gf = nx.DiGraph(g_nhb)
 
-    check_net_obfuscation = True
-    if check_net_obfuscation:
-        print('start check')
-        assess_obfuscation(gb, srcs, k=5)
-        print('end check')
+    if assess_anonymity:
+        assess_anonymity_func(gb, srcs, k=5)
+        return []
 
     for src in srcs:
         successors = set(gb.successors(src))

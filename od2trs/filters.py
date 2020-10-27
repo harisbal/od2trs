@@ -42,7 +42,7 @@ def filter_lowpercent_distr_groups(distr, max_legs, max_costs, thresh, percent_c
     return distr_filt
 
 
-def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
+def filter_trs_by_distr_obs(trs, distr_obs, distr_dims, cost_bins=None):
     filtered = list()
     for tr in trs:
         d_dims = dict()
@@ -65,10 +65,10 @@ def filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins=None):
             key.append(d_dims[dd])
 
         key = tuple(key)
-        perc = tgt_distr['Percentage'].get(key, 0)
+        perc = distr_obs['Percentage'].get(key, 0)
 
         if perc > 0:
-            tr.distrgroupid = int(tgt_distr.loc[key]['Distrgroupid'])
+            tr.distrgroupid = int(distr_obs.loc[key]['Distrgroupid'])
             filtered.append(tr)
         else:
             continue
@@ -101,7 +101,7 @@ def filter_trs_info_by_distr(info, distr):
 
 
 def filter_trs(trs, max_costs, purp_to_acts,
-               tgt_distr, distr_dims, cost_bins):
+               distr_obs, distr_dims, cost_bins):
 
     if max_costs:
         trs = filter_by_max_cost(trs, max_costs)
@@ -109,9 +109,9 @@ def filter_trs(trs, max_costs, purp_to_acts,
     if purp_to_acts:
         trs = filter_by_acts(trs, purp_to_acts)
 
-    if tgt_distr is not None:
-        tgt_distr = tgt_distr.sort_index()
-        trs = filter_trs_by_tgt_distr(trs, tgt_distr, distr_dims, cost_bins)
+    if distr_obs is not None:
+        distr_obs = distr_obs.sort_index()
+        trs = filter_trs_by_distr_obs(trs, distr_obs, distr_dims, cost_bins)
 
     return trs
 

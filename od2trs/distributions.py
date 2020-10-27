@@ -24,7 +24,7 @@ def prepare_distr_from_info_obs(obs_info, distr_dims, cost_bins):
     return obs_distr
 
 
-def assign_distr_groupid(info, tgt_distr, distr_dims, cost_bins):
+def assign_distr_groupid(info, distr_obs, distr_dims, cost_bins):
 
     # assign costs to bins
     for cost_type, bins in cost_bins.items():
@@ -32,7 +32,7 @@ def assign_distr_groupid(info, tgt_distr, distr_dims, cost_bins):
         info[cost_grp] = pd.cut(info[cost_type], bins=bins)
 
     # Keep only the distribution group id and its definition
-    distr_group_ids = tgt_distr['Distrgroupid']
+    distr_group_ids = distr_obs['Distrgroupid']
 
     info = pd.merge(info, distr_group_ids.to_frame(),
                     left_on=distr_dims, right_index=True,

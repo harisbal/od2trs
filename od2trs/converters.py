@@ -178,13 +178,13 @@ def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
     return trs
 
 
-def trs_to_df(trs, tgt_distr, max_costs):
+def trs_to_df(trs, distr_obs, max_costs):
 
     # the first keys are always set
     keys = ['Id', 'Nolegs', 'Origs', 'Purposes', 'Directions', 'Timeperiods', 'Transports',
             'Odpairids', 'Acts', 'Departtimes', 'Loopscnt']
 
-    if tgt_distr is not None:
+    if distr_obs is not None:
         keys.append('Distrgroupid')
 
     if max_costs:
@@ -240,14 +240,16 @@ def results_to_od(info, od_obs, idx_cols):
 
 def multiproc_wrapper(src_zone, direction_names, ordered_tps,
                       max_legs, max_costs, cost_bins,
-                      tgt_distr, distr_dims,
+                      distr_obs, distr_dims,
                       purp_to_acts,
                       simplify_net_method, simplify_net_place,
+                      assess_anonymity,
                       excl_edges_od_perc):
 
     zones_seqs = network.identify_zone_sequences(net, src_zone, direction_names, ordered_tps,
                                                  max_legs, max_costs,
                                                  simplify_net_method, simplify_net_place,
+                                                 assess_anonymity,
                                                  excl_edges_od_perc)
 
     if not zones_seqs:
@@ -263,7 +265,7 @@ def multiproc_wrapper(src_zone, direction_names, ordered_tps,
         trs = zones_seq_to_trs(zs, net, direction_names, cost_types=cost_types)
 
         trs = filters.filter_trs(trs, max_costs, purp_to_acts,
-                                 tgt_distr, distr_dims, cost_bins)
+                                 distr_obs, distr_dims, cost_bins)
 
         if trs:
             # Assign the activities to the filtered trs
@@ -281,14 +283,18 @@ def init_multiproc_wrapper(_net):
 
 
 def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
-           tgt_distr=None, distr_dims=None, cost_bins=None,
+           distr_obs=None, distr_dims=None, cost_bins=None,
            costs=None, max_costs=None, purp_to_acts=None,
            excl_edges_od_perc=0,
            simplify_net_method='pagerank', simplify_net_place='begin',
+           assess_anonymity=False,
            zones_info=None,
            ncores=None, low_memory=False):
 
     if costs is not None:
+        print('joining: od-costs')
+        od = od.sort_index()
+        costs = costs.sort_index()
         od = od.join(costs)
         # TODO Drop missing values (could cause problems)
         od = od.dropna(axis=1)
@@ -345,11 +351,12 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                                 max_legs=max_legs,
                                 max_costs=max_costs,
                                 cost_bins=cost_bins,
-                                tgt_distr=tgt_distr,
+                                distr_obs=distr_obs,
                                 distr_dims=distr_dims,
                                 purp_to_acts=purp_to_acts,
                                 simplify_net_method=simplify_net_method,
                                 simplify_net_place=simplify_net_place,
+                                assess_anonymity=assess_anonymity,
                                 excl_edges_od_perc=excl_edges_od_perc), zones), total=len(zones)):
 
             if trs:
@@ -357,7 +364,7 @@ def od2trs(od, filepaths, max_legs=None, direction_names=None, ordered_tps=None,
                     tr.id = tr_id
                     tr_id += 1
 
-                info_df = trs_to_df(trs, tgt_distr, max_costs)
+                info_df = trs_to_df(trs, distr_obs, max_costs)
 
                 if low_memory:
                     myio.export_low_memory(info_df, filepaths['processfolder'])
