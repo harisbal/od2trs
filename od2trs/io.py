@@ -166,9 +166,9 @@ def combine_interm_results(processfolder, purge=True):
 
 
 def import_trs(filepaths, tgt_distr=None):
-    _, ext = os.path.splitext(filepaths['in']['trs_mdl_info'])
+    _, ext = os.path.splitext(filepaths['in']['trs_info_mdl'])
     if ext == '.pkl':
-        info = pd.read_pickle(filepaths['in']['trs_mdl_info']).sort_index()
+        info = pd.read_pickle(filepaths['in']['trs_info_mdl']).sort_index()
     else:
         raise TypeError('Tours can be only imported in pkl format')
 
@@ -189,8 +189,8 @@ def export_tgt_distr(distr, filepath):
 
 
 def export_trs(info, filepaths):
-    ext = filepaths['out']['trs_mdl_info'].split('.')[-1]
-    fp = filepaths['out']['trs_mdl_info']
+    ext = filepaths['out']['trs_info_mdl'].split('.')[-1]
+    fp = filepaths['out']['trs_info_mdl']
     if ext == 'csv':
         info_out = utils.tuples_to_strings(info)
         info_out.to_csv(fp, index=True)
@@ -198,7 +198,7 @@ def export_trs(info, filepaths):
         try:
             info.to_pickle(fp)
         except MemoryError:
-            info.to_hdf(fp, 'trs_mdl_info', mode='w')
+            info.to_hdf(fp, 'trs_info_mdl', mode='w')
     else:
         raise TypeError('Unknown export format')
 

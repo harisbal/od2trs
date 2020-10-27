@@ -95,19 +95,19 @@ def main(configpath=r'./config.ini'):
         interval_cols = [dd for dd in distr_dims if '_grp' in dd]
         seq_cols = [dd for dd in distr_dims if '_seq' in dd]
 
-        tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
+        distr_obs = myio.import_tgt_distr(filepaths['in']['distr_obs'], distr_dims, ntrs,
                                           interval_cols=interval_cols, seq_cols=seq_cols)
-        tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_distr_od_perc)
+        distr_obs = filters.filter_lowpercent_distr_groups(distr_obs, max_legs, max_costs, excl_distr_od_perc)
 
         # Remove the _grp suffix
-        cost_bins = {ic.replace('_grp', ''): tgt_distr.index.unique(ic) for ic in interval_cols}
+        cost_bins = {ic.replace('_grp', ''): distr_obs.index.unique(ic) for ic in interval_cols}
 
         # Recalculate the number of tours after the filtering
-        ntrs = tgt_distr['Size'].sum()
-        myio.export_tgt_distr(tgt_distr, filepaths['out']['tgt_distr'])
+        ntrs = distr_obs['Size'].sum()
+        myio.export_tgt_distr(distr_obs, filepaths['out']['distr_obs'])
     else:
         cost_bins = None
-        tgt_distr = None
+        distr_obs = None
 
     net = None
     if run_trs_identification:
@@ -116,7 +116,7 @@ def main(configpath=r'./config.ini'):
                                           cost_bins=cost_bins, costs=costs, max_costs=max_costs,
                                           direction_names=direction_names,
                                           ordered_tps=ordered_tps,
-                                          tgt_distr=tgt_distr,
+                                          distr_obs=distr_obs,
                                           distr_dims=distr_dims,
                                           purp_to_acts=purp_to_acts,
                                           excl_edges_od_perc=excl_edges_od_perc,
@@ -129,7 +129,7 @@ def main(configpath=r'./config.ini'):
         if (trs_info is not None) and export_flat:
             myio.export_trs(trs_info, filepaths)
     else:
-        trs_info = myio.import_trs(filepaths, tgt_distr)
+        trs_info = myio.import_trs(filepaths, distr_obs)
         myio.export_trs(trs_info, filepaths)
 
     od_mdl = None
@@ -137,7 +137,7 @@ def main(configpath=r'./config.ini'):
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,
                             ntrs=ntrs,
-                            tgt_distr=tgt_distr,
+                            tgt_distr=distr_obs,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
                             workmem=workmem,
@@ -156,7 +156,7 @@ def main(configpath=r'./config.ini'):
         myio.export_od(od_mdl, filepaths['out']['od'])
         myio.export_trs(trs_info, filepaths)
 
-    results = [od_mdl, trs_info, tgt_distr, net, elapsed_time]
+    results = [od_mdl, trs_info, distr_obs, net, elapsed_time]
 
     return results
 

@@ -27,7 +27,7 @@ def prepare_lookup_tourid(trs_mdl_descr, trs_obs_info, trs_obs_descr, descr_cols
 
 def prepare_comparison(types,
                        trs_obs_info, trs_obs_descr,
-                       trs_mdl_info, trs_mdl_descr,
+                       trs_info_mdl, trs_mdl_descr,
                        lookup, coords=None, attr_cols=None,
                        export_unused=False):
 
@@ -48,7 +48,7 @@ def prepare_comparison(types,
             trs_descr['Type'] = tp
         else:
             trs_descr = trs_mdl_descr.copy()
-            trs_descr = trs_descr.join(trs_mdl_info.Timesused)
+            trs_descr = trs_descr.join(trs_info_mdl.Timesused)
             trs_descr['Type'] = tp
 
         trs_descr.set_index('Type', append=True, inplace=True)
