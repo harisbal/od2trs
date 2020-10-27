@@ -96,8 +96,7 @@ def main(configpath=r'./config.ini'):
         seq_cols = [dd for dd in distr_dims if '_seq' in dd]
 
         tgt_distr = myio.import_tgt_distr(filepaths['in']['tgt_distr'], distr_dims, ntrs,
-                                          interval_cols=interval_cols,
-                                          seq_cols=seq_cols)
+                                          interval_cols=interval_cols, seq_cols=seq_cols)
         tgt_distr = filters.filter_lowpercent_distr_groups(tgt_distr, max_legs, max_costs, excl_distr_od_perc)
 
         # Remove the _grp suffix
@@ -153,8 +152,9 @@ def main(configpath=r'./config.ini'):
 
     elapsed_time = time.time() - start_time
 
-    if od is not None:
-        myio.export_od(od, filepaths['out']['od'])
+    if od_mdl is not None:
+        myio.export_od(od_mdl, filepaths['out']['od'])
+        myio.export_trs(trs_info, filepaths)
 
     results = [od_mdl, trs_info, tgt_distr, net, elapsed_time]
 

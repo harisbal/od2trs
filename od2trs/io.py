@@ -27,7 +27,7 @@ def import_tgt_distr(infilepath, distr_dims, ntrs,
     if interval_cols:
         for c in interval_cols:
             tgt_distr[c] = tgt_distr[c].apply(utils.to_interval)
-            tgt_distr[c] = tgt_distr[c].astype('interval')
+            tgt_distr[c] = tgt_distr[c].astype('category')
 
     if seq_cols:
         for c in seq_cols:
@@ -43,7 +43,7 @@ def import_tgt_distr(infilepath, distr_dims, ntrs,
     dds = [dd for dd in distr_dims if dd not in ['Nolegs', 'Distrgroupid']]
     dds += ['Nolegs', 'Distrgroupid']
 
-    tgt_distr = tgt_distr.groupby(dds)[percent_col].sum().to_frame()
+    tgt_distr = tgt_distr.groupby(dds, observed=True)[percent_col].sum().to_frame()
     tgt_distr = tgt_distr.reset_index('Distrgroupid')
     # TODO Has not been tested
     tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
