@@ -174,8 +174,10 @@ def import_trs(filepaths, tgt_distr=None):
 
     print('Number of tours read:', info.shape[0])
     if tgt_distr is not None:
-        info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
-        print('Number of tours after tgt_distr filtering:', info.shape[0])
+        # TODO requires fix
+        a=1
+        # info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
+        # print('Number of tours after tgt_distr filtering:', info.shape[0])
 
     return info
 

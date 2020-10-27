@@ -86,7 +86,7 @@ def prepare_model(info, od, ntrs, tgt_distr,
     model.tr_ubnds = _find_ubnds(model)
     model.ntrs = Param(default=ntrs, mutable=True)
 
-    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers, bounds=_get_bnds,
+    model.trs_util = Var(model.tr_ids, within=NonNegativeIntegers,
                          initialize=_init_solution)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
