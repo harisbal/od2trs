@@ -174,10 +174,9 @@ def import_trs(filepaths, tgt_distr=None):
 
     print('Number of tours read:', info.shape[0])
     if tgt_distr is not None:
-        # TODO requires fix
-        a=1
-        # info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
-        # print('Number of tours after tgt_distr filtering:', info.shape[0])
+        # TODO name mismatch Timeperiods and Timeperiods_seq when importing trs_info_mdl
+        info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
+        print('Number of tours after tgt_distr filtering:', info.shape[0])
 
     return info
 
