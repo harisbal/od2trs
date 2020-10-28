@@ -95,7 +95,7 @@ def main(configpath=r'./config.ini'):
         interval_cols = [dd for dd in distr_dims if '_grp' in dd]
         seq_cols = [dd for dd in distr_dims if '_seq' in dd]
 
-        distr_obs = myio.import_tgt_distr(filepaths['in']['distr_obs'], distr_dims, ntrs,
+        distr_obs = myio.import_distr_obs(filepaths['in']['distr_obs'], distr_dims, ntrs,
                                           interval_cols=interval_cols, seq_cols=seq_cols)
         distr_obs = filters.filter_lowpercent_distr_groups(distr_obs, max_legs, max_costs, excl_distr_od_perc)
 
@@ -104,7 +104,7 @@ def main(configpath=r'./config.ini'):
 
         # Recalculate the number of tours after the filtering
         ntrs = distr_obs['Size'].sum()
-        myio.export_tgt_distr(distr_obs, filepaths['out']['distr_obs'])
+        myio.export_distr_obs(distr_obs, filepaths['out']['distr_obs'])
     else:
         cost_bins = None
         distr_obs = None
@@ -137,7 +137,7 @@ def main(configpath=r'./config.ini'):
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,
                             ntrs=ntrs,
-                            tgt_distr=distr_obs,
+                            distr_obs=distr_obs,
                             distr_constr_enabled=distr_constr_enabled,
                             distr_perc_tolerance=distr_perc_tolerance,
                             workmem=workmem,

@@ -17,39 +17,39 @@ def create_folders(folder_list, overwrite=False):
             pass
 
 
-def import_tgt_distr(infilepath, distr_dims, ntrs,
+def import_distr_obs(infilepath, distr_dims, ntrs,
                      interval_cols=None, seq_cols=None,
                      percent_col='Percentage'):
 
-    tgt_distr = pd.read_csv(infilepath)
+    distr_obs = pd.read_csv(infilepath)
 
     # check for intervals
     if interval_cols:
         for c in interval_cols:
-            tgt_distr[c] = tgt_distr[c].apply(utils.to_interval)
-            tgt_distr[c] = tgt_distr[c].astype('category')
+            distr_obs[c] = distr_obs[c].apply(utils.to_interval)
+            distr_obs[c] = distr_obs[c].astype('interval').astype('category')
 
     if seq_cols:
         for c in seq_cols:
-            tgt_distr[c] = utils.to_sequence(tgt_distr[c])
+            distr_obs[c] = utils.to_sequence(distr_obs[c])
 
-    if 'Nolegs' not in tgt_distr.columns:
-        tgt_distr['Nolegs'] = tgt_distr[seq_cols[0]].apply(len)
+    if 'Nolegs' not in distr_obs.columns:
+        distr_obs['Nolegs'] = distr_obs[seq_cols[0]].apply(len)
 
-    if 'Distrgroupid' not in tgt_distr.columns:
-        tgt_distr.index.name = 'Distrgroupid'
+    if 'Distrgroupid' not in distr_obs.columns:
+        distr_obs.index.name = 'Distrgroupid'
 
     # Order of distr_dims is important
     dds = [dd for dd in distr_dims if dd not in ['Nolegs', 'Distrgroupid']]
     dds += ['Nolegs', 'Distrgroupid']
 
-    tgt_distr = tgt_distr.groupby(dds, observed=True)[percent_col].sum().to_frame()
-    tgt_distr = tgt_distr.reset_index('Distrgroupid')
+    distr_obs = distr_obs.groupby(dds, observed=True)[percent_col].sum().to_frame()
+    distr_obs = distr_obs.reset_index('Distrgroupid')
     # TODO Has not been tested
-    tgt_distr['Size'] = (tgt_distr[percent_col] * ntrs).round(0).astype(int)
-    tgt_distr = tgt_distr.sort_index()
+    distr_obs['Size'] = (distr_obs[percent_col] * ntrs).round(0).astype(int)
+    distr_obs = distr_obs.sort_index()
 
-    return tgt_distr
+    return distr_obs
 
 
 def import_od(infilepath, trips_thresh, grps):
@@ -165,7 +165,7 @@ def combine_interm_results(processfolder, purge=True):
     return info
 
 
-def import_trs(filepaths, tgt_distr=None):
+def import_trs(filepaths, distr_obs=None):
     _, ext = os.path.splitext(filepaths['in']['trs_info_mdl'])
     if ext == '.pkl':
         info = pd.read_pickle(filepaths['in']['trs_info_mdl']).sort_index()
@@ -173,15 +173,14 @@ def import_trs(filepaths, tgt_distr=None):
         raise TypeError('Tours can be only imported in pkl format')
 
     print('Number of tours read:', info.shape[0])
-    if tgt_distr is not None:
-        # TODO name mismatch Timeperiods and Timeperiods_seq when importing trs_info_mdl
-        info = filters.filter_trs_info_by_tgt_distr(info, tgt_distr)
-        print('Number of tours after tgt_distr filtering:', info.shape[0])
+    if distr_obs is not None:
+        info = filters.filter_trs_info_by_distr(info, distr_obs)
+        print('Number of tours after distr_obs filtering:', info.shape[0])
 
     return info
 
 
-def export_tgt_distr(distr, filepath):
+def export_distr_obs(distr, filepath):
     # reformat the tuple sequences to strings
     distr = distr.reset_index()
     distr_out = utils.tuples_to_strings(distr)
@@ -207,8 +206,6 @@ def export_od(od, filepaths):
     if od is not None:
         od = od.reset_index()
         od.to_csv(filepaths, index=False, header=True)
-    #nx.write_gml(trs_descr_comp, os.path.join(outfolder,
-    #             filepaths['trs_descr_comp_gml']))
 
 
 def export_config(cfg, outfilepath):
