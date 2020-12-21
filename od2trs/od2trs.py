@@ -147,7 +147,7 @@ def main(configpath=r'./config.ini'):
                             mip_strategy_file=mip_strategy_file,
                             submit_to_neos=submit_to_neos)
 
-        idx_cols = ['Orig', 'Dest', 'Purpose', 'Direction', 'Timeperiod']
+        idx_cols = list(od.index.names) #['Orig', 'Dest', 'Purpose', 'Direction', 'Timeperiod', 'Transports']
         od_mdl = converters.results_to_od(trs_info, od, idx_cols)
 
     elapsed_time = time.time() - start_time

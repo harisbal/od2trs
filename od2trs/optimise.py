@@ -75,14 +75,12 @@ def prepare_model(info, od, ntrs, distr_obs,
     model.tr_ids = pyo.Set(initialize=model.info.index.get_level_values('Tourid').values.tolist())
 
     model.trips = pyo.Param(model.odpair_ids, initialize=d_leg_ntrips, within=pyo.NonNegativeIntegers)
-    model.descr_by_odpair = pyo.Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None,
-                                      within=pyo.Any)
+    model.descr_by_odpair = pyo.Param(model.odpair_ids, initialize=_init_descr_by_odpair, default=None, within=pyo.Any)
 
     model.tr_ubnds = _find_ubnds(model)
     model.ntrs = pyo.Param(default=ntrs, mutable=True)
 
-    model.trs_util = pyo.Var(model.tr_ids, within=pyo.NonNegativeIntegers, bounds=_get_bnds,
-                             initialize=_init_solution)
+    model.trs_util = pyo.Var(model.tr_ids, within=pyo.NonNegativeIntegers, bounds=_get_bnds, initialize=_init_solution)
 
     # The cutoff should take into account the excluded trips (in low frequency groups)
     if mip_tolerances_lowercutoff is not None:
