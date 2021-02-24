@@ -133,6 +133,7 @@ def main(configpath=r'./config.ini'):
         myio.export_trs(trs_info, filepaths)
 
     od_mdl = None
+    od.to_csv('od_obs_tmp.csv')
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,
@@ -147,8 +148,7 @@ def main(configpath=r'./config.ini'):
                             mip_strategy_file=mip_strategy_file,
                             submit_to_neos=submit_to_neos)
 
-        idx_cols = list(od.index.names) #['Orig', 'Dest', 'Purpose', 'Direction', 'Timeperiod', 'Transports']
-        od_mdl = converters.results_to_od(trs_info, od, idx_cols)
+        od_mdl = converters.results_to_od(trs_info, od)
 
     elapsed_time = time.time() - start_time
 

@@ -114,7 +114,7 @@ def prepare_model(info, od, ntrs, distr_obs,
 
     def distr_rule(m, grp_id):
         if m.tr_by_distr_grps[grp_id]:
-            lower_lim = math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance) * m.ntrs.value)
+            lower_lim = max(0, math.floor((m.distr_grp_percs[grp_id] - m.distr_perc_tolerance) * m.ntrs.value))
             upper_lim = math.ceil((m.distr_grp_percs[grp_id] + m.distr_perc_tolerance) * m.ntrs.value)
             e = quicksum(m.trs_util[tr_id] for tr_id in m.tr_by_distr_grps[grp_id])
             return (lower_lim, e, upper_lim)

@@ -208,8 +208,8 @@ def trs_to_df(trs, distr_obs, max_costs):
     return info_df
 
 
-def results_to_od(info, od_obs, idx_cols):
-    idx_cols = [str.title(v) for v in idx_cols]
+def results_to_od(info, od_obs):
+    idx_cols = list(od_obs.index.names)
 
     # Repeat the infos based on timesused
     df = info.reindex(info.index.repeat(info['Timesused']))
@@ -228,7 +228,7 @@ def results_to_od(info, od_obs, idx_cols):
     od_mdl = od_mdl.reset_index().astype(int)
     od_mdl.columns = ['Odpairid', 'Trips']
     od_mdl = od_mdl.set_index('Odpairid')
-    # Kepp only positive elements
+    # Keep only positive elements
     od_mdl = od_mdl[od_mdl > 0]
 
     od_mdl = pd.merge(od_obs.drop(columns=['Trips']).reset_index(), od_mdl,
