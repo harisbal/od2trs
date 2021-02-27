@@ -186,7 +186,7 @@ def identify_zone_sequences(g, src, direction_names, ordered_tps,
     g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names['non_home'], keep_connectors=True)
 
     if (simplify_net_place == 'iterative') and (excl_edges_od_perc > 0):
-        simplify_net_weight = 'Trips'
+        simplify_onet_weight = 'Trips'
         cm = calculate_centralities(g_nhb, simplify_net_method, simplify_net_weight)
         nx.set_node_attributes(g_nhb, cm, 'Centrality')
         keep_nodes = srcs
