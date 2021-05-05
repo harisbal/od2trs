@@ -47,9 +47,9 @@ def main(configpath=r'./config.ini'):
         if 'Nolegs' in distr_dims:
             distr_dims.remove('Nolegs')
 
-    fh_direction = json.loads(cfg['TOURS']['fromhome_direction'])
-    th_direction = json.loads(cfg['TOURS']['tohome_direction'])
-    nh_direction = json.loads(cfg['TOURS']['nonhome_direction'])
+    fh_direction = json.loads(cfg['TOURS']['from_home_direction'])
+    th_direction = json.loads(cfg['TOURS']['to_home_direction'])
+    nh_direction = json.loads(cfg['TOURS']['non_home_direction'])
 
     direction_names = {'from_home': fh_direction,
                        'to_home': th_direction,
@@ -80,8 +80,9 @@ def main(configpath=r'./config.ini'):
 
     grps = json.loads(cfg['TOURS']['d_grps'])
     od = myio.import_od(filepaths['in']['od'], trips_thresh, grps)
+    od.to_csv('od_obs_tmp.csv')
 
-    ntrs = utils.estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Trips')
+    ntrs = utils.estimate_ntrs(od, filter_fromhome=None, ntrs_col='Trips', half=False)
 
     for c, order in [('Timeperiod', ordered_tps)]:
         od = utils.reorder_idx_catcol(od, c, order)
@@ -133,7 +134,6 @@ def main(configpath=r'./config.ini'):
         myio.export_trs(trs_info, filepaths)
 
     od_mdl = None
-    od.to_csv('od_obs_tmp.csv')
     if run_optim:
         print('Phase 3/3: Optimise - Distr Constraint: {} ...'.format(distr_constr_enabled))
         trs_info = opt.main(trs_info, od,

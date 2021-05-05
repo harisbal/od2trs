@@ -105,12 +105,11 @@ def import_trs_info_obs(infilepath, seq_cols):
     return obs_info
 
 
-def import_costs(infilepath, col_name='Distance'):
+def import_costs(infilepath, index_cols=['Orig', 'Dest'], col_name='Distance'):
     if infilepath.endswith('.csv'):
         # can contain all types of costs such as km distance, travel time, etc
-        costs = pd.read_csv(infilepath, index_col=['Orig', 'Dest'])
+        costs = pd.read_csv(infilepath, index_col=index_cols)
         costs = costs.astype(float)
-        costs.index.names = ['Orig', 'Dest']
     elif infilepath.endswith('.pkl'):
         costs = pd.read_pickle(infilepath).to_frame()[col_name]
     else:

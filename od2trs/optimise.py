@@ -107,7 +107,7 @@ def prepare_model(info, od, ntrs, distr_obs,
     def trips_rule(m, odpair_id):
         if m.descr_by_odpair[odpair_id]:
             e = quicksum(m.trs_util[tr_id] for tr_id in m.descr_by_odpair[odpair_id])
-            return e <= model.trips[odpair_id]
+            return e <= m.trips[odpair_id]
         else:
             return pyo.Constraint.Skip
     model.od_trips_rule = pyo.Constraint(model.odpair_ids, rule=trips_rule)

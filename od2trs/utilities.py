@@ -160,7 +160,14 @@ def aggr_tolist(df, col_grpby, col_tolist):
     return df_list.squeeze()
 
 
-def estimate_ntrs(od, filter={'Direction': 'FromHome'}, ntrs_col='Trips'):
-    for k, v in filter.items():
-        od = od.xs(v, level=k)
-    return int(od[ntrs_col].sum())
+def estimate_ntrs(od, filter_fromhome='FromHome', ntrs_col='Trips', half=False):
+    if filter_fromhome is None:
+        # TODO wrong approximation
+        return int(od[ntrs_col].sum() / 2)
+
+    odf = od.xs(filter_fromhome, level='Direction')
+    ntrs = int(odf[ntrs_col].sum())
+    if half:
+        ntrs = int(ntrs / 2)
+
+    return ntrs

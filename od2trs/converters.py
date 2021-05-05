@@ -126,8 +126,8 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 
 def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
 
-    def filter_leg_attrs_by_direction(_leg_attrs, filter_directions):
-        _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_directions]
+    def filter_leg_attrs_by_direction(_leg_attrs, filter_direction):
+        _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_direction]
         return _leg_attrs
 
     def prepare_leg_attrs(net, orig, dest, filter_directions):

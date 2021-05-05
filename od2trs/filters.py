@@ -193,7 +193,9 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     """
 
     gf = g.copy()
-    fh_names, th_names, nhb_names = filter_edge_dirs
+    fh_name = filter_edge_dirs['from_home']
+    th_name = filter_edge_dirs['to_home']
+    nhb_name = filter_edge_dirs['non_home']
 
     # All srcs should point to the same zone
     src_zone = gf.nodes[srcs[0]]['Zone']
@@ -202,14 +204,14 @@ def prepare_graph(g, srcs, tgts, filter_edge_dirs):
     # Creates a graph that origins edges from and to
     for s, t, k, attrs in gf.edges(data=True, keys=True):
         if not attrs['Connector']:
-            if attrs['Direction'] in nhb_names:
+            if attrs['Direction'] == nhb_name:
                 # NHB trips should be removed from the src and in all dts
                 if (gf.nodes[s]['Zone'] == src_zone) or (gf.nodes[t]['Zone'] == src_zone):
                     to_rmv.add((s, t, k))
-            elif attrs['Direction'] in fh_names:
+            elif attrs['Direction'] == fh_name:
                 if s not in srcs:
                     to_rmv.add((s, t, k))
-            elif attrs['Direction'] in th_names:
+            elif attrs['Direction'] == th_name:
                 if t not in tgts:
                     to_rmv.add((s, t, k))
         else:
