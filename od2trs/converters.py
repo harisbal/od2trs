@@ -127,20 +127,23 @@ def od_to_graph(od, src_col, tgt_col, attr_cols,
 def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
 
     def filter_leg_attrs_by_direction(_leg_attrs, filter_direction):
-        _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_direction]
+        # Case where we dont have directions in the OD
+        if filter_direction is None:
+            _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] != 'Connector']
+        else:
+            _leg_attrs = [_la for _la in _leg_attrs if _la['Direction'] == filter_direction]
         return _leg_attrs
 
-    def prepare_leg_attrs(net, orig, dest, filter_directions):
+    def prepare_leg_attrs(net, orig, dest, filter_direction):
         _leg_attrs = net.get_edge_data(orig, dest).values()
-        _leg_attrs = filter_leg_attrs_by_direction(_leg_attrs, filter_directions)
+        _leg_attrs = filter_leg_attrs_by_direction(_leg_attrs, filter_direction)
 
         return _leg_attrs
 
     # List of lists with all the available alternatives for each leg
     legs_combs = list()
 
-    leg_attrs = prepare_leg_attrs(net, zones_seq[0], zones_seq[1],
-                                  direction_names['from_home'])
+    leg_attrs = prepare_leg_attrs(net, zones_seq[0], zones_seq[1], direction_names['from_home'])
     avail_legs = list()
     for la in leg_attrs:
         leg = Leg(orig=zones_seq[0], dest=zones_seq[1],
@@ -160,8 +163,7 @@ def zones_seq_to_trs(zones_seq, net, direction_names, cost_types):
                 legs_combs.append(avail_legs.copy())
 
     # Last leg attrs
-    leg_attrs = prepare_leg_attrs(net, zones_seq[-2], zones_seq[-1],
-                                  direction_names['to_home'])
+    leg_attrs = prepare_leg_attrs(net, zones_seq[-2], zones_seq[-1], direction_names['to_home'])
     avail_legs.clear()
     for la in leg_attrs:
         leg = Leg(orig=zones_seq[-2], dest=zones_seq[-1],

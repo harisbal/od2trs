@@ -183,7 +183,11 @@ def identify_zone_sequences(g, src, direction_names, ordered_tps,
     tgts = srcs.copy()
 
     # keep only the nhb trips
-    g_nhb = filters.filter_edges_by_direction(g_hb_nhb, direction_names['non_home'], keep_connectors=True)
+    th_direction = direction_names['non_home']
+    if th_direction is not None:
+        g_nhb = filters.filter_edges_by_direction(g_hb_nhb, th_direction, keep_connectors=True)
+    else:
+        g_nhb = g_hb_nhb
 
     if (simplify_net_place == 'iterative') and (excl_edges_od_perc > 0):
         simplify_net_weight = 'Trips'
