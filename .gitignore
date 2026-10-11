@@ -67,3 +67,9 @@ target/
 optimisation\results\.txt
 /inputs/
 /outputs/
+
+# uv / tests
+.venv/
+.pytest_cache/
+.ruff_cache/
+tests/outputs/

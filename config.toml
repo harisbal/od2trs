@@ -1,0 +1,75 @@
+# od2trs run configuration. Relative paths are resolved against this file's folder.
+
+[run]
+# Worker processes: negative = all cores minus N, 0 = all cores
+ncores = -1
+# Export the identified tours to outputs.tours
+export_flat = true
+
+[tours]
+# false: read previously identified tours from inputs.tours
+identify = false
+max_legs = 4
+max_costs = {Distance = 95000}
+# Dimensions of the observed distribution; continuous ones carry a _grp suffix
+distr_dims = ["Timeperiods_seq", "Transports_seq", "Distance_grp"]
+# Share of OD trips excluded by dropping infrequent distribution groups
+excl_distr_od_perc = 0.02
+# Share of OD trips excluded by simplifying the network (0 disables it)
+excl_edges_od_perc = 0.08
+# pagerank, eigenvector, subgraph_centrality, subgraph_centrality_exp,
+# current_flow_betweeness, current_flow_closeness, communicability_betweenness
+simplify_net_method = "pagerank"
+# OD cells with fewer trips are dropped
+trips_thresh = 1
+# OD column -> {value: group}; values without a group are dropped
+purpose_groups = {Purpose = {HB = "HB", NHB = "NHB"}}
+
+[tours.purpose_to_activities]
+HB = [["Home", "Other"]]
+NHB = [["Other", "Other"]]
+
+[tours.directions]
+from_home = "FromHome"
+to_home = "ToHome"
+non_home = "NonHomeBased"
+
+# Ordered time periods: name = [start, end]
+[tours.timeperiods]
+"00:00:00" = ["00:00:00", "02:00:00"]
+"02:00:00" = ["02:00:00", "04:00:00"]
+"04:00:00" = ["04:00:00", "06:00:00"]
+"06:00:00" = ["06:00:00", "08:00:00"]
+"08:00:00" = ["08:00:00", "10:00:00"]
+"10:00:00" = ["10:00:00", "12:00:00"]
+"12:00:00" = ["12:00:00", "14:00:00"]
+"14:00:00" = ["14:00:00", "16:00:00"]
+"16:00:00" = ["16:00:00", "18:00:00"]
+"18:00:00" = ["18:00:00", "20:00:00"]
+"20:00:00" = ["20:00:00", "22:00:00"]
+"22:00:00" = ["22:00:00", "24:00:00"]
+
+[optimisation]
+run = true
+distribution_constraints = true
+# Max deviation between observed and modelled distribution shares
+distribution_tolerance = 0.005
+# Seconds
+time_limit = 720000
+# Passed to HiGHS as is, e.g. {mip_rel_gap = 0.001, threads = 8}
+solver_options = {}
+
+[inputs]
+dir = "inputs/openpflow/1km-2H"
+od = "od.csv"
+distr_obs = "distr_obs.csv"
+costs = "distances.pkl"
+zones_info = "zones_info.csv"
+tours = "trs_info_mdl.pkl"
+
+[outputs]
+dir = "outputs/openpflow/1km-2H"
+od = "od.csv"
+graph = "graph-od.pkl"
+tours = "trs_info_mdl.pkl"
+distr_obs = "distr.csv"

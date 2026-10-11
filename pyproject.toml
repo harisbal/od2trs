@@ -1,0 +1,35 @@
+[project]
+name = "od2trs"
+version = "0.2.0"
+description = "Create trip chains (tours) from OD matrices"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "highspy>=1.7",
+    "networkx>=3.3",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "pydantic>=2.7",
+    "pyomo>=6.8",
+    "scipy>=1.13",
+    "tqdm>=4.66",
+]
+
+[project.scripts]
+od2trs = "od2trs.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

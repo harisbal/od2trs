@@ -1,0 +1,39 @@
+# LSOA-level sample with costs and activities
+[run]
+ncores = -1
+
+[tours]
+max_legs = 5
+max_costs = {Distance = 8200, Traveltime = 8200}
+distr_dims = ["Distance_grp", "Traveltime_grp", "Timeperiods_seq"]
+trips_thresh = 1
+purpose_groups = {Purpose = {HBW = "HBW", HBO = "HBO", NHBW = "NHBW", NHBO = "NHBO"}}
+
+[tours.purpose_to_activities]
+HBW = [["Home", "Work"]]
+HBO = [["Home", "Other"]]
+NHBW = [["Work", "Other"], ["Work", "Work"]]
+NHBO = [["Other", "Other"]]
+
+[tours.timeperiods]
+OP1 = ["00:00:00", "07:00:00"]
+AM = ["07:00:00", "10:00:00"]
+IP1 = ["10:00:00", "13:00:00"]
+IP2 = ["13:00:00", "16:00:00"]
+PM = ["16:00:00", "19:00:00"]
+IP3 = ["19:00:00", "22:00:00"]
+OP2 = ["22:00:00", "23:59:59"]
+
+[optimisation]
+distribution_tolerance = 0.005
+time_limit = 600
+
+[inputs]
+dir = "../inputs"
+od = "od-small.csv"
+costs = "costs.csv"
+zones_info = "zones_info.csv"
+distr_obs = "distr_obs-small.csv"
+
+[outputs]
+dir = "../outputs/small"

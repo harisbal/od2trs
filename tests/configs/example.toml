@@ -1,0 +1,26 @@
+# Hand-made 5-zone example whose OD is fully reproducible by tours
+[run]
+ncores = 1
+
+[tours]
+max_legs = 5
+trips_thresh = 1
+purpose_groups = {Purpose = {HBW = "HB", HBO = "HB", NHBW = "NHB", NHBO = "NHB", HB = "HB", NHB = "NHB"}}
+
+[tours.timeperiods]
+AM = ["07:00:00", "10:00:00"]
+IP = ["13:00:00", "16:00:00"]
+PM = ["16:00:00", "19:00:00"]
+OP = ["22:00:00", "23:59:59"]
+
+[optimisation]
+time_limit = 600
+
+[inputs]
+dir = "../inputs"
+od = "od-example.csv"
+costs = "costs.csv"
+zones_info = "zones_info.csv"
+
+[outputs]
+dir = "../outputs/example"
