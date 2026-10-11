@@ -22,6 +22,7 @@ import gzip
 import json
 from pathlib import Path
 
+import networkx as nx
 import pandas as pd
 import pytest
 
@@ -80,9 +81,13 @@ def tours_to_rows(tours: pd.DataFrame) -> list[dict]:
                             .to_dict(orient="records")]
 
 
-def golden_tours(case: str) -> list[dict]:
+def golden_tours(case: str, max_costs: dict[str, float] | None = None) -> list[dict]:
+    """The original's tours, minus those over `max_costs` (the original meant to drop
+    them, but its filter was a no-op)."""
     with gzip.open(GOLDEN / case / "tours.json.gz", "rt") as f:
         rows = json.load(f)
+    rows = [r for r in rows
+            if all(r[ct] is None or r[ct] <= mc for ct, mc in (max_costs or {}).items())]
     drop = DROPPED_COLS | {"Tourid", "Timesused"}
     return [{k: v for k, v in r.items() if k not in drop} for r in rows]
 
@@ -107,8 +112,8 @@ def test_od_matches_original(result):
 
 
 def test_tours_match_original(result):
-    case, _, res = result
-    expected = golden_tours(case)
+    case, cfg, res = result
+    expected = golden_tours(case, cfg.tours.max_costs)
     got = tours_to_rows(res.tours)
     assert len(got) == len(expected)
     assert canonical(got) == canonical(expected)
@@ -148,3 +153,31 @@ def test_results_to_od_counts_repeated_tours():
     got = opt.results_to_od(tours, od)
     assert got.to_dict() == {("A", "B"): 3, ("B", "A"): 3, ("B", "C"): 1}
 
+
+def test_zone_graph_keeps_only_usable_edges():
+    from od2trs.config import Directions
+    from od2trs.graph import prepare_zone_graph
+
+    d = Directions()
+    g = nx.MultiDiGraph()
+    edges = [
+        (("H", "AM"), ("A", "AM"), d.from_home),   # kept: leaves home
+        (("A", "AM"), ("B", "AM"), d.from_home),   # dropped: someone else's home
+        (("A", "AM"), ("B", "AM"), d.non_home),    # kept
+        (("H", "AM"), ("B", "AM"), d.non_home),    # kept: tours may pass through home
+        (("B", "PM"), ("H", "PM"), d.to_home),     # kept: returns home
+        (("B", "PM"), ("A", "PM"), d.to_home),     # dropped: someone else's home
+    ]
+    for u, v, direction in edges:
+        g.add_edge(u, v, Direction=direction, Connector=False)
+    g.add_edge(("B", "AM"), ("B", "PM"), Direction="Connector", Connector=True)  # kept
+    g.add_edge(("H", "AM"), ("H", "PM"), Direction="Connector", Connector=True)  # dropped
+
+    kept = {(u, v, dr) for u, v, dr in prepare_zone_graph(g, "H", d).edges(data="Direction")}
+    assert kept == {
+        (("H", "AM"), ("A", "AM"), d.from_home),
+        (("A", "AM"), ("B", "AM"), d.non_home),
+        (("H", "AM"), ("B", "AM"), d.non_home),
+        (("B", "PM"), ("H", "PM"), d.to_home),
+        (("B", "AM"), ("B", "PM"), "Connector"),
+    }

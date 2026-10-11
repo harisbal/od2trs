@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from od2trs.config import Config
-from od2trs.tours import Leg, TripChain, assign_activities
+from od2trs.tours import Leg, TripChain, assign_activities, within_max_costs
 
 HERE = Path(__file__).parent
 
@@ -58,3 +58,12 @@ def test_legacy_ini_config_matches_toml(case, monkeypatch):
     assert legacy.inputs.path("od").resolve() == toml.inputs.path("od").resolve()
     assert legacy.optimisation.run == toml.optimisation.run
 
+
+def test_within_max_costs():
+    cheap = TripChain(legs=(leg("HBW", Distance=1), leg("HBW", Distance=2)),
+                      cost_types=("Distance",))
+    pricey = TripChain(legs=(leg("HBW", Distance=5), leg("HBW", Distance=6)),
+                       cost_types=("Distance",))
+    unknown = TripChain(legs=(leg("HBW", Distance=0), leg("HBW", Distance=6)),
+                        cost_types=("Distance",))
+    assert within_max_costs([cheap, pricey, unknown], {"Distance": 10}) == [cheap, unknown]

@@ -47,7 +47,7 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str,
     srcs = sorted((n for n, z in g.nodes(data="Zone") if z == src_zone),
                   key=lambda n: tp_rank[n[1]])
 
-    g_zone = gr.prepare_zone_graph(g, src_zone)
+    g_zone = gr.prepare_zone_graph(g, src_zone, p.directions)
     # Some source nodes may have become isolated
     srcs = [s for s in srcs if s in g_zone]
     tgts = srcs.copy()
@@ -108,13 +108,14 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str,
 
 
 def zone_tours(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) -> list[tr.TripChain]:
-    """Candidate tours from `src_zone` that pass the activity and distribution filters."""
+    """Candidate tours from `src_zone` within `max_costs` that pass the activity and
+    distribution filters."""
     cost_types = list(p.max_costs)
     result = []
     for zs in identify_zone_sequences(g, src_zone, p):
         tours = tr.zones_seq_to_tours(zs, g, p.directions, cost_types)
-        # NB: tours exceeding max_costs are not filtered out; the original
-        # implementation meant to, but a bug made its filter a no-op
+        # The path search only bounds costs approximately
+        tours = tr.within_max_costs(tours, p.max_costs)
         if p.purpose_to_acts:
             tours = tr.assign_activities(tours, p.purpose_to_acts)
         if p.distr_obs is not None:

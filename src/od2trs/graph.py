@@ -166,19 +166,27 @@ def _total(g: nx.Graph, attr: str) -> float:
     return sum(nx.get_edge_attributes(g, attr).values())
 
 
-def prepare_zone_graph(g: nx.MultiDiGraph, src_zone: str) -> nx.MultiDiGraph:
-    """Copy of `g` for searching tours from `src_zone`: drops its connectors and isolates.
+def prepare_zone_graph(g: nx.MultiDiGraph, src_zone: str,
+                       directions: Directions) -> nx.MultiDiGraph:
+    """Copy of `g` with only the edges usable by tours based in `src_zone`.
 
-    NB: the original implementation meant to also drop home-based edges not touching
-    the source zone and non-home-based edges touching it, but a bug made that a no-op.
-    Those edges cannot produce tours anyway (legs are matched by direction later),
-    but they do loosen the cost cutoffs of the path search, so they are kept for now.
+    Keeps from-home edges leaving the zone, to-home edges entering it, all
+    non-home-based edges (tours may pass through the home zone) and connectors outside
+    the home zone; isolated nodes are dropped.
     """
+
+    def usable(s: Node, t: Node, attrs: dict) -> bool:
+        if attrs["Connector"]:
+            return src_zone not in (s[0], t[0])
+        if attrs["Direction"] == directions.from_home:
+            return s[0] == src_zone
+        if attrs["Direction"] == directions.to_home:
+            return t[0] == src_zone
+        return True
+
     gf = g.copy()
-    gf.remove_edges_from([
-        (s, t, k) for s, t, k, connector in g.edges(keys=True, data="Connector")
-        if connector and src_zone in (s[0], t[0])
-    ])
+    gf.remove_edges_from([(s, t, k) for s, t, k, attrs in g.edges(keys=True, data=True)
+                          if not usable(s, t, attrs)])
     gf.remove_nodes_from(list(nx.isolates(gf)))
     return gf
 

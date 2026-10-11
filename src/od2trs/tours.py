@@ -124,6 +124,13 @@ def zones_seq_to_tours(
             for legs in itertools.product(*legs_options)]
 
 
+def within_max_costs(tours: Iterable[TripChain],
+                     max_costs: Mapping[str, float]) -> list[TripChain]:
+    """Drop tours whose total cost exceeds its maximum (unknown costs pass)."""
+    return [t for t in tours
+            if all(t.costs[ct] is None or t.costs[ct] <= mc for ct, mc in max_costs.items())]
+
+
 def assign_activities(
     tours: Iterable[TripChain],
     purpose_to_acts: Mapping[str, Sequence[tuple[str, str]]],
