@@ -42,8 +42,8 @@ from od2trs.config import Config
 from od2trs.pipeline import run
 
 results = run(Config.load("config.toml"))
-results.tours      # candidate tours with the number of times each is used
-results.od_mdl     # the OD reproduced by the selected tours
+results.tours  # candidate tours with the number of times each is used
+results.od_mdl  # the OD reproduced by the selected tours
 ```
 
 Small runnable examples are in `tests/inputs` with configs in `tests/configs`:
