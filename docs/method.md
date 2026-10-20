@@ -1,7 +1,7 @@
 # Method
 
 `od2trs` implements the tour synthesis approach of Ballis & Dimitriou
-(references 1 and 2 in the [README](../README.md#references)): aggregate
+(references 1 and 2 in [References](references.md)): aggregate
 origin-destination (OD) matrices treat trips as independent, so the trips are
 re-linked into home-based tours (trip chains) that reproduce the OD.
 

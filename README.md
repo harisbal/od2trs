@@ -1,6 +1,9 @@
 # od2trs
 
-Create trip chains (tours) from OD matrices.
+[![CI](https://github.com/harisbal/od2trs/actions/workflows/ci.yml/badge.svg)](https://github.com/harisbal/od2trs/actions/workflows/ci.yml)
+[![Docs](https://github.com/harisbal/od2trs/actions/workflows/docs.yml/badge.svg)](https://harisbal.github.io/od2trs/)
+
+Create trip chains (tours) from OD matrices. **[Documentation](https://harisbal.github.io/od2trs/)**
 
 Origin-destination (OD) matrices describe trips as if they were independent. `od2trs`
 recovers the individual **home-based tours** behind them (home → … → home), which is
@@ -18,7 +21,7 @@ time period, it finds the tours that best reproduce it:
    HiGHS): cover as many OD trips as possible without exceeding any OD cell, and
    optionally keep each distribution group's share within a tolerance.
 
-See [docs/method.md](docs/method.md) for the details.
+See the [method](https://harisbal.github.io/od2trs/method/) for the details.
 
 ## Installation
 
@@ -60,6 +63,7 @@ Small example inputs are in [`tests/inputs`](tests/inputs), with matching config
 uv run pytest
 uv run ruff check
 uv run ruff format
+uv run --group docs mkdocs serve   # preview the docs
 ```
 
 `tests/test_regression.py` compares the results with those of the original
