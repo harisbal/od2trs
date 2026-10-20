@@ -9,8 +9,15 @@ HERE = Path(__file__).parent
 
 
 def leg(purpose, odpairid=0, **costs):
-    return Leg(orig="A", dest="B", timeperiod="AM", purpose=purpose, direction="x",
-               odpairid=odpairid, costs=costs)
+    return Leg(
+        orig="A",
+        dest="B",
+        timeperiod="AM",
+        purpose=purpose,
+        direction="x",
+        odpairid=odpairid,
+        costs=costs,
+    )
 
 
 PURPOSE_TO_ACTS = {
@@ -21,25 +28,30 @@ PURPOSE_TO_ACTS = {
 }
 
 
-@pytest.mark.parametrize(("purposes", "expected"), [
-    (["HBW", "HBW"], [("Home", "Work", "Home")]),
-    (["HBW", "NHBW", "HBO"], [("Home", "Work", "Other", "Home")]),
-    (["HBW", "NHBW", "HBW"], [("Home", "Work", "Work", "Home")]),
-    (["HBW", "NHBO", "HBO"], []),  # Other-Other can't follow Work
-    (["HBO", "NHBO", "NHBO", "HBO"], [("Home", "Other", "Other", "Other", "Home")]),
-])
+@pytest.mark.parametrize(
+    ("purposes", "expected"),
+    [
+        (["HBW", "HBW"], [("Home", "Work", "Home")]),
+        (["HBW", "NHBW", "HBO"], [("Home", "Work", "Other", "Home")]),
+        (["HBW", "NHBW", "HBW"], [("Home", "Work", "Work", "Home")]),
+        (["HBW", "NHBO", "HBO"], []),  # Other-Other can't follow Work
+        (["HBO", "NHBO", "NHBO", "HBO"], [("Home", "Other", "Other", "Other", "Home")]),
+    ],
+)
 def test_assign_activities(purposes, expected):
     tour = TripChain(legs=tuple(leg(p) for p in purposes))
     assert [t.acts for t in assign_activities([tour], PURPOSE_TO_ACTS)] == expected
 
 
 def test_tour_costs():
-    tour = TripChain(legs=(leg("HBW", Distance=1.25), leg("HBW", Distance=2.5)),
-                     cost_types=("Distance",))
+    tour = TripChain(
+        legs=(leg("HBW", Distance=1.25), leg("HBW", Distance=2.5)), cost_types=("Distance",)
+    )
     assert tour.costs == {"Distance": 3.75}
     # A zero-cost leg makes the total unknown (original behaviour)
-    tour = TripChain(legs=(leg("HBW", Distance=0), leg("HBW", Distance=2.5)),
-                     cost_types=("Distance",))
+    tour = TripChain(
+        legs=(leg("HBW", Distance=0), leg("HBW", Distance=2.5)), cost_types=("Distance",)
+    )
     assert tour.costs == {"Distance": None}
 
 
@@ -60,10 +72,13 @@ def test_legacy_ini_config_matches_toml(case, monkeypatch):
 
 
 def test_within_max_costs():
-    cheap = TripChain(legs=(leg("HBW", Distance=1), leg("HBW", Distance=2)),
-                      cost_types=("Distance",))
-    pricey = TripChain(legs=(leg("HBW", Distance=5), leg("HBW", Distance=6)),
-                       cost_types=("Distance",))
-    unknown = TripChain(legs=(leg("HBW", Distance=0), leg("HBW", Distance=6)),
-                        cost_types=("Distance",))
+    cheap = TripChain(
+        legs=(leg("HBW", Distance=1), leg("HBW", Distance=2)), cost_types=("Distance",)
+    )
+    pricey = TripChain(
+        legs=(leg("HBW", Distance=5), leg("HBW", Distance=6)), cost_types=("Distance",)
+    )
+    unknown = TripChain(
+        legs=(leg("HBW", Distance=0), leg("HBW", Distance=6)), cost_types=("Distance",)
+    )
     assert within_max_costs([cheap, pricey, unknown], {"Distance": 10}) == [cheap, unknown]

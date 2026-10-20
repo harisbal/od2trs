@@ -34,8 +34,7 @@ class SearchParams:
     cost_bins: Mapping[str, Sequence[pd.Interval]]
 
 
-def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str,
-                            p: SearchParams) -> list[list[Node]]:
+def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) -> list[list[Node]]:
     """Node sequences of candidate tours starting and ending in `src_zone`.
 
     A sequence is: home node -> first stop (from-home edge), any non-home-based path
@@ -44,8 +43,9 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str,
     lower bounds for the first and last legs, by `max_costs`.
     """
     tp_rank = {tp: i for i, tp in enumerate(p.ordered_tps)}
-    srcs = sorted((n for n, z in g.nodes(data="Zone") if z == src_zone),
-                  key=lambda n: tp_rank[n[1]])
+    srcs = sorted(
+        (n for n, z in g.nodes(data="Zone") if z == src_zone), key=lambda n: tp_rank[n[1]]
+    )
 
     g_zone = gr.prepare_zone_graph(g, src_zone, p.directions)
     # Some source nodes may have become isolated
@@ -157,8 +157,9 @@ def identify_tours(g: nx.MultiDiGraph, p: SearchParams, ncores: int | None) -> p
     try:
         for tours in tqdm(results, total=len(zones)):
             if tours:
-                frames.append(tr.tours_to_df(tours, next_id, p.distr_obs is not None,
-                                             list(p.max_costs)))
+                frames.append(
+                    tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
+                )
                 next_id += len(tours)
     finally:
         if pool is not None:

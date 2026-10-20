@@ -73,3 +73,6 @@ optimisation\results\.txt
 .pytest_cache/
 .ruff_cache/
 tests/outputs/
+
+# Docs build
+site/

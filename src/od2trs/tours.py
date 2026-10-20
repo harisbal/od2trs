@@ -29,12 +29,16 @@ class Leg:
     costs: Mapping[str, float] = field(default_factory=dict)
 
     @classmethod
-    def from_edge(cls, orig: str, dest: str, attrs: Mapping[str, Any],
-                  cost_types: Iterable[str]) -> Leg:
+    def from_edge(
+        cls, orig: str, dest: str, attrs: Mapping[str, Any], cost_types: Iterable[str]
+    ) -> Leg:
         return cls(
-            orig=orig, dest=dest,
-            timeperiod=attrs["Timeperiod"], purpose=attrs["Purpose"],
-            direction=attrs["Direction"], odpairid=attrs["Odpairid"],
+            orig=orig,
+            dest=dest,
+            timeperiod=attrs["Timeperiod"],
+            purpose=attrs["Purpose"],
+            direction=attrs["Direction"],
+            odpairid=attrs["Odpairid"],
             transport=attrs.get("Transport"),
             costs={ct: attrs[ct] for ct in cost_types if ct in attrs},
         )
@@ -108,9 +112,11 @@ def zones_seq_to_tours(
     """
 
     def alternatives(u, v, direction) -> list[Leg]:
-        return [Leg.from_edge(u[0], v[0], attrs, cost_types)
-                for attrs in net.get_edge_data(u, v).values()
-                if attrs["Direction"] == direction]
+        return [
+            Leg.from_edge(u[0], v[0], attrs, cost_types)
+            for attrs in net.get_edge_data(u, v).values()
+            if attrs["Direction"] == direction
+        ]
 
     legs_options = [alternatives(zones_seq[0], zones_seq[1], directions.from_home)]
     if len(zones_seq) >= 4:
@@ -120,15 +126,19 @@ def zones_seq_to_tours(
                 legs_options.append(legs)
     legs_options.append(alternatives(zones_seq[-2], zones_seq[-1], directions.to_home))
 
-    return [TripChain(legs=legs, cost_types=tuple(cost_types))
-            for legs in itertools.product(*legs_options)]
+    return [
+        TripChain(legs=legs, cost_types=tuple(cost_types))
+        for legs in itertools.product(*legs_options)
+    ]
 
 
-def within_max_costs(tours: Iterable[TripChain],
-                     max_costs: Mapping[str, float]) -> list[TripChain]:
+def within_max_costs(tours: Iterable[TripChain], max_costs: Mapping[str, float]) -> list[TripChain]:
     """Drop tours whose total cost exceeds its maximum (unknown costs pass)."""
-    return [t for t in tours
-            if all(t.costs[ct] is None or t.costs[ct] <= mc for ct, mc in max_costs.items())]
+    return [
+        t
+        for t in tours
+        if all(t.costs[ct] is None or t.costs[ct] <= mc for ct, mc in max_costs.items())
+    ]
 
 
 def assign_activities(
@@ -153,8 +163,9 @@ def assign_activities(
     return result
 
 
-def _activity_sequence(legs: Sequence[Leg], pairs: Mapping[str, tuple[str, str]]
-                       ) -> tuple[str, ...] | None:
+def _activity_sequence(
+    legs: Sequence[Leg], pairs: Mapping[str, tuple[str, str]]
+) -> tuple[str, ...] | None:
     first = list(pairs[legs[0].purpose])
     if first[0] != "Home":
         first.reverse()
@@ -199,13 +210,15 @@ def distribution_lookup(distr_obs: pd.DataFrame) -> dict[tuple, tuple[float, int
         raise ValueError("Duplicate distribution groups")
     return {
         key if isinstance(key, tuple) else (key,): (perc, int(gid))
-        for key, perc, gid in zip(distr_obs.index, distr_obs["Percentage"],
-                                  distr_obs["Distrgroupid"], strict=True)
+        for key, perc, gid in zip(
+            distr_obs.index, distr_obs["Percentage"], distr_obs["Distrgroupid"], strict=True
+        )
     }
 
 
-def tours_to_df(tours: Sequence[TripChain], first_id: int, with_distr: bool,
-                cost_types: Sequence[str]) -> pd.DataFrame:
+def tours_to_df(
+    tours: Sequence[TripChain], first_id: int, with_distr: bool, cost_types: Sequence[str]
+) -> pd.DataFrame:
     """Tabulate tours, numbering them from `first_id`; sequences are stored as tuples."""
     data: dict[str, list] = {
         "Nolegs": [t.nolegs for t in tours],

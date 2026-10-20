@@ -35,26 +35,32 @@ def build_model(
             tours_by_odpair[odpair_id].append(tour_id)
 
     # A tour can't be used more often than its scarcest OD cell allows
-    upper_bounds = {tour_id: min(od_trips[o] for o in odpair_ids)
-                    for tour_id, odpair_ids in tours["Odpairids"].items()}
+    upper_bounds = {
+        tour_id: min(od_trips[o] for o in odpair_ids)
+        for tour_id, odpair_ids in tours["Odpairids"].items()
+    }
     nolegs = tours["Nolegs"].to_dict()
 
     m = pyo.ConcreteModel()
     m.tr_ids = pyo.Set(initialize=tours.index.tolist())
     m.odpair_ids = pyo.Set(initialize=list(od_trips))
-    m.trs_util = pyo.Var(m.tr_ids, within=pyo.NonNegativeIntegers,
-                         bounds=lambda _, i: (0, upper_bounds[i]))
+    m.trs_util = pyo.Var(
+        m.tr_ids, within=pyo.NonNegativeIntegers, bounds=lambda _, i: (0, upper_bounds[i])
+    )
 
     od_total = sum(od_trips.values())
     m.objective = pyo.Objective(
         expr=pyo.quicksum(m.trs_util[i] * nolegs[i] for i in m.tr_ids) - od_total,
-        sense=pyo.maximize)
+        sense=pyo.maximize,
+    )
 
     def od_trips_rule(m, odpair_id):
         if not tours_by_odpair.get(odpair_id):
             return pyo.Constraint.Skip
-        return pyo.quicksum(m.trs_util[i] for i in tours_by_odpair[odpair_id]) \
-            <= od_trips[odpair_id]
+        return (
+            pyo.quicksum(m.trs_util[i] for i in tours_by_odpair[odpair_id]) <= od_trips[odpair_id]
+        )
+
     m.od_trips_rule = pyo.Constraint(m.odpair_ids, rule=od_trips_rule)
 
     if distr_obs is not None:
@@ -78,8 +84,9 @@ def build_model(
     return m
 
 
-def solve(m: pyo.ConcreteModel, time_limit: float | None = None,
-          solver_options: dict | None = None) -> pd.Series | None:
+def solve(
+    m: pyo.ConcreteModel, time_limit: float | None = None, solver_options: dict | None = None
+) -> pd.Series | None:
     """Solve with HiGHS; returns times used per Tourid, or None if no solution was found."""
     results = Highs().solve(
         m,
@@ -89,14 +96,16 @@ def solve(m: pyo.ConcreteModel, time_limit: float | None = None,
         raise_exception_on_nonoptimal_result=False,
         tee=log.isEnabledFor(logging.DEBUG),
     )
-    log.info("Solver: %s, objective %s", results.termination_condition.name,
-             results.incumbent_objective)
+    log.info(
+        "Solver: %s, objective %s", results.termination_condition.name, results.incumbent_objective
+    )
     if results.incumbent_objective is None:
         return None
 
     results.solution_loader.load_vars()
-    timesused = pd.Series({i: round(m.trs_util[i].value) for i in m.tr_ids}, dtype=int,
-                          name="Timesused")
+    timesused = pd.Series(
+        {i: round(m.trs_util[i].value) for i in m.tr_ids}, dtype=int, name="Timesused"
+    )
     timesused.index.name = "Tourid"
     return timesused
 

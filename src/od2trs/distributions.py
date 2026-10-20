@@ -92,8 +92,9 @@ def filter_tours_by_distr(tours: pd.DataFrame, distr: pd.DataFrame) -> pd.DataFr
 
     # Tour columns are named after the dimension without its `_seq` suffix
     join_cols = [c.removesuffix("_seq") for c in distr.index.names]
-    filtered = pd.merge(df, distr, how="inner", left_on=join_cols, right_index=True,
-                        suffixes=("", "__"))[tours.columns]
+    filtered = pd.merge(
+        df, distr, how="inner", left_on=join_cols, right_index=True, suffixes=("", "__")
+    )[tours.columns]
     if filtered["Distrgroupid"].isna().any():
         raise ValueError("Tours matched to no distribution group")
     return filtered

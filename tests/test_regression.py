@@ -40,8 +40,7 @@ CASES = {
     "small": ("small.toml", {}, 0.0),
     "small_distr": (
         "small.toml",
-        {"tours": {"excl_distr_od_perc": 0.02},
-         "optimisation": {"distribution_constraints": True}},
+        {"tours": {"excl_distr_od_perc": 0.02}, "optimisation": {"distribution_constraints": True}},
         -107.0,
     ),
     # pagerank with alpha=1 doesn't converge on this dataset
@@ -76,9 +75,10 @@ def tours_to_rows(tours: pd.DataFrame) -> list[dict]:
             v = v.item()
         return None if isinstance(v, float) and v != v else v
 
-    return [{c: plain(v) for c, v in row.items()}
-            for row in tours.drop(columns=["Timesused"], errors="ignore")
-                            .to_dict(orient="records")]
+    return [
+        {c: plain(v) for c, v in row.items()}
+        for row in tours.drop(columns=["Timesused"], errors="ignore").to_dict(orient="records")
+    ]
 
 
 def golden_tours(case: str, max_costs: dict[str, float] | None = None) -> list[dict]:
@@ -86,8 +86,9 @@ def golden_tours(case: str, max_costs: dict[str, float] | None = None) -> list[d
     them, but its filter was a no-op)."""
     with gzip.open(GOLDEN / case / "tours.json.gz", "rt") as f:
         rows = json.load(f)
-    rows = [r for r in rows
-            if all(r[ct] is None or r[ct] <= mc for ct, mc in (max_costs or {}).items())]
+    rows = [
+        r for r in rows if all(r[ct] is None or r[ct] <= mc for ct, mc in (max_costs or {}).items())
+    ]
     drop = DROPPED_COLS | {"Tourid", "Timesused"}
     return [{k: v for k, v in r.items() if k not in drop} for r in rows]
 
@@ -147,8 +148,10 @@ def test_tour_ids_deterministic_across_cores(tmp_path):
 def test_results_to_od_counts_repeated_tours():
     od = pd.DataFrame(
         {"Odpairid": [0, 1, 2], "Trips": [3, 3, 3]},
-        index=pd.MultiIndex.from_tuples([("A", "B"), ("B", "A"), ("B", "C")],
-                                        names=["Orig", "Dest"]))
+        index=pd.MultiIndex.from_tuples(
+            [("A", "B"), ("B", "A"), ("B", "C")], names=["Orig", "Dest"]
+        ),
+    )
     tours = pd.DataFrame({"Odpairids": [(0, 1), (0, 2, 1)], "Timesused": [2, 1]})
     got = opt.results_to_od(tours, od)
     assert got.to_dict() == {("A", "B"): 3, ("B", "A"): 3, ("B", "C"): 1}
@@ -161,12 +164,12 @@ def test_zone_graph_keeps_only_usable_edges():
     d = Directions()
     g = nx.MultiDiGraph()
     edges = [
-        (("H", "AM"), ("A", "AM"), d.from_home),   # kept: leaves home
-        (("A", "AM"), ("B", "AM"), d.from_home),   # dropped: someone else's home
-        (("A", "AM"), ("B", "AM"), d.non_home),    # kept
-        (("H", "AM"), ("B", "AM"), d.non_home),    # kept: tours may pass through home
-        (("B", "PM"), ("H", "PM"), d.to_home),     # kept: returns home
-        (("B", "PM"), ("A", "PM"), d.to_home),     # dropped: someone else's home
+        (("H", "AM"), ("A", "AM"), d.from_home),  # kept: leaves home
+        (("A", "AM"), ("B", "AM"), d.from_home),  # dropped: someone else's home
+        (("A", "AM"), ("B", "AM"), d.non_home),  # kept
+        (("H", "AM"), ("B", "AM"), d.non_home),  # kept: tours may pass through home
+        (("B", "PM"), ("H", "PM"), d.to_home),  # kept: returns home
+        (("B", "PM"), ("A", "PM"), d.to_home),  # dropped: someone else's home
     ]
     for u, v, direction in edges:
         g.add_edge(u, v, Direction=direction, Connector=False)

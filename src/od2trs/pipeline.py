@@ -50,8 +50,9 @@ def run(cfg: Config) -> Results:
         if cfg.inputs.distr_obs is None:
             raise ValueError("distribution_constraints requires inputs.distr_obs")
         distr_obs = distr.read_distr_obs(cfg.inputs.path("distr_obs"), tc.distr_dims, ntrs)
-        distr_obs = distr.filter_lowpercent_groups(distr_obs, tc.max_legs, tc.max_costs,
-                                                   tc.excl_distr_od_perc)
+        distr_obs = distr.filter_lowpercent_groups(
+            distr_obs, tc.max_legs, tc.max_costs, tc.excl_distr_od_perc
+        )
         cost_bins = distr.cost_bins(distr_obs, tc.distr_dims)
         # Recount after dropping the infrequent groups
         ntrs = int(distr_obs["Size"].sum())
@@ -65,14 +66,19 @@ def run(cfg: Config) -> Results:
         od_costs = od_costs.dropna(axis=1)
         net = gr.od_to_graph(od_costs, tc.ordered_tps, costs.columns, zones_info)
         if tc.excl_edges_od_perc > 0:
-            net = gr.simplify_net(net, tc.simplify_net_method, tc.excl_edges_od_perc,
-                                  tc.directions)
+            net = gr.simplify_net(net, tc.simplify_net_method, tc.excl_edges_od_perc, tc.directions)
         io.write_graph(net, cfg.outputs.path("graph"))
 
         params = SearchParams(
-            directions=tc.directions, ordered_tps=tc.ordered_tps, max_legs=tc.max_legs,
-            max_costs=tc.max_costs, purpose_to_acts=tc.purpose_to_activities,
-            distr_obs=distr_obs, distr_dims=tc.distr_dims, cost_bins=cost_bins)
+            directions=tc.directions,
+            ordered_tps=tc.ordered_tps,
+            max_legs=tc.max_legs,
+            max_costs=tc.max_costs,
+            purpose_to_acts=tc.purpose_to_activities,
+            distr_obs=distr_obs,
+            distr_dims=tc.distr_dims,
+            cost_bins=cost_bins,
+        )
         tours = identify_tours(net, params, cfg.run.ncores)
     else:
         if cfg.inputs.tours is None:
@@ -87,8 +93,7 @@ def run(cfg: Config) -> Results:
 
     od_mdl = None
     if oc.run and tours is not None:
-        log.info("Phase 2/2: optimise (distribution constraints: %s)",
-                 oc.distribution_constraints)
+        log.info("Phase 2/2: optimise (distribution constraints: %s)", oc.distribution_constraints)
         model = opt.build_model(tours, od, ntrs, distr_obs, oc.distribution_tolerance)
         timesused = opt.solve(model, oc.time_limit, oc.solver_options)
         tours = tours.assign(Timesused=0)

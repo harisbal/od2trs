@@ -20,6 +20,11 @@ od2trs = "od2trs.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=8", "ruff>=0.6"]
+docs = ["zensical>=0.0.71", "mkdocstrings[python]>=0.26"]
+
+[project.urls]
+Documentation = "https://harisbal.github.io/od2trs/"
+Repository = "https://github.com/harisbal/od2trs"
 
 [build-system]
 requires = ["hatchling"]
