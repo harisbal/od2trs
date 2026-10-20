@@ -193,8 +193,12 @@ def _legacy_ini_to_dict(path: Path) -> dict:
         "tours": fin.get("trs_info_mdl"),
     }
     outputs = {"dir": fout["outfolder"]}
-    for new, old in [("od", "od"), ("graph", "graph"), ("tours", "trs_info_mdl"),
-                     ("distr_obs", "distr_obs")]:
+    for new, old in [
+        ("od", "od"),
+        ("graph", "graph"),
+        ("tours", "trs_info_mdl"),
+        ("distr_obs", "distr_obs"),
+    ]:
         if old in fout:
             outputs[new] = fout[old]
 

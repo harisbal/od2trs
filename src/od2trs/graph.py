@@ -60,10 +60,15 @@ def _add_connectors(g: nx.MultiDiGraph, ordered_tps: list[str], cost_cols: list[
     for zone, tps in zone_tps.items():
         tps_sorted = sorted(tps, key=tp_rank.__getitem__)
         for src_tp, tgt_tp in zip(tps_sorted, tps_sorted[1:], strict=False):
-            g.add_edge((zone, src_tp), (zone, tgt_tp),
-                       Connector=True, Direction="Connector",
-                       HeightDiff=tp_rank[tgt_tp] - tp_rank[src_tp], Length=0,
-                       **zero_costs)
+            g.add_edge(
+                (zone, src_tp),
+                (zone, tgt_tp),
+                Connector=True,
+                Direction="Connector",
+                HeightDiff=tp_rank[tgt_tp] - tp_rank[src_tp],
+                Length=0,
+                **zero_costs,
+            )
 
 
 def multigraph_to_graph(
@@ -125,8 +130,9 @@ def simplify_net(
         raise ValueError("excl_weight_perc should be between 0 and 1")
 
     nx.set_node_attributes(g, calculate_centralities(g, method, weight), "Centrality")
-    log.info("Before simplification: %d nodes, %s %s",
-             g.number_of_nodes(), _total(g, weight), weight)
+    log.info(
+        "Before simplification: %d nodes, %s %s", g.number_of_nodes(), _total(g, weight), weight
+    )
 
     centralities = pd.Series(nx.get_node_attributes(g, "Centrality")).sort_values()
     weight_init = _total(g, weight)
@@ -137,8 +143,9 @@ def simplify_net(
     excl_weight = 0
     for node in centralities.index:
         node_edges = []
-        incident = (set(g.in_edges(node, data="Connector"))
-                    | set(g.out_edges(node, data="Connector")))
+        incident = set(g.in_edges(node, data="Connector")) | set(
+            g.out_edges(node, data="Connector")
+        )
         for u, v, connector in incident:
             if connector:
                 continue
@@ -157,8 +164,13 @@ def simplify_net(
         to_remove.extend(node_edges)
 
     g.remove_nodes_from(list(nx.isolates(g)))
-    log.info("After simplification: %d nodes, %s %s, density %.2f%%",
-             g.number_of_nodes(), _total(g, weight), weight, 100 * nx.density(g))
+    log.info(
+        "After simplification: %d nodes, %s %s, density %.2f%%",
+        g.number_of_nodes(),
+        _total(g, weight),
+        weight,
+        100 * nx.density(g),
+    )
     return g
 
 
@@ -166,8 +178,9 @@ def _total(g: nx.Graph, attr: str) -> float:
     return sum(nx.get_edge_attributes(g, attr).values())
 
 
-def prepare_zone_graph(g: nx.MultiDiGraph, src_zone: str,
-                       directions: Directions) -> nx.MultiDiGraph:
+def prepare_zone_graph(
+    g: nx.MultiDiGraph, src_zone: str, directions: Directions
+) -> nx.MultiDiGraph:
     """Copy of `g` with only the edges usable by tours based in `src_zone`.
 
     Keeps from-home edges leaving the zone, to-home edges entering it, all
@@ -185,8 +198,9 @@ def prepare_zone_graph(g: nx.MultiDiGraph, src_zone: str,
         return True
 
     gf = g.copy()
-    gf.remove_edges_from([(s, t, k) for s, t, k, attrs in g.edges(keys=True, data=True)
-                          if not usable(s, t, attrs)])
+    gf.remove_edges_from(
+        [(s, t, k) for s, t, k, attrs in g.edges(keys=True, data=True) if not usable(s, t, attrs)]
+    )
     gf.remove_nodes_from(list(nx.isolates(gf)))
     return gf
 
@@ -194,8 +208,11 @@ def prepare_zone_graph(g: nx.MultiDiGraph, src_zone: str,
 def filter_edges_by_direction(g: nx.MultiDiGraph, direction: str) -> nx.MultiDiGraph:
     """Copy of `g` with only the edges of `direction`, plus connectors."""
     gf = g.copy()
-    gf.remove_edges_from([
-        (u, v, k) for u, v, k, d in g.edges(keys=True, data="Direction")
-        if d not in (direction, "Connector")
-    ])
+    gf.remove_edges_from(
+        [
+            (u, v, k)
+            for u, v, k, d in g.edges(keys=True, data="Direction")
+            if d not in (direction, "Connector")
+        ]
+    )
     return gf

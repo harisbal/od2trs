@@ -42,12 +42,17 @@ def read_od(
 
     trips_before = od["Trips"].sum()
     od = od[od["Trips"] >= trips_thresh]
-    intrazonal = (od.index.get_level_values("Orig").astype(str)
-                  == od.index.get_level_values("Dest").astype(str))
+    intrazonal = od.index.get_level_values("Orig").astype(str) == od.index.get_level_values(
+        "Dest"
+    ).astype(str)
     od = od[~intrazonal]
     trips_after = od["Trips"].sum()
-    log.info("OD trips: %s before filtering, %s after (ratio %.4f)",
-             trips_before, trips_after, trips_after / trips_before)
+    log.info(
+        "OD trips: %s before filtering, %s after (ratio %.4f)",
+        trips_before,
+        trips_after,
+        trips_after / trips_before,
+    )
 
     od = od.dropna()
     od["Trips"] = od["Trips"].round().astype(int)
@@ -65,7 +70,8 @@ def _order_timeperiods(od: pd.DataFrame, ordered_tps: list[str]) -> pd.DataFrame
     present = [tp for tp in ordered_tps if tp in set(tps)]
     levels = [
         pd.CategoricalIndex(od.index.get_level_values(name), categories=present, ordered=True)
-        if name == "Timeperiod" else od.index.get_level_values(name)
+        if name == "Timeperiod"
+        else od.index.get_level_values(name)
         for name in od.index.names
     ]
     od.index = pd.MultiIndex.from_arrays(levels, names=od.index.names)
@@ -146,5 +152,4 @@ def to_interval(text: str) -> pd.Interval:
     if m is None:
         raise ValueError(f"Not an interval: {text!r}")
     left_side, left, right, right_side = m.groups()
-    return pd.Interval(pd.to_numeric(left), pd.to_numeric(right),
-                       _CLOSED[(left_side, right_side)])
+    return pd.Interval(pd.to_numeric(left), pd.to_numeric(right), _CLOSED[(left_side, right_side)])

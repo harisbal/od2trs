@@ -71,12 +71,16 @@ def test_matches_brute_force(seed):
     g, source, targets, cutoffs = random_case(seed)
 
     def within(path):
-        return all(sum(g[u][v].get(w, 1) for u, v in pairwise(path)) <= c
-                   for w, c in cutoffs.items())
+        return all(
+            sum(g[u][v].get(w, 1) for u, v in pairwise(path)) <= c for w, c in cutoffs.items()
+        )
 
     # Like the fork, nothing is yielded when the source is itself a target
-    expected = [] if source in targets else [
-        p for p in nx.all_simple_paths(g, source, targets) if within(p)]
+    expected = (
+        []
+        if source in targets
+        else [p for p in nx.all_simple_paths(g, source, targets) if within(p)]
+    )
     got = list(all_simple_paths_bounded(g, source, targets, cutoffs))
     assert sorted(got) == sorted(expected)
 
