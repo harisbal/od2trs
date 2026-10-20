@@ -1,6 +1,6 @@
 # Configuration
 
-`od2trs` is configured with a TOML file; [`config.toml`](https://github.com/harisbal/od2trs/blob/main/config.toml)
+`od2trs` is configured with a TOML file; [`config.toml`](https://github.com/harisbal/od2trs/blob/master/config.toml)
 in the repository documents a full example. Relative `inputs.dir` / `outputs.dir` are
 resolved against the config file's folder. Unknown keys are rejected.
 Legacy `.ini` configs are still accepted.

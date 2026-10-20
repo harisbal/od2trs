@@ -2,7 +2,7 @@ name: Docs
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths: ["docs/**", "zensical.toml", "src/**", "pyproject.toml", ".github/workflows/docs.yml"]
   pull_request:
     paths: ["docs/**", "zensical.toml", "src/**", "pyproject.toml"]
