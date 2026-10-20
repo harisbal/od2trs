@@ -63,7 +63,7 @@ Small example inputs are in [`tests/inputs`](tests/inputs), with matching config
 uv run pytest
 uv run ruff check
 uv run ruff format
-uv run --group docs mkdocs serve   # preview the docs
+uv run --group docs zensical serve   # preview the docs
 ```
 
 `tests/test_regression.py` compares the results with those of the original

@@ -74,5 +74,5 @@ optimisation\results\.txt
 .ruff_cache/
 tests/outputs/
 
-# MkDocs build
+# Docs build
 site/
