@@ -139,7 +139,10 @@ def test_od_reproduced(result):
     pd.testing.assert_series_equal(got.sort_index(), expected, check_dtype=False)
 
 
-def test_tour_ids_deterministic_across_cores(tmp_path):
+def test_tour_ids_deterministic_across_cores(tmp_path, monkeypatch):
+    # Start the worker pool right away instead of after the in-process probe
+    monkeypatch.setattr("od2trs.identify.MIN_PROBE_SECONDS", 0)
+    monkeypatch.setattr("od2trs.identify.POOL_STARTUP_SECONDS", 0)
     no_opt = {"run": False}
     single = run(load_config("small", tmp_path / "1", run={"ncores": 1}, optimisation=no_opt))
     multi = run(load_config("small", tmp_path / "4", run={"ncores": 4}, optimisation=no_opt))
@@ -238,6 +241,15 @@ def test_unsupported_formats_are_rejected(tmp_path):
             read(tmp_path / "table.pkl")
     with pytest.raises(ValueError, match="parquet"):
         write_tours(pd.DataFrame(), tmp_path / "tours.pkl")
+
+
+def test_workers_start_only_for_long_searches():
+    from od2trs.identify import _pool_pays_off
+
+    # 5 of 100 zones took 10 s, so ~190 s are left: worth starting 4 workers
+    assert _pool_pays_off(elapsed=10, done=5, total=100, ncores=4)
+    # 5 of 10 zones took 0.1 s: finishing in this process is faster than any pool
+    assert not _pool_pays_off(elapsed=0.1, done=5, total=10, ncores=4)
 
 
 def test_results_to_od_counts_repeated_tours():

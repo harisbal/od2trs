@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import multiprocessing as mp
 import os
-from collections.abc import Mapping, Sequence
+import time
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 import networkx as nx
@@ -124,33 +125,64 @@ def _worker(src_zone: str) -> list[tr.TripChain]:
     return zone_tours(zg, src_zone, p)
 
 
+# Starting the worker processes takes a couple of seconds (interpreters, imports, the
+# graph), which is more than a small search needs. Zones are therefore searched in this
+# process, and the workers only start once the work left is long enough to pay for them.
+MIN_PROBE_SECONDS = 1.0
+POOL_STARTUP_SECONDS = 2.0
+
+
+def _pool_pays_off(elapsed: float, done: int, total: int, ncores: int) -> bool:
+    """Whether the remaining zones are faster on `ncores` workers than in this process:
+    startup + remaining / ncores < remaining."""
+    remaining = elapsed / done * (total - done)
+    return remaining > POOL_STARTUP_SECONDS * ncores / (ncores - 1)
+
+
+def _zone_results(
+    zones: list[str], g: nx.MultiDiGraph, p: SearchParams, ncores: int
+) -> Iterator[list[tr.TripChain]]:
+    """The tours of each zone, in zone order."""
+    _init_worker(g, p)
+    started, done = time.monotonic(), 0
+    while done < len(zones):
+        elapsed = time.monotonic() - started
+        if (
+            ncores > 1
+            and done > 0
+            and elapsed >= MIN_PROBE_SECONDS
+            and _pool_pays_off(elapsed, done, len(zones), ncores)
+        ):
+            break
+        yield _worker(zones[done])
+        done += 1
+    else:
+        return
+
+    rest = zones[done:]
+    log.info("Continuing with the remaining %d zones on %d cores", len(rest), ncores)
+    # spawn: forking a process that may hold threads (BLAS, HiGHS) can deadlock
+    pool = mp.get_context("spawn").Pool(ncores, initializer=_init_worker, initargs=(g, p))
+    try:
+        yield from pool.imap(_worker, rest, chunksize=max(1, len(rest) // (ncores * 8)))
+    finally:
+        pool.close()
+        pool.join()
+
+
 def identify_tours(g: nx.MultiDiGraph, p: SearchParams, ncores: int | None) -> pd.DataFrame | None:
     """Identify tours from every zone; Tourids follow zone order and are deterministic."""
     zones = sorted(set(z for _, z in g.nodes(data="Zone")))
     ncores = resolve_ncores(ncores)
-    log.info("Identifying tours from %d zones on %d cores", len(zones), ncores)
-
-    if ncores == 1:
-        _init_worker(g, p)
-        results = map(_worker, zones)
-        pool = None
-    else:
-        # spawn: forking a process that may hold threads (BLAS, HiGHS) can deadlock
-        pool = mp.get_context("spawn").Pool(ncores, initializer=_init_worker, initargs=(g, p))
-        results = pool.imap(_worker, zones, chunksize=max(1, len(zones) // (ncores * 8)))
+    log.info("Identifying tours from %d zones on up to %d cores", len(zones), ncores)
 
     frames, next_id = [], 1
-    try:
-        for tours in tqdm(results, total=len(zones)):
-            if tours:
-                frames.append(
-                    tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
-                )
-                next_id += len(tours)
-    finally:
-        if pool is not None:
-            pool.close()
-            pool.join()
+    for tours in tqdm(_zone_results(zones, g, p, ncores), total=len(zones)):
+        if tours:
+            frames.append(
+                tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
+            )
+            next_id += len(tours)
 
     if not frames:
         log.warning("No tours identified")
