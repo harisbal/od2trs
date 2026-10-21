@@ -61,13 +61,23 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) 
     else:
         g_all = nx.DiGraph(g_zone)
 
+    # Only from-home edges can start a tour and only to-home edges can end it; the
+    # graph order is kept so the sequences come out in the same order
+    first_stops = {
+        s: [v for v in g_all.successors(s) if _has_edge(g_zone, s, v, p.directions.from_home)]
+        for s in srcs
+    }
+    last_stops = {
+        t: [u for u in g_all.predecessors(t) if _has_edge(g_zone, u, t, p.directions.to_home)]
+        for t in tgts
+    }
+
     zones_seqs: list[list[Node]] = []
     for src in srcs:
-        # dict.fromkeys de-duplicates while keeping the (deterministic) graph order
-        for succ in dict.fromkeys(g_all.successors(src)):
+        for succ in first_stops[src]:
             predecessors: set[Node] = set()
             for tgt in tgts:
-                preds = list(g_all.predecessors(tgt))
+                preds = list(last_stops[tgt])
                 if succ in preds:
                     # Two-leg tour: src -> succ -> tgt
                     zones_seqs.append([src, succ, tgt])
@@ -81,7 +91,7 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) 
                 # The actual tgt of a path isn't known yet, so its last leg is bounded
                 # by the cheapest one
                 for tgt in tgts:
-                    for pred in g_all.predecessors(tgt):
+                    for pred in last_stops[tgt]:
                         cost_pred_to_tgt = g_all[pred][tgt][w]
                         if cost_src_to_succ + cost_pred_to_tgt > max_cost:
                             predecessors.discard(pred)
@@ -99,12 +109,16 @@ def identify_zone_sequences(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) 
             if succ not in g_nhb:
                 continue
             for path in all_simple_paths_bounded(g_nhb, succ, predecessors, cutoffs):
-                last_tgt = next((t for t in tgts if path[-1] in g_all.pred[t]), None)
+                last_tgt = next((t for t in tgts if path[-1] in last_stops[t]), None)
                 zones_seqs.append([src, *path, *([last_tgt] if last_tgt else [])])
 
         tgts.remove(src)
 
     return zones_seqs
+
+
+def _has_edge(g: nx.MultiDiGraph, u: Node, v: Node, direction: str) -> bool:
+    return any(attrs["Direction"] == direction for attrs in g.adj[u][v].values())
 
 
 def zone_tours(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) -> list[tr.TripChain]:
