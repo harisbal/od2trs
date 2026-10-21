@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 import networkx as nx
 import pandas as pd
 
 from od2trs.config import CentralityMethod, Directions
+from od2trs.paths import weighted_adjacency
 
 log = logging.getLogger(__name__)
 
@@ -228,26 +229,6 @@ def filter_edges_by_direction(g: nx.MultiDiGraph, direction: str) -> nx.MultiDiG
     return gf
 
 
-class _MaskedAdjacency(Mapping):
-    """A graph's adjacency with the neighbours of a few nodes replaced."""
-
-    def __init__(self, base: Mapping, overrides: dict[Node, dict]):
-        self._base, self._overrides = base, overrides
-
-    def __getitem__(self, node: Node) -> Mapping:
-        overridden = self._overrides.get(node)
-        return self._base[node] if overridden is None else overridden
-
-    def __iter__(self) -> Iterator[Node]:
-        return iter(self._base)
-
-    def __len__(self) -> int:
-        return len(self._base)
-
-    def __contains__(self, node: object) -> bool:
-        return node in self._base
-
-
 class ZoneEdges:
     """The edges at the home nodes of one zone that its tours can use, with their costs.
 
@@ -283,6 +264,8 @@ class ZoneGraphs:
         ordered_tps: Sequence[str],
     ):
         self.g, self.directions, self.cost_types = g, directions, list(cost_types)
+        # The weights bounding a path, in the order the search takes its limits
+        self.weights = [*cost_types, "Length", "HeightDiff"]
         tp_rank = {tp: i for i, tp in enumerate(ordered_tps)}
         by_zone: dict[str, list[Node]] = defaultdict(list)
         for node, zone in g.nodes(data="Zone"):
@@ -290,22 +273,21 @@ class ZoneGraphs:
         self._nodes = {z: sorted(ns, key=lambda n: tp_rank[n[1]]) for z, ns in by_zone.items()}
         self.zones = sorted(self._nodes)
         # Non-home-based edges and connectors; parallel edges are collapsed as nx does
-        self.nhb = nx.DiGraph(filter_edges_by_direction(g, directions.non_home))
+        nhb = nx.DiGraph(filter_edges_by_direction(g, directions.non_home))
+        self._nhb_adj = weighted_adjacency(nhb.adj, self.weights)
 
     def home_nodes(self, zone: str) -> list[Node]:
         """The zone's nodes in chronological order."""
         return self._nodes[zone]
 
-    def nhb_adjacency(self, zone: str) -> Mapping[Node, Mapping]:
-        """Adjacency of the non-home-based graph for tours based in `zone`: the
-        connectors between the zone's own nodes can't be used."""
-        base = self.nhb.adj
-        overrides = {
-            n: {v: attrs for v, attrs in base[n].items() if v[0] != zone}
-            for n in self._nodes[zone]
-            if n in base
-        }
-        return _MaskedAdjacency(base, overrides)
+    def nhb_adjacency(self, zone: str) -> dict[Node, dict[Node, tuple]]:
+        """The non-home-based graph for tours based in `zone`, as a `weighted_adjacency`:
+        the connectors between the zone's own nodes can't be used."""
+        adj = self._nhb_adj.copy()
+        for n in self._nodes[zone]:
+            if n in adj:
+                adj[n] = {v: w for v, w in adj[n].items() if v[0] != zone}
+        return adj
 
     def zone_edges(self, zone: str) -> ZoneEdges:
         """The usable edges at the zone's nodes."""

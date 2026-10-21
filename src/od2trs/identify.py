@@ -16,7 +16,7 @@ from tqdm import tqdm
 from od2trs import graph as gr
 from od2trs import tours as tr
 from od2trs.config import Directions
-from od2trs.paths import simple_paths_in_adjacency
+from od2trs.paths import simple_paths_in_weighted_adjacency
 
 log = logging.getLogger(__name__)
 
@@ -53,6 +53,12 @@ def identify_zone_sequences(zg: gr.ZoneGraphs, src_zone: str, p: SearchParams) -
 
     zones_seqs: list[list[Node]] = []
     for src in srcs:
+        # The first of the remaining home nodes that a path ending at a node can return to
+        last_tgt_of: dict[Node, Node] = {}
+        for tgt in tgts:
+            for pred in edges.pred[tgt]:
+                last_tgt_of.setdefault(pred, tgt)
+
         for succ in edges.successors(src):
             predecessors: set[Node] = set()
             for tgt in tgts:
@@ -85,8 +91,9 @@ def identify_zone_sequences(zg: gr.ZoneGraphs, src_zone: str, p: SearchParams) -
             cutoffs["Length"] = p.max_legs - 2
             cutoffs["HeightDiff"] = tp_max - tp_min
 
-            for path in simple_paths_in_adjacency(nhb_adj, succ, predecessors, cutoffs):
-                last_tgt = next((t for t in tgts if path[-1] in edges.pred[t]), None)
+            limits = [cutoffs[w] for w in zg.weights]
+            for path in simple_paths_in_weighted_adjacency(nhb_adj, succ, predecessors, limits):
+                last_tgt = last_tgt_of.get(path[-1])
                 zones_seqs.append([src, *path, *([last_tgt] if last_tgt else [])])
 
         tgts.remove(src)

@@ -75,6 +75,7 @@ def test_non_home_adjacency_matches_the_zone_graph(graph_and_config):
         g_nhb = nx.DiGraph(gr.filter_edges_by_direction(g_zone, tc.directions.non_home))
         adj = zg.nhb_adjacency(zone)
         for node in g_nhb:
-            # Same neighbours in the same order, with the same edge attributes
+            # Same neighbours in the same order, with the same weights
             assert list(adj[node]) == list(g_nhb.adj[node])
-            assert all(dict(adj[node][v]) == dict(g_nhb.adj[node][v]) for v in adj[node])
+            for v, attrs in g_nhb.adj[node].items():
+                assert adj[node][v] == tuple(attrs.get(w, 1) for w in zg.weights)
