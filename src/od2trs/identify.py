@@ -10,7 +10,14 @@ from dataclasses import dataclass
 
 import networkx as nx
 import pandas as pd
-from tqdm import tqdm
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 
 from od2trs import graph as gr
 from od2trs import tours as tr
@@ -172,12 +179,15 @@ def identify_tours(g: nx.MultiDiGraph, p: SearchParams, ncores: int | None) -> p
 
     frames, next_id = [], 1
     try:
-        for tours in tqdm(results, total=len(zones)):
-            if tours:
-                frames.append(
-                    tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
-                )
-                next_id += len(tours)
+        with _progress() as progress:
+            task = progress.add_task("Identifying tours", total=len(zones), tours=0)
+            for tours in results:
+                if tours:
+                    frames.append(
+                        tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
+                    )
+                    next_id += len(tours)
+                progress.update(task, advance=1, tours=next_id - 1)
     finally:
         if pool is not None:
             pool.close()
@@ -189,6 +199,17 @@ def identify_tours(g: nx.MultiDiGraph, p: SearchParams, ncores: int | None) -> p
     info = pd.concat(frames)
     log.info("Tours identified: %s", f"{len(info):,}")
     return info
+
+
+def _progress() -> Progress:
+    return Progress(
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TextColumn("zones · {task.fields[tours]:,} tours"),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+    )
 
 
 def resolve_ncores(ncores: int | None) -> int:
