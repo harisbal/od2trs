@@ -23,6 +23,9 @@ from scipy import sparse
 from od2trs.tourtable import flatten_odpairids
 
 log = logging.getLogger(__name__)
+# HiGHS's own log (presolve, branch-and-bound progress), on a logger of its own so it can
+# be silenced separately
+highs_log = logging.getLogger(f"{__name__}.highs")
 
 
 @dataclass
@@ -128,8 +131,15 @@ def solve(
     lp.integrality_ = [highspy.HighsVarType.kInteger] * lp.num_col_
     lp.offset_ = m.offset
 
+    log.info(
+        "Model: %s tours, %s constraints, %s nonzeros",
+        f"{lp.num_col_:,}",
+        f"{lp.num_row_:,}",
+        f"{m.matrix.nnz:,}",
+    )
     h = highspy.Highs()
-    h.setOptionValue("output_flag", log.isEnabledFor(logging.DEBUG))
+    h.setOptionValue("log_to_console", False)
+    h.cbLogging.subscribe(_log_highs)
     if time_limit is not None:
         h.setOptionValue("time_limit", float(time_limit))
     for name, value in (solver_options or {}).items():
@@ -151,6 +161,12 @@ def solve(
 
     values = np.rint(np.asarray(h.getSolution().col_value)).astype(int)
     return pd.Series(values, index=m.tour_ids.rename("Tourid"), name="Timesused")
+
+
+def _log_highs(event) -> None:
+    for line in event.message.splitlines():
+        if line.strip():
+            highs_log.info("%s", line.rstrip())
 
 
 def results_to_od(tours: pd.DataFrame, od: pd.DataFrame) -> pd.Series:
