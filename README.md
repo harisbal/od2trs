@@ -54,7 +54,8 @@ Inputs (`[inputs]`):
 Outputs (`[outputs]`): the modelled OD, the tours with `Timesused`, the graph
 (pickle), the trimmed distribution and the resolved config.
 
-Small example inputs are in [`tests/inputs`](tests/inputs), with matching configs in
+Schemas and examples for every input are in the
+[Inputs](https://harisbal.github.io/od2trs/inputs/) documentation. Small example inputs are in [`tests/inputs`](tests/inputs), with matching configs in
 [`tests/configs`](tests/configs).
 
 ## Development

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 340" font-family="Inter, system-ui, sans-serif" font-size="13">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10z" fill="#6366f1"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 10 5 0 10z" fill="#94a3b8"/></marker>
+  </defs>
+
+  <!-- time period columns -->
+  <g fill="#94a3b8" fill-opacity=".12">
+    <rect x="95" y="38" width="130" height="236" rx="12"/><rect x="275" y="38" width="130" height="236" rx="12"/><rect x="455" y="38" width="130" height="236" rx="12"/>
+  </g>
+  <g text-anchor="middle" font-weight="700" fill="#64748b">
+    <text x="160" y="28">AM</text><text x="340" y="28">IP</text><text x="520" y="28">PM</text>
+  </g>
+  <g fill="#64748b" text-anchor="end">
+    <text x="78" y="79" font-weight="700" fill="#14b8a6">Z (home)</text><text x="78" y="159">A</text><text x="78" y="239">B</text>
+  </g>
+
+  <!-- other (unused) edges -->
+  <g stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#g)" opacity=".7">
+    <path d="M340 94V138"/>
+    <path d="M160 174V218"/>
+    <path d="M520 144V98"/>
+    <path d="M176 240H324" stroke-dasharray="5 5"/>
+    <path d="M176 80H324" stroke-dasharray="5 5"/>
+    <path d="M356 80H504" stroke-dasharray="5 5"/>
+  </g>
+
+  <!-- the tour: Z@AM -> A@AM -> A@IP -> B@IP -> B@PM -> Z@PM -->
+  <g stroke="#6366f1" stroke-width="3.5" fill="none" stroke-linecap="round" marker-end="url(#a)">
+    <path d="M160 94V138"/>
+    <path d="M176 160H322" stroke-dasharray="6 6"/>
+    <path d="M340 174V218"/>
+    <path d="M356 240H504" stroke-dasharray="6 6"/>
+    <path d="M538 230C602 200 602 112 534 88"/>
+  </g>
+
+  <!-- nodes -->
+  <g stroke="#64748b" stroke-width="2" fill="#fff" fill-opacity=".9">
+    <circle cx="160" cy="80" r="14"/><circle cx="340" cy="80" r="14"/><circle cx="520" cy="80" r="14"/>
+    <circle cx="160" cy="160" r="14"/><circle cx="340" cy="160" r="14"/><circle cx="520" cy="160" r="14"/>
+    <circle cx="160" cy="240" r="14"/><circle cx="340" cy="240" r="14"/><circle cx="520" cy="240" r="14"/>
+  </g>
+  <g stroke="#6366f1" stroke-width="3" fill="#6366f1" fill-opacity=".15">
+    <circle cx="160" cy="80" r="14"/><circle cx="160" cy="160" r="14"/><circle cx="340" cy="160" r="14"/><circle cx="340" cy="240" r="14"/><circle cx="520" cy="240" r="14"/><circle cx="520" cy="80" r="14"/>
+  </g>
+
+  <!-- labels -->
+  <g font-weight="600" fill="#6366f1">
+    <text x="104" y="123" text-anchor="end" >from home</text>
+    <text x="352" y="203" text-anchor="start">non-home-based</text>
+    <text x="598" y="165" text-anchor="start">to home</text>
+  </g>
+
+  <!-- legend -->
+  <g transform="translate(95 306)" fill="#64748b" font-size="12">
+    <path d="M0 0H34" stroke="#6366f1" stroke-width="3.5" stroke-linecap="round"/><text x="42" y="4">trip (OD cell, within one period)</text>
+    <path d="M250 0H284" stroke="#6366f1" stroke-width="3.5" stroke-dasharray="6 6"/><text x="292" y="4">connector (wait in a zone until a later period)</text>
+  </g>
+</svg>

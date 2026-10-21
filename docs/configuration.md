@@ -1,4 +1,8 @@
-# Configuration
+---
+icon: lucide/sliders-horizontal
+---
+
+# :lucide-sliders-horizontal: Configuration
 
 `od2trs` is configured with a TOML file; [`config.toml`](https://github.com/harisbal/od2trs/blob/master/config.toml)
 in the repository documents a full example. Relative `inputs.dir` / `outputs.dir` are
