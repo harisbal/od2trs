@@ -1,0 +1,58 @@
+# MATSim Berlin validation experiment; see README.md for the settings.
+name = "berlin-1pct-h3r8-veh"
+
+[scenario]
+version = "6.4"
+sample = "1pct"            # a published run: 1pct or 10pct
+
+[zones]
+layer = "h3"               # Prognoseraum (60), Bezirksregion (138), Planungsraum (447) or h3
+h3_resolution = 8          # for layer = "h3" (7: ~5 km2 cells, 8: ~0.7 km2)
+detour_factor = 1.0        # Distance cost = detour_factor x centroid distance (m)
+
+[population]
+subpopulation = "person"
+persons_frac = 1.0         # share of the persons kept
+seed = 0
+
+[truth]
+exclude_modes = ["walk"]       # drop tours with a leg in these modes (vehicle ODs)
+drop_unrepresentable = true  # drop tours with intrazonal legs, > max_legs or > max_costs
+
+# Activity type prefix -> category; other types are "Other"
+[activities]
+home = "Home"
+work = "Work"
+edu = "Education"
+
+[distr_obs]
+mode = "exact"             # none | exact | sample | noise
+dims = ["Distance_grp", "Timeperiods_seq"]
+distance_bins = [0, 2000, 5000, 10000, 20000, 40000, inf]
+sample_frac = 0.1          # mode = "sample": share of persons in the "survey"
+noise_sd = 0.2             # mode = "noise": sd of the log-normal multiplier of each share
+seed = 0
+
+[od]
+transport = false          # add the MATSim main mode as a Transport dimension
+
+[timeperiods]
+OP1 = ["00:00:00", "07:00:00"]
+AM = ["07:00:00", "10:00:00"]
+IP1 = ["10:00:00", "13:00:00"]
+IP2 = ["13:00:00", "16:00:00"]
+PM = ["16:00:00", "19:00:00"]
+IP3 = ["19:00:00", "22:00:00"]
+OP2 = ["22:00:00", "23:59:59"]
+
+# Passed to od2trs; inputs, outputs, time periods and purposes are generated
+[od2trs.run]
+ncores = -1
+
+[od2trs.tours]
+max_legs = 4
+max_costs = {Distance = 50000}
+
+[od2trs.optimisation]
+distribution_tolerance = 0.005
+time_limit = 600
