@@ -18,13 +18,14 @@ as ground truth:
 
 ```sh
 uv run --group validation python validation/matsim_berlin/run.py                  # experiment.toml
-uv run --group validation python validation/matsim_berlin/run.py my.toml --steps evaluate
+uv run --group validation python validation/matsim_berlin/run.py my.toml --step run --step evaluate
 uv run --group validation python validation/matsim_berlin/run.py \
-    --name h3-r7-noise --set zones.layer=h3 --set zones.h3_resolution=7 \
+    --name h3-r7-noise --set zones.h3_resolution=7 \
     --set distr_obs.mode=noise --set distr_obs.noise_sd=0.3
 ```
 
-`--set KEY=VALUE` overrides any setting (values are TOML, bare text is a string);
+`--set KEY=VALUE` (`-s`) overrides any setting (values are TOML, bare text is a string);
+`--step` picks steps (all by default), `--help` lists the options;
 `--name` names the run folder. Downloads are cached in `data/`, and each run writes to
 `runs/<name>/`:
 
