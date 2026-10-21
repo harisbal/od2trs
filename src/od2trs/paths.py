@@ -27,6 +27,16 @@ def all_simple_paths_bounded(
         raise TypeError("all_simple_paths_bounded expects a simple (Di)Graph")
     if source not in g:
         raise nx.NodeNotFound(f"source node {source} not in graph")
+    yield from simple_paths_in_adjacency(g.adj, source, targets, cutoffs)
+
+
+def simple_paths_in_adjacency(
+    adj: Mapping[Hashable, Mapping[Hashable, Mapping]],
+    source: Hashable,
+    targets: Collection[Hashable],
+    cutoffs: Mapping[str, float],
+) -> Iterator[list]:
+    """`all_simple_paths_bounded` on any ``node -> neighbour -> edge attributes`` mapping."""
     targets = set(targets)
     if source in targets:
         return
@@ -36,7 +46,6 @@ def all_simple_paths_bounded(
     if any(lim < 0 for lim in limits):
         return
 
-    adj = g.adj
     visited = {source: None}  # ordered set: the current path
     path_costs = [[0] * len(weights)]  # cost of the current path, per prefix
     stack = [iter(adj[source])]
