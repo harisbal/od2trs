@@ -15,7 +15,7 @@ hide:
 
 </div>
 
-![From an OD matrix to home-based tours](assets/images/hero.svg)
+![From an OD matrix to home-based tours](assets/images/hero.svg){ width="680" style="display: block; margin: 0 auto" }
 
 Origin-destination (OD) matrices describe trips as if they were independent. `od2trs`
 recovers the individual **home-based tours** behind them (home → … → home), which is what
