@@ -19,6 +19,7 @@ from prepare import distribution_groups
 
 from od2trs import io
 
+SEQ_COLS = ("Origs", "Purposes", "Directions", "Timeperiods", "Transports", "Acts")
 DISTR_DIMS = {
     "Nolegs": lambda t: t["Nolegs"],
     "Timeperiods_seq": lambda t: t["Timeperiods"].map(io.SEQ_SEP.join),
@@ -28,8 +29,8 @@ DISTR_DIMS = {
 
 def evaluate(exp: Experiment, run_dir: Path) -> dict:
     """Metrics of the od2trs run in `run_dir`; per-group comparisons go to `run_dir/eval`."""
-    truth = io.read_tours(run_dir / "truth_tours.parquet")
-    candidates = io.read_tours(run_dir / "od2trs" / "tours.parquet")
+    truth = read_tours(run_dir / "truth_tours.parquet")
+    candidates = read_tours(run_dir / "od2trs" / "tours.parquet")
     costs = io.read_costs(run_dir / "inputs" / "costs.csv")["Distance"].to_dict()
     candidates["Distance"] = [tour_distance(o, costs) for o in candidates["Origs"]]
     used = candidates[candidates["Timesused"] > 0]
@@ -69,6 +70,18 @@ def evaluate(exp: Experiment, run_dir: Path) -> dict:
         table.to_csv(eval_dir / f"{dim}.csv", index_label=dim)
         metrics["tvd"][dim] = 0.5 * float((table["truth"] - table["model"]).abs().sum())
     return metrics
+
+
+def read_tours(path: Path) -> pd.DataFrame:
+    """A full tours table (truth, or exported by od2trs) with the per-leg columns as
+    tuples; `io.read_tours` would drop them, since od2trs derives them from the OD."""
+    tours = pd.read_parquet(path)
+    if "Tourid" in tours.columns:
+        tours = tours.set_index("Tourid")
+    for c in SEQ_COLS:
+        if c in tours:
+            tours[c] = [None if v is None else tuple(v) for v in tours[c]]
+    return tours
 
 
 def tour_keys(tours: pd.DataFrame, with_transport: bool) -> pd.Series:

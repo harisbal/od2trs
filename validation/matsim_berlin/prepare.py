@@ -53,7 +53,7 @@ def prepare(exp: Experiment, data_dir: Path, run_dir: Path) -> dict:
     io.write_table(zones_info(zones), inputs_dir / "zones_info.csv")
     if exp.distr_obs.mode != "none":
         io.write_table(observed_distribution(exp, tours), inputs_dir / "distr_obs.csv")
-    io.write_tours(tours, run_dir / "truth_tours.parquet")
+    tours.to_parquet(run_dir / "truth_tours.parquet", compression="zstd")
     return stats
 
 
