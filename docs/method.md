@@ -1,19 +1,35 @@
-# Method
+---
+icon: lucide/workflow
+---
+
+# :lucide-workflow: Method
 
 `od2trs` implements the tour synthesis approach of Ballis & Dimitriou
 (references 1 and 2 in [References](references.md)): aggregate
 origin-destination (OD) matrices treat trips as independent, so the trips are
 re-linked into home-based tours (trip chains) that reproduce the OD.
 
-## 1. Identification
+```mermaid
+flowchart LR
+    od[/"OD matrix"/] --> g["Time-expanded<br/>graph"]
+    costs[/"Costs"/] --> g
+    g --> c["Candidate<br/>tours"]
+    d[/"Observed<br/>distribution"/] -.-> c
+    c --> ip{{"Integer<br/>program"}}
+    ip --> t[("Tours ×<br/>Timesused")]
+```
+
+## :lucide-network: 1. Identification
 
 The multi-period OD is turned into a directed multigraph:
 
+![A tour in the time-expanded graph](assets/images/time-expanded-graph.svg)
+
 - one node per *(zone, time period)*;
-- **trip edges** for each OD cell with trips, running from the origin node in the
-  departure period to the destination node in the arrival period;
+- **trip edges** for each OD cell with trips, from the origin zone to the destination
+  zone within the cell's time period;
 - **connector edges** between a zone's consecutive time periods (an activity that
-  lasts until the next period).
+  lasts until a later period).
 
 Starting from every home zone, paths are enumerated that leave home on a
 *from-home* trip, chain *non-home-based* trips and close with a *to-home* trip. A path
@@ -28,7 +44,7 @@ Large networks can be reduced first (`excl_edges_od_perc`, `simplify_net_method`
 dropping the non-home-based edges around the least central nodes, trading some OD
 coverage for tractability.
 
-## 2. Optimisation
+## :lucide-sigma: 2. Optimisation
 
 An integer program decides how many times each candidate tour is used:
 
@@ -40,7 +56,7 @@ An integer program decides how many times each candidate tour is used:
 
 The model is built with Pyomo and solved with HiGHS.
 
-## Further reading
+## :lucide-book-open: Further reading
 
 The multimodal extension and its scalability on megacity-sized ODs are covered in
 Ballis & Dimitriou (2021). Full citations are in the README and in

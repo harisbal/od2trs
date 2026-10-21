@@ -1,4 +1,8 @@
-# Getting started
+---
+icon: lucide/rocket
+---
+
+# :lucide-rocket: Getting started
 
 ## Installation
 
@@ -12,7 +16,8 @@ uv sync
 
 ## Inputs
 
-All inputs live in the folder given by `inputs.dir`.
+All inputs live in the folder given by `inputs.dir`. See [Inputs](inputs.md) for the
+full schemas and examples.
 
 | file | content |
 |---|---|

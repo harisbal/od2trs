@@ -8,6 +8,7 @@ edit_uri = "edit/master/docs/"
 nav = [
   { "Home" = "index.md" },
   { "Getting started" = "getting-started.md" },
+  { "Inputs" = "inputs.md" },
   { "Configuration" = "configuration.md" },
   { "Method" = "method.md" },
   { "API reference" = "api.md" },
@@ -16,9 +17,13 @@ nav = [
 
 [project.theme]
 language = "en"
+logo = "assets/images/logo.svg"
+favicon = "assets/images/logo.svg"
 features = [
   "content.action.edit",
+  "content.code.annotate",
   "content.code.copy",
+  "content.tabs.link",
   "navigation.footer",
   "navigation.instant",
   "navigation.sections",
@@ -47,11 +52,17 @@ toggle.name = "Switch to system preference"
 admonition = {}
 attr_list = {}
 md_in_html = {}
-tables = {}
-toc.permalink = true
+pymdownx.details = {}
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
 pymdownx.highlight.anchor_linenums = true
 pymdownx.highlight.pygments_lang_class = true
-pymdownx.superfences = {}
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+tables = {}
+toc.permalink = true
 
 [project.plugins.mkdocstrings.handlers.python]
 paths = ["src"]

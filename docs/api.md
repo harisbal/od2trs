@@ -1,4 +1,8 @@
-# API reference
+---
+icon: lucide/code-xml
+---
+
+# :lucide-code-xml: API reference
 
 ## Configuration
 

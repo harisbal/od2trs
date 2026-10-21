@@ -1,4 +1,8 @@
-# References
+---
+icon: lucide/quote
+---
+
+# :lucide-quote: References
 
 The method follows:
 

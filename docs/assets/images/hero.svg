@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 270" font-family="Inter, system-ui, sans-serif" font-size="14">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#94a3b8"/>
+    </marker>
+  </defs>
+
+  <!-- OD matrix -->
+  <text x="40" y="30" font-weight="700" font-size="16" fill="#6366f1">OD matrix</text>
+  <text x="40" y="48" fill="#94a3b8" font-size="12">trips between zones, per period</text>
+  <g text-anchor="middle" fill="#94a3b8" font-size="12">
+    <text x="84" y="78">D1</text><text x="128" y="78">D2</text><text x="172" y="78">D3</text><text x="216" y="78">D4</text>
+    <text x="22" y="109">O1</text><text x="22" y="153">O2</text><text x="22" y="197">O3</text><text x="22" y="241">O4</text>
+  </g>
+  <g font-size="13" text-anchor="middle">
+    <g fill="#6366f1">
+      <rect x="64"  y="88"  width="40" height="40" rx="6" fill-opacity=".04"/><rect x="108" y="88"  width="40" height="40" rx="6" fill-opacity=".45"/><rect x="152" y="88"  width="40" height="40" rx="6" fill-opacity=".04"/><rect x="196" y="88"  width="40" height="40" rx="6" fill-opacity=".20"/>
+      <rect x="64"  y="132" width="40" height="40" rx="6" fill-opacity=".30"/><rect x="108" y="132" width="40" height="40" rx="6" fill-opacity=".04"/><rect x="152" y="132" width="40" height="40" rx="6" fill-opacity=".75"/><rect x="196" y="132" width="40" height="40" rx="6" fill-opacity=".04"/>
+      <rect x="64"  y="176" width="40" height="40" rx="6" fill-opacity=".04"/><rect x="108" y="176" width="40" height="40" rx="6" fill-opacity=".20"/><rect x="152" y="176" width="40" height="40" rx="6" fill-opacity=".04"/><rect x="196" y="176" width="40" height="40" rx="6" fill-opacity=".60"/>
+      <rect x="64"  y="220" width="40" height="40" rx="6" fill-opacity=".45"/><rect x="108" y="220" width="40" height="40" rx="6" fill-opacity=".04"/><rect x="152" y="220" width="40" height="40" rx="6" fill-opacity=".30"/><rect x="196" y="220" width="40" height="40" rx="6" fill-opacity=".04"/>
+    </g>
+    <g fill="#64748b">
+      <text x="128" y="113">3</text><text x="216" y="113">1</text>
+      <text x="84" y="157">2</text><text x="172" y="157">5</text>
+      <text x="128" y="201">1</text><text x="216" y="201">4</text>
+      <text x="84" y="245">3</text><text x="172" y="245">2</text>
+    </g>
+  </g>
+
+  <!-- arrow -->
+  <text x="320" y="146" text-anchor="middle" font-weight="700" fill="#6366f1">od2trs</text>
+  <path d="M270 160H370" stroke="#94a3b8" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+
+  <!-- tours -->
+  <text x="430" y="30" font-weight="700" font-size="16" fill="#6366f1">Home-based tours</text>
+  <text x="430" y="48" fill="#94a3b8" font-size="12">how often each tour is used</text>
+  <g text-anchor="middle" font-size="13" font-weight="600">
+    <g stroke="#94a3b8" stroke-width="2" stroke-linecap="round" marker-end="url(#arrow)" fill="none">
+      <path d="M498 100H518" marker-end="url(#arrow)"/><path d="M586 100H606" marker-end="url(#arrow)"/>
+      <path d="M498 160H518" marker-end="url(#arrow)"/><path d="M586 160H606" marker-end="url(#arrow)"/><path d="M674 160H694" marker-end="url(#arrow)"/>
+      <path d="M498 220H518" marker-end="url(#arrow)"/><path d="M586 220H606" marker-end="url(#arrow)"/>
+    </g>
+    <g fill="#14b8a6"><rect x="430" y="83" width="68" height="34" rx="17"/><rect x="606" y="83" width="68" height="34" rx="17"/>
+      <rect x="430" y="143" width="68" height="34" rx="17"/><rect x="694" y="143" width="68" height="34" rx="17"/>
+      <rect x="430" y="203" width="68" height="34" rx="17"/><rect x="606" y="203" width="68" height="34" rx="17"/></g>
+    <g fill="#6366f1"><rect x="518" y="83" width="68" height="34" rx="17"/>
+      <rect x="518" y="143" width="68" height="34" rx="17"/><rect x="606" y="143" width="68" height="34" rx="17"/>
+      <rect x="518" y="203" width="68" height="34" rx="17"/></g>
+    <g fill="#fff">
+      <text x="464" y="105">Home</text><text x="552" y="105">Work</text><text x="640" y="105">Home</text>
+      <text x="464" y="165">Home</text><text x="552" y="165">Shop</text><text x="640" y="165">Work</text><text x="728" y="165">Home</text>
+      <text x="464" y="225">Home</text><text x="552" y="225">Other</text><text x="640" y="225">Home</text>
+    </g>
+    <g fill="#64748b" font-size="15" text-anchor="start">
+      <text x="694" y="105">× 3</text><text x="782" y="165">× 2</text><text x="694" y="225">× 4</text>
+    </g>
+  </g>
+</svg>
