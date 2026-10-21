@@ -53,10 +53,12 @@ def read_od(
     their group, and values without a group are dropped. Odpairids are assigned
     before filtering by ``trips_thresh`` and removing intrazonal trips.
     """
-    od = read_table(path).rename(columns=str.capitalize)
+    # Key columns are read as text so csv zone ids keep their leading zeros
+    od = read_table(path, dtype=str).rename(columns=str.capitalize)
     *key_cols, trips_col = od.columns
     if trips_col != "Trips":
         raise ValueError(f"The last OD column must be Trips, got {trips_col!r}")
+    od["Trips"] = pd.to_numeric(od["Trips"])
 
     # Zone ids are compared with those of the costs and zones files, so make them text
     od[["Orig", "Dest"]] = od[["Orig", "Dest"]].astype(str)
@@ -107,13 +109,13 @@ def _order_timeperiods(od: pd.DataFrame, ordered_tps: list[str]) -> pd.DataFrame
 
 def read_costs(path: Path) -> pd.DataFrame:
     """Read OD costs indexed by (Orig, Dest); the file may hold several cost columns."""
-    costs = read_table(path)
+    costs = read_table(path, dtype={"Orig": str, "Dest": str})
     costs[["Orig", "Dest"]] = costs[["Orig", "Dest"]].astype(str)
     return costs.set_index(["Orig", "Dest"]).astype(float).sort_index()
 
 
 def read_zones_info(path: Path) -> pd.DataFrame:
-    df = read_table(path)
+    df = read_table(path, converters={0: str})
     df = df.set_index(df.columns[0])
     df.index = df.index.astype(str)
     df["Coords"] = list(zip(df["X"], df["Y"], strict=True))
