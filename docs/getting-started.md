@@ -16,13 +16,13 @@ uv sync
 
 ## Inputs
 
-All inputs live in the folder given by `inputs.dir`. See [Inputs](inputs.md) for the
-full schemas and examples.
+All inputs live in the folder given by `inputs.dir`, as csv or parquet files. See
+[Inputs](inputs.md) for the full schemas and examples.
 
 | file | content |
 |---|---|
 | `od` | key columns (`Orig`, `Dest`, `Purpose`, `Direction`, `Timeperiod`, …), then `Trips` |
-| `costs` | `Orig`, `Dest` and one column per cost type (csv), or a pickled frame |
+| `costs` | `Orig`, `Dest` and one column per cost type |
 | `distr_obs` | observed distribution: the `distr_dims` columns + `Percentage` |
 | `zones_info` | optional: zone id, `X`, `Y`, … (attached to graph nodes) |
 

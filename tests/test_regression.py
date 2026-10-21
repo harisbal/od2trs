@@ -28,7 +28,8 @@ import pytest
 
 from od2trs import optimise as opt
 from od2trs.config import Config
-from od2trs.io import read_od
+from od2trs.distributions import read_distr_obs
+from od2trs.io import read_costs, read_od, read_tours, write_tours
 from od2trs.pipeline import run
 
 HERE = Path(__file__).parent
@@ -143,6 +144,100 @@ def test_tour_ids_deterministic_across_cores(tmp_path):
     single = run(load_config("small", tmp_path / "1", run={"ncores": 1}, optimisation=no_opt))
     multi = run(load_config("small", tmp_path / "4", run={"ncores": 4}, optimisation=no_opt))
     pd.testing.assert_frame_equal(single.tours, multi.tours)
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".parquet"])
+@pytest.mark.parametrize("case", ["example", "small_distr"])
+def test_tours_round_trip(case, suffix, tmp_path):
+    cfg = load_config(case, tmp_path / "run", optimisation={"run": False})
+    tours = run(cfg).tours
+    path = tmp_path / f"tours{suffix}"
+    write_tours(tours, path)
+    back = read_tours(path)
+    assert back.index.equals(tours.index)
+    assert canonical(tours_to_rows(back)) == canonical(tours_to_rows(tours))
+
+
+def test_identify_false_reads_exported_tours(tmp_path):
+    first = load_config("small_distr", tmp_path / "first")
+    res = run(first)
+    again = load_config(
+        "small_distr",
+        tmp_path / "again",
+        tours={"identify": False},
+        inputs={"tours": str(first.outputs.path("tours"))},
+    )
+    res2 = run(again)
+    assert canonical(tours_to_rows(res2.tours)) == canonical(tours_to_rows(res.tours))
+    assert int(res2.od_mdl.sum()) == int(res.od_mdl.sum())
+
+
+def test_parquet_inputs_and_outputs_match_csv(tmp_path):
+    inputs = tmp_path / "in"
+    inputs.mkdir()
+    for name in ("od-example", "costs", "zones_info"):
+        pd.read_csv(HERE / "inputs" / f"{name}.csv").to_parquet(inputs / f"{name}.parquet")
+    as_csv = load_config("example", tmp_path / "csv")
+    as_parquet = load_config(
+        "example",
+        tmp_path / "parquet",
+        inputs={
+            "dir": str(inputs),
+            "od": "od-example.parquet",
+            "costs": "costs.parquet",
+            "zones_info": "zones_info.parquet",
+        },
+        outputs={"od": "od.parquet", "tours": "tours.parquet"},
+    )
+    expected, got = run(as_csv), run(as_parquet)
+    assert canonical(tours_to_rows(got.tours)) == canonical(tours_to_rows(expected.tours))
+    pd.testing.assert_series_equal(got.od_mdl, expected.od_mdl)
+
+    written = pd.read_parquet(as_parquet.outputs.path("od"))
+    pd.testing.assert_frame_equal(
+        written.astype({"Timeperiod": str}),
+        pd.read_csv(as_csv.outputs.path("od")),
+        check_dtype=False,
+    )
+    exported = read_tours(as_parquet.outputs.path("tours"))
+    assert canonical(tours_to_rows(exported)) == canonical(tours_to_rows(got.tours))
+
+
+def test_distribution_reads_the_same_from_parquet(tmp_path):
+    src = HERE / "inputs" / "distr_obs-small.csv"
+    pd.read_csv(src).to_parquet(tmp_path / "distr.parquet")
+    dims = ["Distance_grp", "Traveltime_grp", "Timeperiods_seq"]
+    pd.testing.assert_frame_equal(
+        read_distr_obs(tmp_path / "distr.parquet", dims, 1000), read_distr_obs(src, dims, 1000)
+    )
+
+
+def test_numeric_zone_ids_are_read_as_text(tmp_path):
+    pd.DataFrame(
+        {
+            "orig": [1, 2],
+            "dest": [2, 1],
+            "timeperiod": ["AM", "PM"],
+            "purpose": ["HB", "HB"],
+            "direction": ["FromHome", "ToHome"],
+            "trips": [3, 3],
+        }
+    ).to_parquet(tmp_path / "od.parquet")
+    pd.DataFrame({"Orig": [1, 2], "Dest": [2, 1], "Distance": [5.0, 5.0]}).to_parquet(
+        tmp_path / "costs.parquet"
+    )
+    od = read_od(tmp_path / "od.parquet", 1, {}, ["AM", "PM"])
+    costs = read_costs(tmp_path / "costs.parquet")
+    assert set(od.index.get_level_values("Orig")) == {"1", "2"}
+    assert not od.join(costs)["Distance"].isna().any()
+
+
+def test_unsupported_formats_are_rejected(tmp_path):
+    for read in (read_costs, read_tours):
+        with pytest.raises(ValueError, match="parquet"):
+            read(tmp_path / "table.pkl")
+    with pytest.raises(ValueError, match="parquet"):
+        write_tours(pd.DataFrame(), tmp_path / "tours.pkl")
 
 
 def test_results_to_od_counts_repeated_tours():

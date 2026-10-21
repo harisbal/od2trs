@@ -13,6 +13,31 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 SEQ_SEP = ";"
+TABLE_FORMATS = (".csv", ".parquet")
+# Tour columns holding one value per leg
+TOUR_SEQ_COLS = ("Origs", "Purposes", "Directions", "Timeperiods", "Transports", "Acts")
+
+
+def _check_format(path: Path) -> None:
+    if path.suffix not in TABLE_FORMATS:
+        raise ValueError(f"Unsupported file format, expected .csv or .parquet: {path}")
+
+
+def read_table(path: Path, **csv_kwargs) -> pd.DataFrame:
+    """Read a csv or parquet table, depending on the file extension."""
+    _check_format(path)
+    if path.suffix == ".parquet":
+        return pd.read_parquet(path)
+    return pd.read_csv(path, **csv_kwargs)
+
+
+def write_table(df: pd.DataFrame, path: Path, index: bool = False) -> None:
+    """Write a csv or parquet table, depending on the file extension."""
+    _check_format(path)
+    if path.suffix == ".parquet":
+        df.to_parquet(path, index=index, compression="zstd")
+    else:
+        df.to_csv(path, index=index)
 
 
 def read_od(
@@ -28,11 +53,13 @@ def read_od(
     their group, and values without a group are dropped. Odpairids are assigned
     before filtering by ``trips_thresh`` and removing intrazonal trips.
     """
-    od = pd.read_csv(path).rename(columns=str.capitalize)
+    od = read_table(path).rename(columns=str.capitalize)
     *key_cols, trips_col = od.columns
     if trips_col != "Trips":
         raise ValueError(f"The last OD column must be Trips, got {trips_col!r}")
 
+    # Zone ids are compared with those of the costs and zones files, so make them text
+    od[["Orig", "Dest"]] = od[["Orig", "Dest"]].astype(str)
     for col, mapping in groups.items():
         od[col] = od[col].map(mapping)
 
@@ -78,49 +105,64 @@ def _order_timeperiods(od: pd.DataFrame, ordered_tps: list[str]) -> pd.DataFrame
     return od
 
 
-def read_costs(path: Path, col_name: str = "Distance") -> pd.DataFrame:
-    """Read OD costs indexed by (Orig, Dest); a csv may hold several cost columns."""
-    if path.suffix == ".csv":
-        costs = pd.read_csv(path, index_col=["Orig", "Dest"]).astype(float)
-    elif path.suffix == ".pkl":
-        costs = pd.read_pickle(path)
-        if isinstance(costs, pd.Series):
-            costs = costs.to_frame()
-        costs = costs[[col_name]]
-    else:
-        raise ValueError(f"Unrecognised costs format: {path}")
-    return costs.sort_index()
+def read_costs(path: Path) -> pd.DataFrame:
+    """Read OD costs indexed by (Orig, Dest); the file may hold several cost columns."""
+    costs = read_table(path)
+    costs[["Orig", "Dest"]] = costs[["Orig", "Dest"]].astype(str)
+    return costs.set_index(["Orig", "Dest"]).astype(float).sort_index()
 
 
 def read_zones_info(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(path, index_col=0)
+    df = read_table(path)
+    df = df.set_index(df.columns[0])
+    df.index = df.index.astype(str)
     df["Coords"] = list(zip(df["X"], df["Y"], strict=True))
     return df.drop(columns=["X", "Y"])
 
 
 def read_tours(path: Path) -> pd.DataFrame:
-    if path.suffix != ".pkl":
-        raise ValueError("Tours can only be read from .pkl")
-    tours = pd.read_pickle(path).sort_index()
+    """Read tours written by `write_tours`, restoring the per-leg sequence columns.
+
+    In a csv these are `;`-joined strings, in parquet they are list columns.
+    """
+    seq_cols = [*TOUR_SEQ_COLS, "Odpairids"]
+    tours = read_table(path, dtype=dict.fromkeys(seq_cols, str))
+    if "Tourid" in tours.columns:
+        tours = tours.set_index("Tourid")
+    for c in seq_cols:
+        if c in tours:
+            tours[c] = [_to_tuple(v, int if c == "Odpairids" else str) for v in tours[c]]
+    tours = tours.sort_index()
     log.info("Read %d tours", len(tours))
     return tours
 
 
+def _to_tuple(value, convert) -> tuple | None:
+    if isinstance(value, str):
+        return tuple(convert(x) for x in value.split(SEQ_SEP))
+    if value is None or (isinstance(value, float) and value != value):
+        return None
+    return tuple(convert(x) for x in value)
+
+
 def write_tours(tours: pd.DataFrame, path: Path) -> None:
+    _check_format(path)
     if path.suffix == ".csv":
-        tuples_to_strings(tours).to_csv(path, index=True)
-    elif path.suffix == ".pkl":
-        tours.to_pickle(path)
-    else:
-        raise ValueError(f"Unknown tours export format: {path}")
+        tours = tuples_to_strings(tours)
+    write_table(tours, path, index=True)
 
 
 def write_od(od: pd.Series, path: Path) -> None:
-    od.reset_index().to_csv(path, index=False)
+    write_table(od.reset_index(), path)
 
 
 def write_distr_obs(distr: pd.DataFrame, path: Path) -> None:
-    tuples_to_strings(distr.reset_index()).to_csv(path, index=False)
+    distr = tuples_to_strings(distr.reset_index())
+    # Interval-valued dimensions are stored as text, e.g. "(0, 900]"
+    for c in distr.columns:
+        if isinstance(distr[c].dtype, pd.CategoricalDtype):
+            distr[c] = distr[c].astype(str)
+    write_table(distr, path)
 
 
 def write_graph(g: nx.Graph, path: Path) -> None:
@@ -139,7 +181,8 @@ def tuples_to_strings(df: pd.DataFrame, sep: str = SEQ_SEP) -> pd.DataFrame:
 
 
 def to_sequence(s: pd.Series, sep: str = SEQ_SEP) -> pd.Series:
-    return s.str.split(sep).apply(tuple)
+    """`sep`-joined strings (or, from parquet, lists) to tuples."""
+    return s.apply(lambda v: tuple(v.split(sep)) if isinstance(v, str) else tuple(v))
 
 
 _INTERVAL_RE = re.compile(r"([\[(])(\d+(?:\.\d+)?|inf),\s*(\d+(?:\.\d+)?|inf)([\])])")

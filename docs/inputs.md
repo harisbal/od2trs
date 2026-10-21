@@ -20,11 +20,30 @@ flowchart LR
 
 | file | config key | required | format |
 |---|---|---|---|
-| [OD matrix](#od-matrix) | `inputs.od` | always | csv |
-| [Costs](#costs) | `inputs.costs` | always | csv (or pickle) |
-| [Observed distribution](#observed-tour-distribution) | `inputs.distr_obs` | with `optimisation.distribution_constraints` | csv |
-| [Zones](#zones) | `inputs.zones_info` | no | csv |
-| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | pickle |
+| [OD matrix](#od-matrix) | `inputs.od` | always | csv or parquet |
+| [Costs](#costs) | `inputs.costs` | always | csv or parquet |
+| [Observed distribution](#observed-tour-distribution) | `inputs.distr_obs` | with `optimisation.distribution_constraints` | csv or parquet |
+| [Zones](#zones) | `inputs.zones_info` | no | csv or parquet |
+| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | csv or parquet |
+
+## :lucide-file-stack: File formats
+
+Every input is a table in **csv** or **[parquet](https://parquet.apache.org/)**; the
+format is picked from the file extension (`.csv` or `.parquet`), so the files of one run
+may mix formats. The same applies to the `od`, `tours` and `distr_obs` outputs.
+Parquet is smaller and keeps column types, which matters most for the
+[tours](#identified-tours), the table that can grow large: on the sample data they take
+about a quarter of the space of the csv.
+
+The columns are the same in both formats, with these differences for parquet:
+
+- zone ids may be numbers or text; they are read as text, so `1` in the OD matches `1`
+  in the costs;
+- observed-distribution sequences (`Timeperiods_seq`, `Transports_seq`) may be list
+  columns instead of `;`-joined text, and intervals stay text such as `(0, 900]`;
+- tours store the per-leg columns as list columns instead of `;`-joined text.
+
+Other extensions raise `Unsupported file format`.
 
 !!! info "Names must agree across files and config"
     The values in the files are matched against the configuration:
@@ -128,8 +147,6 @@ tours (`max_costs`) and group them in the observed distribution (`Distance_grp`)
 - A cost type that is missing for **any** OD pair is dropped entirely, so keep each
   column complete. A leg with a cost of `0` is treated as unknown when summing a
   tour's cost.
-- A pickled `DataFrame` or `Series` is also accepted, but only for a single
-  `Distance` cost. Prefer csv.
 
 ## :lucide-chart-column: Observed tour distribution
 
@@ -216,27 +233,40 @@ Zones that do not appear in the OD are ignored.
 Only read when `tours.identify = false`. Identifying tours is the slow part, so you can
 run it once, then try different optimisation settings on the saved tours.
 
-1. Run with `identify = true` and `run.export_flat = true`, and set `outputs.tours` to a
-   `.pkl` file (the default is `tours.pkl`).
+1. Run with `identify = true` and `run.export_flat = true`. The tours are written to
+   `outputs.tours` (default `tours.parquet`; use `tours.csv` for csv).
 2. Run again with `identify = false` and `inputs.tours` pointing to that file.
 
-The file is a pickled `DataFrame` indexed by `Tourid`:
+The table is indexed by `Tourid`. Columns that hold one value per leg are lists in
+parquet and `;`-joined text in csv, as in the example below:
 
 | column | description |
 |---|---|
+| `Tourid` | Tour id (first column). |
 | `Nolegs` | Number of legs. |
-| `Origs` | Origin zone of each leg (tuple). |
-| `Purposes`, `Directions`, `Timeperiods`, `Transports` | Per-leg attributes (tuples). |
-| `Odpairids` | The `Odpairid` of each leg's OD cell (tuple). |
-| `Acts` | Activity sequence, e.g. `("Home", "Work", "Home")`. |
+| `Origs` | Origin zone of each leg, e.g. `A;B;C`. |
+| `Purposes`, `Directions`, `Timeperiods`, `Transports` | Per-leg attributes, `;`-joined. `Transports` is empty without a `Transport` column in the OD. |
+| `Odpairids` | The `Odpairid` of each leg's OD cell, `;`-joined integers. |
+| `Acts` | Activity sequence, e.g. `Home;Work;Home`. Empty without `purpose_to_activities`. |
 | `Loopscnt` | How many extra times the most revisited zone is visited. |
 | `Distrgroupid` | Observed-distribution group, when one was used. |
 | *cost columns* | Total tour cost per cost type, e.g. `Distance`. |
+| `Timesused` | Optional, written after optimisation. Ignored when reading. |
+
+Two tours from the hand-made example (`tests/configs/example.toml`):
+
+```csv
+Tourid,Nolegs,Origs,Purposes,Directions,Timeperiods,Transports,Odpairids,Acts,Loopscnt,Timesused
+2,4,A;B;D;Z,HB;NHB;NHB;HB,FromHome;NonHomeBased;NonHomeBased;ToHome,IP;IP;PM;OP,,0;8;15;18,,0,2
+3,4,B;A;B;D,HB;NHB;NHB;HB,FromHome;NonHomeBased;NonHomeBased;ToHome,AM;AM;AM;PM,,5;1;7;12,,1,0
+```
+
+`Transports` and `Acts` are empty here: the OD has no `Transport` column and the config
+has no `purpose_to_activities`.
 
 !!! warning
     `Odpairids` index into the OD, so the OD file and its filters (`trips_thresh`,
     `purpose_groups`) must be the same as in the run that produced the tours.
-    Pickles are only safe to load from sources you trust.
 
 ## :lucide-triangle-alert: Common errors
 
@@ -244,8 +274,7 @@ The file is a pickled `DataFrame` indexed by `Tourid`:
 |---|---|
 | `The last OD column must be Trips` | `Trips` is not the last column of the OD file. |
 | `OD time periods missing from config` | A `Timeperiod` value is not in `[tours.timeperiods]`. |
-| `Unrecognised costs format` | The costs file is neither `.csv` nor `.pkl`. |
+| `Unsupported file format` | An input or output file is not a `.csv` or `.parquet` file. |
 | `distribution_constraints requires inputs.distr_obs` | Constraints are on but no distribution file is set. |
 | `tours.identify = false requires inputs.tours` | Nothing to read tours from. |
-| `Tours can only be read from .pkl` | `inputs.tours` is not a pickle. |
 | `Not an interval` | A `_grp` cell is not like `(0, 900]`. |

@@ -102,7 +102,7 @@ class OutputPaths(_Model):
     dir: Path
     od: str = "od.csv"
     graph: str = "graph-od.pkl"
-    tours: str = "tours.pkl"
+    tours: str = "tours.parquet"
     distr_obs: str = "distr.csv"
     config: str = "config.toml"
 

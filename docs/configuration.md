@@ -55,8 +55,12 @@ Legacy `.ini` configs are still accepted.
 | `outputs` | `dir` | required | Folder for results. |
 | | `od` | `od.csv` | Modelled OD. |
 | | `graph` | `graph-od.pkl` | The OD graph. |
-| | `tours` | `tours.pkl` | Tours with `Timesused`. |
+| | `tours` | `tours.parquet` | Tours with `Timesused`. |
 | | `distr_obs` | `distr.csv` | Trimmed observed distribution. |
 | | `config` | `config.toml` | Resolved config. |
+
+The table files (`od`, `costs`, `distr_obs`, `zones_info`, `tours`) are csv or parquet,
+chosen by the file extension; see [File formats](inputs.md#file-formats). The `graph` is
+a pickled NetworkX graph, written for inspection and never read back.
 
 The full schema is in the [API reference](api.md#od2trs.config).

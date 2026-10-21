@@ -42,12 +42,12 @@ uv run od2trs config.toml
 See [`config.toml`](config.toml) for every option; relative paths are resolved against
 the config's folder. Legacy `.ini` configs are still accepted.
 
-Inputs (`[inputs]`):
+Inputs (`[inputs]`), as csv or parquet (picked by the file extension):
 
 | file | content |
 |---|---|
 | `od` | key columns (`Orig`, `Dest`, `Purpose`, `Direction`, `Timeperiod`, …), then `Trips` |
-| `costs` | `Orig`, `Dest` and one column per cost type (csv), or a pickled frame |
+| `costs` | `Orig`, `Dest` and one column per cost type |
 | `distr_obs` | observed distribution: `distr_dims` columns + `Percentage` |
 | `zones_info` | optional: zone id, `X`, `Y`, … (attached to graph nodes) |
 

@@ -63,13 +63,13 @@ solver_options = {}
 dir = "inputs/openpflow/1km-2H"
 od = "od.csv"
 distr_obs = "distr_obs.csv"
-costs = "distances.pkl"
+costs = "distances.csv"
 zones_info = "zones_info.csv"
-tours = "trs_info_mdl.pkl"
+tours = "tours.parquet"
 
 [outputs]
 dir = "outputs/openpflow/1km-2H"
 od = "od.csv"
 graph = "graph-od.pkl"
-tours = "trs_info_mdl.pkl"
+tours = "tours.parquet"
 distr_obs = "distr.csv"
