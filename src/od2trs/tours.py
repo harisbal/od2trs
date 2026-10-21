@@ -184,21 +184,30 @@ def _activity_sequence(
     return tuple(acts)
 
 
-def match_distribution(
-    tours: Iterable[TripChain],
-    distr_obs: pd.DataFrame,
-    distr_dims: Sequence[str],
-    cost_bins: Mapping[str, Sequence[pd.Interval]],
-) -> list[TripChain]:
+class DistributionMatcher:
+    """The observed distribution groups, prepared once for matching many tours."""
+
+    def __init__(
+        self,
+        distr_obs: pd.DataFrame,
+        distr_dims: Sequence[str],
+        cost_bins: Mapping[str, Sequence[pd.Interval]],
+    ):
+        self.groups = distribution_lookup(distr_obs)
+        self.distr_dims = list(distr_dims)
+        # Plain lists: iterating a pandas interval index per tour is slow
+        self.cost_bins = {ct: list(bins) for ct, bins in cost_bins.items()}
+
+
+def match_distribution(tours: Iterable[TripChain], matcher: DistributionMatcher) -> list[TripChain]:
     """Keep tours that fall in an observed distribution group, tagging them with its id."""
-    groups = distribution_lookup(distr_obs)
     result = []
     for tour in tours:
-        dims = {f"{ct}_grp": tour.cost_group(ct, bins) for ct, bins in cost_bins.items()}
+        dims = {f"{ct}_grp": tour.cost_group(ct, bins) for ct, bins in matcher.cost_bins.items()}
         dims["Timeperiods_seq"] = tour.timeperiods
         dims["Transports_seq"] = tour.transports
-        key = (*(dims[d] for d in distr_dims), tour.nolegs)
-        perc, group_id = groups.get(key, (0, None))
+        key = (*(dims[d] for d in matcher.distr_dims), tour.nolegs)
+        perc, group_id = matcher.groups.get(key, (0, None))
         if perc > 0:
             result.append(dataclasses.replace(tour, distrgroupid=group_id))
     return result

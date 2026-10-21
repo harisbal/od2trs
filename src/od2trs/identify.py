@@ -125,6 +125,9 @@ def zone_tours(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) -> list[tr.Tr
     """Candidate tours from `src_zone` within `max_costs` that pass the activity and
     distribution filters."""
     cost_types = list(p.max_costs)
+    matcher = None
+    if p.distr_obs is not None:
+        matcher = tr.DistributionMatcher(p.distr_obs, p.distr_dims, p.cost_bins)
     result = []
     for zs in identify_zone_sequences(g, src_zone, p):
         tours = tr.zones_seq_to_tours(zs, g, p.directions, cost_types)
@@ -132,8 +135,8 @@ def zone_tours(g: nx.MultiDiGraph, src_zone: str, p: SearchParams) -> list[tr.Tr
         tours = tr.within_max_costs(tours, p.max_costs)
         if p.purpose_to_acts:
             tours = tr.assign_activities(tours, p.purpose_to_acts)
-        if p.distr_obs is not None:
-            tours = tr.match_distribution(tours, p.distr_obs, p.distr_dims, p.cost_bins)
+        if matcher is not None:
+            tours = tr.match_distribution(tours, matcher)
         result.extend(tours)
     return result
 
