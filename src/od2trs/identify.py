@@ -101,13 +101,15 @@ def identify_zone_sequences(zg: gr.ZoneGraphs, src_zone: str, p: SearchParams) -
     return zones_seqs
 
 
-def zone_tours(zg: gr.ZoneGraphs, src_zone: str, p: SearchParams) -> list[tr.TripChain]:
+def zone_tours(
+    zg: gr.ZoneGraphs, src_zone: str, p: SearchParams, legs_cache: dict | None = None
+) -> list[tr.TripChain]:
     """Candidate tours from `src_zone` within `max_costs` that pass the activity and
     distribution filters."""
     cost_types = list(p.max_costs)
     result = []
     for zs in identify_zone_sequences(zg, src_zone, p):
-        tours = tr.zones_seq_to_tours(zs, zg.g, p.directions, cost_types)
+        tours = tr.zones_seq_to_tours(zs, zg.g, p.directions, cost_types, legs_cache)
         # The path search only bounds costs approximately
         tours = tr.within_max_costs(tours, p.max_costs)
         if p.purpose_to_acts:
@@ -118,18 +120,24 @@ def zone_tours(zg: gr.ZoneGraphs, src_zone: str, p: SearchParams) -> list[tr.Tri
     return result
 
 
-_worker_state: tuple[gr.ZoneGraphs, SearchParams] | None = None
+_worker_state: tuple[gr.ZoneGraphs, SearchParams, dict] | None = None
 
 
 def _init_worker(g: nx.MultiDiGraph, p: SearchParams) -> None:
     global _worker_state
-    _worker_state = (gr.ZoneGraphs(g, p.directions, list(p.max_costs), p.ordered_tps), p)
+    zg = gr.ZoneGraphs(g, p.directions, list(p.max_costs), p.ordered_tps)
+    _worker_state = (zg, p, {})
 
 
-def _worker(src_zone: str) -> list[tr.TripChain]:
+def _worker(src_zone: str) -> pd.DataFrame | None:
+    """The tours of a zone as a table numbered from 0, which is also cheaper to send to
+    the parent process than the tours themselves."""
     assert _worker_state is not None
-    zg, p = _worker_state
-    return zone_tours(zg, src_zone, p)
+    zg, p, legs_cache = _worker_state
+    tours = zone_tours(zg, src_zone, p, legs_cache)
+    if not tours:
+        return None
+    return tr.tours_to_df(tours, 0, p.distr_obs is not None, list(p.max_costs))
 
 
 # Starting the worker processes takes a couple of seconds (interpreters, imports, the
@@ -148,7 +156,7 @@ def _pool_pays_off(elapsed: float, done: int, total: int, ncores: int) -> bool:
 
 def _zone_results(
     zones: list[str], g: nx.MultiDiGraph, p: SearchParams, ncores: int
-) -> Iterator[list[tr.TripChain]]:
+) -> Iterator[pd.DataFrame | None]:
     """The tours of each zone, in zone order."""
     _init_worker(g, p)
     started, done = time.monotonic(), 0
@@ -185,10 +193,9 @@ def identify_tours(g: nx.MultiDiGraph, p: SearchParams, ncores: int | None) -> p
 
     frames, next_id = [], 1
     for tours in tqdm(_zone_results(zones, g, p, ncores), total=len(zones)):
-        if tours:
-            frames.append(
-                tr.tours_to_df(tours, next_id, p.distr_obs is not None, list(p.max_costs))
-            )
+        if tours is not None:
+            tours.index = pd.RangeIndex(next_id, next_id + len(tours), name="Tourid")
+            frames.append(tours)
             next_id += len(tours)
 
     if not frames:

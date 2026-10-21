@@ -104,19 +104,27 @@ def zones_seq_to_tours(
     net: nx.MultiDiGraph,
     directions: Directions,
     cost_types: Sequence[str],
+    legs_cache: dict | None = None,
 ) -> list[TripChain]:
     """All tours along a sequence of nodes: one per combination of parallel OD edges.
 
     The first leg must be from-home, the last to-home, and the intermediate ones
-    non-home-based (connector hops between time periods are skipped).
+    non-home-based (connector hops between time periods are skipped). The same legs
+    come up in a great many tours, so `legs_cache` lets callers share them between calls.
     """
+    if legs_cache is None:
+        legs_cache = {}
 
     def alternatives(u, v, direction) -> list[Leg]:
-        return [
-            Leg.from_edge(u[0], v[0], attrs, cost_types)
-            for attrs in net.get_edge_data(u, v).values()
-            if attrs["Direction"] == direction
-        ]
+        key = (u, v, direction)
+        legs = legs_cache.get(key)
+        if legs is None:
+            legs = legs_cache[key] = [
+                Leg.from_edge(u[0], v[0], attrs, cost_types)
+                for attrs in net.get_edge_data(u, v).values()
+                if attrs["Direction"] == direction
+            ]
+        return legs
 
     legs_options = [alternatives(zones_seq[0], zones_seq[1], directions.from_home)]
     if len(zones_seq) >= 4:
