@@ -21,10 +21,10 @@ flowchart LR
 | file | config key | required | format |
 |---|---|---|---|
 | [OD matrix](#od-matrix) | `inputs.od` | always | csv |
-| [Costs](#costs) | `inputs.costs` | always | csv (or pickle) |
+| [Costs](#costs) | `inputs.costs` | always | csv |
 | [Observed distribution](#observed-tour-distribution) | `inputs.distr_obs` | with `optimisation.distribution_constraints` | csv |
 | [Zones](#zones) | `inputs.zones_info` | no | csv |
-| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | pickle |
+| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | csv |
 
 !!! info "Names must agree across files and config"
     The values in the files are matched against the configuration:
@@ -128,8 +128,6 @@ tours (`max_costs`) and group them in the observed distribution (`Distance_grp`)
 - A cost type that is missing for **any** OD pair is dropped entirely, so keep each
   column complete. A leg with a cost of `0` is treated as unknown when summing a
   tour's cost.
-- A pickled `DataFrame` or `Series` is also accepted, but only for a single
-  `Distance` cost. Prefer csv.
 
 ## :lucide-chart-column: Observed tour distribution
 
@@ -216,27 +214,40 @@ Zones that do not appear in the OD are ignored.
 Only read when `tours.identify = false`. Identifying tours is the slow part, so you can
 run it once, then try different optimisation settings on the saved tours.
 
-1. Run with `identify = true` and `run.export_flat = true`, and set `outputs.tours` to a
-   `.pkl` file (the default is `tours.pkl`).
+1. Run with `identify = true` and `run.export_flat = true`. The tours are written to
+   `outputs.tours` (default `tours.csv`).
 2. Run again with `identify = false` and `inputs.tours` pointing to that file.
 
-The file is a pickled `DataFrame` indexed by `Tourid`:
+The file is a csv indexed by `Tourid`. Columns that hold one value per leg are joined
+with `;`:
 
 | column | description |
 |---|---|
+| `Tourid` | Tour id (first column). |
 | `Nolegs` | Number of legs. |
-| `Origs` | Origin zone of each leg (tuple). |
-| `Purposes`, `Directions`, `Timeperiods`, `Transports` | Per-leg attributes (tuples). |
-| `Odpairids` | The `Odpairid` of each leg's OD cell (tuple). |
-| `Acts` | Activity sequence, e.g. `("Home", "Work", "Home")`. |
+| `Origs` | Origin zone of each leg, e.g. `A;B;C`. |
+| `Purposes`, `Directions`, `Timeperiods`, `Transports` | Per-leg attributes, `;`-joined. `Transports` is empty without a `Transport` column in the OD. |
+| `Odpairids` | The `Odpairid` of each leg's OD cell, `;`-joined integers. |
+| `Acts` | Activity sequence, e.g. `Home;Work;Home`. Empty without `purpose_to_activities`. |
 | `Loopscnt` | How many extra times the most revisited zone is visited. |
 | `Distrgroupid` | Observed-distribution group, when one was used. |
 | *cost columns* | Total tour cost per cost type, e.g. `Distance`. |
+| `Timesused` | Optional, written after optimisation. Ignored when reading. |
+
+Two tours from the hand-made example (`tests/configs/example.toml`):
+
+```csv
+Tourid,Nolegs,Origs,Purposes,Directions,Timeperiods,Transports,Odpairids,Acts,Loopscnt,Timesused
+2,4,A;B;D;Z,HB;NHB;NHB;HB,FromHome;NonHomeBased;NonHomeBased;ToHome,IP;IP;PM;OP,,0;8;15;18,,0,2
+3,4,B;A;B;D,HB;NHB;NHB;HB,FromHome;NonHomeBased;NonHomeBased;ToHome,AM;AM;AM;PM,,5;1;7;12,,1,0
+```
+
+`Transports` and `Acts` are empty here: the OD has no `Transport` column and the config
+has no `purpose_to_activities`.
 
 !!! warning
     `Odpairids` index into the OD, so the OD file and its filters (`trips_thresh`,
     `purpose_groups`) must be the same as in the run that produced the tours.
-    Pickles are only safe to load from sources you trust.
 
 ## :lucide-triangle-alert: Common errors
 
@@ -244,8 +255,8 @@ The file is a pickled `DataFrame` indexed by `Tourid`:
 |---|---|
 | `The last OD column must be Trips` | `Trips` is not the last column of the OD file. |
 | `OD time periods missing from config` | A `Timeperiod` value is not in `[tours.timeperiods]`. |
-| `Unrecognised costs format` | The costs file is neither `.csv` nor `.pkl`. |
+| `Costs must be a .csv file` | The costs file has another extension. |
 | `distribution_constraints requires inputs.distr_obs` | Constraints are on but no distribution file is set. |
 | `tours.identify = false requires inputs.tours` | Nothing to read tours from. |
-| `Tours can only be read from .pkl` | `inputs.tours` is not a pickle. |
+| `Tours can only be read from .csv` | `inputs.tours` is not a csv file. |
 | `Not an interval` | A `_grp` cell is not like `(0, 900]`. |

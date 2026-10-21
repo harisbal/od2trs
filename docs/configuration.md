@@ -55,7 +55,7 @@ Legacy `.ini` configs are still accepted.
 | `outputs` | `dir` | required | Folder for results. |
 | | `od` | `od.csv` | Modelled OD. |
 | | `graph` | `graph-od.pkl` | The OD graph. |
-| | `tours` | `tours.pkl` | Tours with `Timesused`. |
+| | `tours` | `tours.csv` | Tours with `Timesused`. |
 | | `distr_obs` | `distr.csv` | Trimmed observed distribution. |
 | | `config` | `config.toml` | Resolved config. |
 

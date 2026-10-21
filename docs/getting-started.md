@@ -22,7 +22,7 @@ full schemas and examples.
 | file | content |
 |---|---|
 | `od` | key columns (`Orig`, `Dest`, `Purpose`, `Direction`, `Timeperiod`, …), then `Trips` |
-| `costs` | `Orig`, `Dest` and one column per cost type (csv), or a pickled frame |
+| `costs` | `Orig`, `Dest` and one column per cost type |
 | `distr_obs` | observed distribution: the `distr_dims` columns + `Percentage` |
 | `zones_info` | optional: zone id, `X`, `Y`, … (attached to graph nodes) |
 

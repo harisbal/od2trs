@@ -28,7 +28,7 @@ import pytest
 
 from od2trs import optimise as opt
 from od2trs.config import Config
-from od2trs.io import read_od
+from od2trs.io import read_costs, read_od, read_tours, write_tours
 from od2trs.pipeline import run
 
 HERE = Path(__file__).parent
@@ -143,6 +143,40 @@ def test_tour_ids_deterministic_across_cores(tmp_path):
     single = run(load_config("small", tmp_path / "1", run={"ncores": 1}, optimisation=no_opt))
     multi = run(load_config("small", tmp_path / "4", run={"ncores": 4}, optimisation=no_opt))
     pd.testing.assert_frame_equal(single.tours, multi.tours)
+
+
+@pytest.mark.parametrize("case", ["example", "small_distr"])
+def test_tours_csv_round_trip(case, tmp_path):
+    cfg = load_config(case, tmp_path / "run", optimisation={"run": False})
+    tours = run(cfg).tours
+    path = tmp_path / "tours.csv"
+    write_tours(tours, path)
+    back = read_tours(path)
+    assert back.index.equals(tours.index)
+    assert canonical(tours_to_rows(back)) == canonical(tours_to_rows(tours))
+
+
+def test_identify_false_reads_exported_tours(tmp_path):
+    first = load_config("small_distr", tmp_path / "first")
+    res = run(first)
+    again = load_config(
+        "small_distr",
+        tmp_path / "again",
+        tours={"identify": False},
+        inputs={"tours": str(first.outputs.path("tours"))},
+    )
+    res2 = run(again)
+    assert canonical(tours_to_rows(res2.tours)) == canonical(tours_to_rows(res.tours))
+    assert int(res2.od_mdl.sum()) == int(res.od_mdl.sum())
+
+
+def test_pickles_are_rejected(tmp_path):
+    with pytest.raises(ValueError, match=r"\.csv"):
+        read_costs(tmp_path / "costs.pkl")
+    with pytest.raises(ValueError, match=r"\.csv"):
+        read_tours(tmp_path / "tours.pkl")
+    with pytest.raises(ValueError, match=r"\.csv"):
+        write_tours(pd.DataFrame(), tmp_path / "tours.pkl")
 
 
 def test_results_to_od_counts_repeated_tours():

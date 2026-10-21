@@ -13,6 +13,8 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 SEQ_SEP = ";"
+# Tour columns holding one value per leg
+TOUR_SEQ_COLS = ("Origs", "Purposes", "Directions", "Timeperiods", "Transports", "Acts")
 
 
 def read_od(
@@ -78,18 +80,11 @@ def _order_timeperiods(od: pd.DataFrame, ordered_tps: list[str]) -> pd.DataFrame
     return od
 
 
-def read_costs(path: Path, col_name: str = "Distance") -> pd.DataFrame:
-    """Read OD costs indexed by (Orig, Dest); a csv may hold several cost columns."""
-    if path.suffix == ".csv":
-        costs = pd.read_csv(path, index_col=["Orig", "Dest"]).astype(float)
-    elif path.suffix == ".pkl":
-        costs = pd.read_pickle(path)
-        if isinstance(costs, pd.Series):
-            costs = costs.to_frame()
-        costs = costs[[col_name]]
-    else:
-        raise ValueError(f"Unrecognised costs format: {path}")
-    return costs.sort_index()
+def read_costs(path: Path) -> pd.DataFrame:
+    """Read OD costs indexed by (Orig, Dest); the csv may hold several cost columns."""
+    if path.suffix != ".csv":
+        raise ValueError(f"Costs must be a .csv file: {path}")
+    return pd.read_csv(path, index_col=["Orig", "Dest"]).astype(float).sort_index()
 
 
 def read_zones_info(path: Path) -> pd.DataFrame:
@@ -99,20 +94,27 @@ def read_zones_info(path: Path) -> pd.DataFrame:
 
 
 def read_tours(path: Path) -> pd.DataFrame:
-    if path.suffix != ".pkl":
-        raise ValueError("Tours can only be read from .pkl")
-    tours = pd.read_pickle(path).sort_index()
+    """Read tours written by `write_tours`, restoring the `;`-joined sequence columns."""
+    if path.suffix != ".csv":
+        raise ValueError("Tours can only be read from .csv")
+    seq_cols = [*TOUR_SEQ_COLS, "Odpairids"]
+    tours = pd.read_csv(path, index_col="Tourid", dtype=dict.fromkeys(seq_cols, str))
+    for c in seq_cols:
+        if c in tours:
+            convert = int if c == "Odpairids" else str
+            tours[c] = [
+                None if pd.isna(v) else tuple(convert(x) for x in v.split(SEQ_SEP))
+                for v in tours[c]
+            ]
+    tours = tours.sort_index()
     log.info("Read %d tours", len(tours))
     return tours
 
 
 def write_tours(tours: pd.DataFrame, path: Path) -> None:
-    if path.suffix == ".csv":
-        tuples_to_strings(tours).to_csv(path, index=True)
-    elif path.suffix == ".pkl":
-        tours.to_pickle(path)
-    else:
-        raise ValueError(f"Unknown tours export format: {path}")
+    if path.suffix != ".csv":
+        raise ValueError(f"Tours can only be exported to .csv: {path}")
+    tuples_to_strings(tours).to_csv(path, index=True)
 
 
 def write_od(od: pd.Series, path: Path) -> None:
