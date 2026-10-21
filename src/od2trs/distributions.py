@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from od2trs.io import to_interval, to_sequence
+from od2trs.io import read_table, to_interval, to_sequence
 
 PERCENT_COL = "Percentage"
 
@@ -20,7 +20,7 @@ def read_distr_obs(path, distr_dims: list[str], ntrs: int) -> pd.DataFrame:
     Distrgroupid is the row number in the file unless the file provides one; Size is
     the expected number of tours given `ntrs` tours in total.
     """
-    distr = pd.read_csv(path)
+    distr = read_table(path)
     interval_cols = interval_dims(distr_dims)
     seq_cols = [d for d in distr_dims if d.endswith("_seq")]
 

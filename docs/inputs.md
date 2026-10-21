@@ -20,11 +20,30 @@ flowchart LR
 
 | file | config key | required | format |
 |---|---|---|---|
-| [OD matrix](#od-matrix) | `inputs.od` | always | csv |
-| [Costs](#costs) | `inputs.costs` | always | csv |
-| [Observed distribution](#observed-tour-distribution) | `inputs.distr_obs` | with `optimisation.distribution_constraints` | csv |
-| [Zones](#zones) | `inputs.zones_info` | no | csv |
-| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | csv |
+| [OD matrix](#od-matrix) | `inputs.od` | always | csv or parquet |
+| [Costs](#costs) | `inputs.costs` | always | csv or parquet |
+| [Observed distribution](#observed-tour-distribution) | `inputs.distr_obs` | with `optimisation.distribution_constraints` | csv or parquet |
+| [Zones](#zones) | `inputs.zones_info` | no | csv or parquet |
+| [Identified tours](#identified-tours) | `inputs.tours` | with `tours.identify = false` | csv or parquet |
+
+## :lucide-file-stack: File formats
+
+Every input is a table in **csv** or **[parquet](https://parquet.apache.org/)**; the
+format is picked from the file extension (`.csv` or `.parquet`), so the files of one run
+may mix formats. The same applies to the `od`, `tours` and `distr_obs` outputs.
+Parquet is smaller and keeps column types, which matters most for the
+[tours](#identified-tours), the table that can grow large: on the sample data they take
+about a quarter of the space of the csv.
+
+The columns are the same in both formats, with these differences for parquet:
+
+- zone ids may be numbers or text; they are read as text, so `1` in the OD matches `1`
+  in the costs;
+- observed-distribution sequences (`Timeperiods_seq`, `Transports_seq`) may be list
+  columns instead of `;`-joined text, and intervals stay text such as `(0, 900]`;
+- tours store the per-leg columns as list columns instead of `;`-joined text.
+
+Other extensions raise `Unsupported file format`.
 
 !!! info "Names must agree across files and config"
     The values in the files are matched against the configuration:
@@ -215,11 +234,11 @@ Only read when `tours.identify = false`. Identifying tours is the slow part, so 
 run it once, then try different optimisation settings on the saved tours.
 
 1. Run with `identify = true` and `run.export_flat = true`. The tours are written to
-   `outputs.tours` (default `tours.csv`).
+   `outputs.tours` (default `tours.parquet`; use `tours.csv` for csv).
 2. Run again with `identify = false` and `inputs.tours` pointing to that file.
 
-The file is a csv indexed by `Tourid`. Columns that hold one value per leg are joined
-with `;`:
+The table is indexed by `Tourid`. Columns that hold one value per leg are lists in
+parquet and `;`-joined text in csv, as in the example below:
 
 | column | description |
 |---|---|
@@ -255,8 +274,7 @@ has no `purpose_to_activities`.
 |---|---|
 | `The last OD column must be Trips` | `Trips` is not the last column of the OD file. |
 | `OD time periods missing from config` | A `Timeperiod` value is not in `[tours.timeperiods]`. |
-| `Costs must be a .csv file` | The costs file has another extension. |
+| `Unsupported file format` | An input or output file is not a `.csv` or `.parquet` file. |
 | `distribution_constraints requires inputs.distr_obs` | Constraints are on but no distribution file is set. |
 | `tours.identify = false requires inputs.tours` | Nothing to read tours from. |
-| `Tours can only be read from .csv` | `inputs.tours` is not a csv file. |
 | `Not an interval` | A `_grp` cell is not like `(0, 900]`. |

@@ -42,7 +42,7 @@ uv run od2trs config.toml
 See [`config.toml`](config.toml) for every option; relative paths are resolved against
 the config's folder. Legacy `.ini` configs are still accepted.
 
-Inputs (`[inputs]`):
+Inputs (`[inputs]`), as csv or parquet (picked by the file extension):
 
 | file | content |
 |---|---|
