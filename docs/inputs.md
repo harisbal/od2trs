@@ -6,7 +6,7 @@ icon: lucide/table-2
 
 `od2trs` reads up to five input files from the folder given by `inputs.dir`. This page
 describes each file's schema, with examples taken from the repository's
-[`tests/inputs`](https://github.com/harisbal/od2trs/tree/master/tests/inputs).
+[`tests/inputs`](https://github.com/harisbal/od2trs/tree/main/tests/inputs).
 
 ```mermaid
 flowchart LR
