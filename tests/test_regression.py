@@ -31,6 +31,7 @@ from od2trs.config import Config
 from od2trs.distributions import read_distr_obs
 from od2trs.io import read_costs, read_od, read_tours, write_tours
 from od2trs.pipeline import run
+from od2trs.tourtable import expand_tours
 
 HERE = Path(__file__).parent
 CONFIGS = HERE / "configs"
@@ -68,7 +69,14 @@ def canonical(rows: list[dict]) -> list[str]:
     return sorted(json.dumps(r, sort_keys=True) for r in rows)
 
 
-def tours_to_rows(tours: pd.DataFrame) -> list[dict]:
+def full_tours(tours: pd.DataFrame, cfg: Config) -> pd.DataFrame:
+    """The tours as exported: the compact table plus the per-leg columns from the OD."""
+    return expand_tours(tours, processed_od(cfg))
+
+
+def tours_to_rows(tours: pd.DataFrame, cfg: Config) -> list[dict]:
+    tours = full_tours(tours, cfg)
+
     def plain(v):
         if isinstance(v, tuple):
             return [plain(x) for x in v]
@@ -116,7 +124,7 @@ def test_od_matches_original(result):
 def test_tours_match_original(result):
     case, cfg, res = result
     expected = golden_tours(case, cfg.tours.max_costs)
-    got = tours_to_rows(res.tours)
+    got = tours_to_rows(res.tours, cfg)
     assert len(got) == len(expected)
     assert canonical(got) == canonical(expected)
 
@@ -146,7 +154,8 @@ def test_tour_ids_deterministic_across_cores(tmp_path, monkeypatch):
     no_opt = {"run": False}
     single = run(load_config("small", tmp_path / "1", run={"ncores": 1}, optimisation=no_opt))
     multi = run(load_config("small", tmp_path / "4", run={"ncores": 4}, optimisation=no_opt))
-    pd.testing.assert_frame_equal(single.tours, multi.tours)
+    cfg = load_config("small", tmp_path / "cmp")
+    pd.testing.assert_frame_equal(full_tours(single.tours, cfg), full_tours(multi.tours, cfg))
 
 
 @pytest.mark.parametrize("suffix", [".csv", ".parquet"])
@@ -155,10 +164,10 @@ def test_tours_round_trip(case, suffix, tmp_path):
     cfg = load_config(case, tmp_path / "run", optimisation={"run": False})
     tours = run(cfg).tours
     path = tmp_path / f"tours{suffix}"
-    write_tours(tours, path)
+    write_tours(tours, path, processed_od(cfg))
     back = read_tours(path)
     assert back.index.equals(tours.index)
-    assert canonical(tours_to_rows(back)) == canonical(tours_to_rows(tours))
+    assert canonical(tours_to_rows(back, cfg)) == canonical(tours_to_rows(tours, cfg))
 
 
 def test_identify_false_reads_exported_tours(tmp_path):
@@ -171,7 +180,7 @@ def test_identify_false_reads_exported_tours(tmp_path):
         inputs={"tours": str(first.outputs.path("tours"))},
     )
     res2 = run(again)
-    assert canonical(tours_to_rows(res2.tours)) == canonical(tours_to_rows(res.tours))
+    assert canonical(tours_to_rows(res2.tours, again)) == canonical(tours_to_rows(res.tours, first))
     assert int(res2.od_mdl.sum()) == int(res.od_mdl.sum())
 
 
@@ -193,7 +202,9 @@ def test_parquet_inputs_and_outputs_match_csv(tmp_path):
         outputs={"od": "od.parquet", "tours": "tours.parquet"},
     )
     expected, got = run(as_csv), run(as_parquet)
-    assert canonical(tours_to_rows(got.tours)) == canonical(tours_to_rows(expected.tours))
+    assert canonical(tours_to_rows(got.tours, as_parquet)) == canonical(
+        tours_to_rows(expected.tours, as_csv)
+    )
     pd.testing.assert_series_equal(got.od_mdl, expected.od_mdl)
 
     written = pd.read_parquet(as_parquet.outputs.path("od"))
@@ -203,7 +214,9 @@ def test_parquet_inputs_and_outputs_match_csv(tmp_path):
         check_dtype=False,
     )
     exported = read_tours(as_parquet.outputs.path("tours"))
-    assert canonical(tours_to_rows(exported)) == canonical(tours_to_rows(got.tours))
+    assert canonical(tours_to_rows(exported, as_parquet)) == canonical(
+        tours_to_rows(got.tours, as_parquet)
+    )
 
 
 def test_distribution_reads_the_same_from_parquet(tmp_path):
@@ -240,7 +253,7 @@ def test_unsupported_formats_are_rejected(tmp_path):
         with pytest.raises(ValueError, match="parquet"):
             read(tmp_path / "table.pkl")
     with pytest.raises(ValueError, match="parquet"):
-        write_tours(pd.DataFrame(), tmp_path / "tours.pkl")
+        write_tours(pd.DataFrame(), tmp_path / "tours.pkl", pd.DataFrame())
 
 
 def test_workers_start_only_for_long_searches():

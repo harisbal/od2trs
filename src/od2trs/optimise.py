@@ -20,6 +20,8 @@ import numpy as np
 import pandas as pd
 from scipy import sparse
 
+from od2trs.tourtable import flatten_odpairids
+
 log = logging.getLogger(__name__)
 
 
@@ -55,11 +57,8 @@ def build_model(
     in_od[od_ids] = True
 
     # One (tour, OD cell) entry per distinct cell of a tour
-    lengths = tours["Odpairids"].map(len).to_numpy(dtype=np.int64)
+    odpair, lengths = flatten_odpairids(tours)
     tour_pos = np.repeat(np.arange(n), lengths)
-    odpair = np.fromiter(
-        (o for ids in tours["Odpairids"] for o in ids), dtype=np.int64, count=lengths.sum()
-    )
     if len(odpair) and (odpair.min() < 0 or odpair.max() >= len(trips) or not in_od[odpair].all()):
         raise ValueError("Tours refer to OD pairs that are not in the OD")
     stride = len(trips)
@@ -156,10 +155,12 @@ def solve(
 
 def results_to_od(tours: pd.DataFrame, od: pd.DataFrame) -> pd.Series:
     """Modelled OD: the trips of the used tours, aggregated over the OD's key columns."""
-    used = tours.loc[tours["Timesused"] > 0, ["Odpairids", "Timesused"]].explode("Odpairids")
-    trips = used.groupby("Odpairids")["Timesused"].sum().astype(int)
-    trips.index = trips.index.astype(int)
-    trips = trips.rename_axis("Odpairid").rename("Trips")
+    odpair, lengths = flatten_odpairids(tours)
+    # A tour that uses a cell twice counts it twice
+    times = np.repeat(tours["Timesused"].to_numpy(dtype=np.int64), lengths)
+    totals = np.bincount(odpair, weights=times, minlength=int(od["Odpairid"].max()) + 1)
+    used = np.flatnonzero(totals)
+    trips = pd.Series(totals[used].astype(int), index=pd.Index(used, name="Odpairid"), name="Trips")
 
     keys = od.drop(columns=["Trips"]).reset_index()
     od_mdl = keys.merge(trips, left_on="Odpairid", right_index=True)

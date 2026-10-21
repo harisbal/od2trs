@@ -9,13 +9,15 @@ from pathlib import Path
 
 import networkx as nx
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+from od2trs import tourtable as tt
 
 log = logging.getLogger(__name__)
 
 SEQ_SEP = ";"
 TABLE_FORMATS = (".csv", ".parquet")
-# Tour columns holding one value per leg
-TOUR_SEQ_COLS = ("Origs", "Purposes", "Directions", "Timeperiods", "Transports", "Acts")
 
 
 def _check_format(path: Path) -> None:
@@ -121,35 +123,39 @@ def read_zones_info(path: Path) -> pd.DataFrame:
 
 
 def read_tours(path: Path) -> pd.DataFrame:
-    """Read tours written by `write_tours`, restoring the per-leg sequence columns.
+    """Read tours written by `write_tours`, as the compact table of `od2trs.tourtable`.
 
-    In a csv these are `;`-joined strings, in parquet they are list columns.
+    The per-leg columns are not read: they follow from the OD cells in `Odpairids`.
     """
-    seq_cols = [*TOUR_SEQ_COLS, "Odpairids"]
-    tours = read_table(path, dtype=dict.fromkeys(seq_cols, str))
-    if "Tourid" in tours.columns:
-        tours = tours.set_index("Tourid")
-    for c in seq_cols:
-        if c in tours:
-            tours[c] = [_to_tuple(v, int if c == "Odpairids" else str) for v in tours[c]]
-    tours = tours.sort_index()
+    _check_format(path)
+    if path.suffix == ".parquet":
+        tours = tt.from_arrow_table(pq.read_table(path))
+        if tours.index.name != "Tourid":
+            # Files written by pandas keep a range of ids in the metadata, not a column
+            tours.index = pd.read_parquet(path, columns=[]).index.rename("Tourid")
+            tours = tours.sort_index()
+    else:
+        text = pd.read_csv(path, dtype={"Odpairids": str, "Acts": str})
+        text = text.drop(columns=[c for c in tt.LEG_COLUMNS if c in text])
+        lists = {
+            "Odpairids": tt.split_text_lists(text.pop("Odpairids"), pa.int32()),
+            "Acts": tt.split_text_lists(text.pop("Acts"), pa.string()),
+        }
+        text = text.set_index("Tourid")
+        for name, values in lists.items():
+            text[name] = pd.arrays.ArrowExtensionArray(values)
+        tours = text.sort_index()
     log.info("Read %d tours", len(tours))
     return tours
 
 
-def _to_tuple(value, convert) -> tuple | None:
-    if isinstance(value, str):
-        return tuple(convert(x) for x in value.split(SEQ_SEP))
-    if value is None or (isinstance(value, float) and value != value):
-        return None
-    return tuple(convert(x) for x in value)
-
-
-def write_tours(tours: pd.DataFrame, path: Path) -> None:
+def write_tours(tours: pd.DataFrame, path: Path, od: pd.DataFrame) -> None:
+    """Write the full tours table, with the per-leg columns derived from `od`."""
     _check_format(path)
-    if path.suffix == ".csv":
-        tours = tuples_to_strings(tours)
-    write_table(tours, path, index=True)
+    if path.suffix == ".parquet":
+        pq.write_table(tt.expand_tours_arrow(tours, od), path, compression="zstd")
+    else:
+        tt.expand_tours_text(tours, od).to_csv(path, index=True)
 
 
 def write_od(od: pd.Series, path: Path) -> None:
