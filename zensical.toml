@@ -5,6 +5,7 @@ site_url = "https://harisbal.github.io/od2trs/"
 repo_url = "https://github.com/harisbal/od2trs"
 repo_name = "harisbal/od2trs"
 edit_uri = "edit/master/docs/"
+extra_css = ["stylesheets/extra.css"]
 nav = [
   { "Home" = "index.md" },
   { "Getting started" = "getting-started.md" },

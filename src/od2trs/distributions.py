@@ -10,6 +10,7 @@ from __future__ import annotations
 import pandas as pd
 
 from od2trs.io import read_table, to_interval, to_sequence
+from od2trs.tourtable import LEG_COLUMNS, leg_tuples
 
 PERCENT_COL = "Percentage"
 
@@ -83,8 +84,11 @@ def filter_lowpercent_groups(
     return df[list(distr.index.names) + list(distr.columns)].set_index(list(distr.index.names))
 
 
-def filter_tours_by_distr(tours: pd.DataFrame, distr: pd.DataFrame) -> pd.DataFrame:
-    """Keep (previously identified) tours whose group is in `distr`."""
+def filter_tours_by_distr(
+    tours: pd.DataFrame, distr: pd.DataFrame, od: pd.DataFrame
+) -> pd.DataFrame:
+    """Keep (previously identified) tours whose group is in `distr`. `od` provides the
+    per-leg columns (e.g. the time periods) that the groups are defined on."""
     df = tours.copy()
     distr_flat = distr.reset_index()
     for d in interval_dims(list(distr.index.names)):
@@ -92,6 +96,9 @@ def filter_tours_by_distr(tours: pd.DataFrame, distr: pd.DataFrame) -> pd.DataFr
 
     # Tour columns are named after the dimension without its `_seq` suffix
     join_cols = [c.removesuffix("_seq") for c in distr.index.names]
+    for c in join_cols:
+        if c in LEG_COLUMNS:
+            df[c] = leg_tuples(tours, od, c)
     filtered = pd.merge(
         df, distr, how="inner", left_on=join_cols, right_index=True, suffixes=("", "__")
     )[tours.columns]

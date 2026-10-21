@@ -268,6 +268,11 @@ has no `purpose_to_activities`.
     `Odpairids` index into the OD, so the OD file and its filters (`trips_thresh`,
     `purpose_groups`) must be the same as in the run that produced the tours.
 
+The per-leg columns (`Origs`, `Purposes`, `Directions`, `Timeperiods`, `Transports`) are
+not read back: they follow from the OD cells in `Odpairids`, and `od2trs` derives them
+again when it writes the file. In memory a tour only takes the OD cell ids, its
+activities and its costs, about a sixteenth of what the full table would.
+
 ## :lucide-triangle-alert: Common errors
 
 | message | cause |

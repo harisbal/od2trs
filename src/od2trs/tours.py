@@ -13,6 +13,7 @@ import networkx as nx
 import pandas as pd
 
 from od2trs.config import Directions
+from od2trs.tourtable import compact_table
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,19 +105,27 @@ def zones_seq_to_tours(
     net: nx.MultiDiGraph,
     directions: Directions,
     cost_types: Sequence[str],
+    legs_cache: dict | None = None,
 ) -> list[TripChain]:
     """All tours along a sequence of nodes: one per combination of parallel OD edges.
 
     The first leg must be from-home, the last to-home, and the intermediate ones
-    non-home-based (connector hops between time periods are skipped).
+    non-home-based (connector hops between time periods are skipped). The same legs
+    come up in a great many tours, so `legs_cache` lets callers share them between calls.
     """
+    if legs_cache is None:
+        legs_cache = {}
 
     def alternatives(u, v, direction) -> list[Leg]:
-        return [
-            Leg.from_edge(u[0], v[0], attrs, cost_types)
-            for attrs in net.get_edge_data(u, v).values()
-            if attrs["Direction"] == direction
-        ]
+        key = (u, v, direction)
+        legs = legs_cache.get(key)
+        if legs is None:
+            legs = legs_cache[key] = [
+                Leg.from_edge(u[0], v[0], attrs, cost_types)
+                for attrs in net.get_edge_data(u, v).values()
+                if attrs["Direction"] == direction
+            ]
+        return legs
 
     legs_options = [alternatives(zones_seq[0], zones_seq[1], directions.from_home)]
     if len(zones_seq) >= 4:
@@ -219,22 +228,19 @@ def distribution_lookup(distr_obs: pd.DataFrame) -> dict[tuple, tuple[float, int
 def tours_to_df(
     tours: Sequence[TripChain], first_id: int, with_distr: bool, cost_types: Sequence[str]
 ) -> pd.DataFrame:
-    """Tabulate tours, numbering them from `first_id`; sequences are stored as tuples."""
-    data: dict[str, list] = {
-        "Nolegs": [t.nolegs for t in tours],
-        "Origs": [t.origs for t in tours],
-        "Purposes": [tuple(leg.purpose for leg in t.legs) for t in tours],
-        "Directions": [tuple(leg.direction for leg in t.legs) for t in tours],
-        "Timeperiods": [t.timeperiods for t in tours],
-        "Transports": [t.transports for t in tours],
-        "Odpairids": [tuple(leg.odpairid for leg in t.legs) for t in tours],
-        "Acts": [t.acts for t in tours],
-        "Loopscnt": [t.loopscnt for t in tours],
-    }
+    """Tabulate tours in the compact form of `od2trs.tourtable`, numbering them from
+    `first_id`."""
+    extra: dict[str, list] = {}
     if with_distr:
-        data["Distrgroupid"] = [t.distrgroupid for t in tours]
+        extra["Distrgroupid"] = [t.distrgroupid for t in tours]
     for ct in cost_types:
-        data[ct] = [t.costs[ct] for t in tours]
+        extra[ct] = [t.costs[ct] for t in tours]
 
-    index = pd.RangeIndex(first_id, first_id + len(tours), name="Tourid")
-    return pd.DataFrame(data, index=index)
+    return compact_table(
+        nolegs=[t.nolegs for t in tours],
+        odpairids=[tuple(leg.odpairid for leg in t.legs) for t in tours],
+        acts=[t.acts for t in tours],
+        loopscnt=[t.loopscnt for t in tours],
+        index=pd.RangeIndex(first_id, first_id + len(tours), name="Tourid"),
+        extra=extra,
+    )

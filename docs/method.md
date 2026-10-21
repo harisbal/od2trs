@@ -54,7 +54,7 @@ An integer program decides how many times each candidate tour is used:
   tours implied by the OD (one per from-home trip) deviating from the observed share by
   at most `distribution_tolerance`.
 
-The model is built with Pyomo and solved with HiGHS.
+The model is built as sparse matrices and solved with HiGHS.
 
 ## :lucide-book-open: Further reading
 

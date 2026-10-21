@@ -13,7 +13,7 @@ Legacy `.ini` configs are still accepted.
 
 | key | default | description |
 |---|---|---|
-| `ncores` | `-1` | Worker processes. `<= 0` means all cores plus this number (`0` = all cores). |
+| `ncores` | `-1` | Most worker processes to use. `<= 0` means all cores plus this number (`0` = all cores). Workers only start when the search is long enough to pay for them, so small runs stay in one process. |
 | `export_flat` | `true` | Export the identified tours to `outputs.tours`. |
 
 ## `[tours]`

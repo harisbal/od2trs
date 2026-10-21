@@ -1,7 +1,8 @@
 # od2trs run configuration. Relative paths are resolved against this file's folder.
 
 [run]
-# Worker processes: negative = all cores minus N, 0 = all cores
+# Most worker processes: negative = all cores minus N, 0 = all cores. They only start
+# when the search is long enough to pay for them
 ncores = -1
 # Export the identified tours to outputs.tours
 export_flat = true
