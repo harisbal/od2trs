@@ -4,7 +4,7 @@ icon: lucide/sliders-horizontal
 
 # :lucide-sliders-horizontal: Configuration
 
-`od2trs` is configured with a TOML file; [`config.toml`](https://github.com/harisbal/od2trs/blob/master/config.toml)
+`od2trs` is configured with a TOML file; [`config.toml`](https://github.com/harisbal/od2trs/blob/main/config.toml)
 in the repository documents a full example. Relative `inputs.dir` / `outputs.dir` are
 resolved against the config file's folder. Unknown keys are rejected.
 Legacy `.ini` configs are still accepted.
@@ -13,7 +13,7 @@ Legacy `.ini` configs are still accepted.
 
 | key | default | description |
 |---|---|---|
-| `ncores` | `-1` | Worker processes. `<= 0` means all cores plus this number (`0` = all cores). |
+| `ncores` | `-1` | Most worker processes to use. `<= 0` means all cores plus this number (`0` = all cores). Workers only start when the search is long enough to pay for them, so small runs stay in one process. |
 | `export_flat` | `true` | Export the identified tours to `outputs.tours`. |
 
 ## `[tours]`

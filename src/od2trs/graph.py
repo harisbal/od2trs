@@ -8,12 +8,14 @@ same zone, so a path can wait in a zone until a later period.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterable
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 import networkx as nx
 import pandas as pd
 
 from od2trs.config import CentralityMethod, Directions
+from od2trs.paths import weighted_adjacency
 
 log = logging.getLogger(__name__)
 
@@ -43,7 +45,8 @@ def od_to_graph(
     _add_connectors(g, ordered_tps, list(cost_cols))
 
     if zones_info is not None:
-        info = zones_info.to_dict(orient="index")
+        zones = {zone for _, zone in g.nodes(data="Zone")}
+        info = zones_info.loc[zones_info.index.intersection(zones)].to_dict(orient="index")
         nx.set_node_attributes(g, {n: info[z] for n, z in g.nodes(data="Zone") if z in info})
 
     log.info("Network density: %.2f%%", 100 * nx.density(g))
@@ -178,6 +181,17 @@ def _total(g: nx.Graph, attr: str) -> float:
     return sum(nx.get_edge_attributes(g, attr).values())
 
 
+def edge_usable(src_zone: str, s: Node, t: Node, attrs: Mapping, directions: Directions) -> bool:
+    """Whether the edge s -> t can be part of a tour based in `src_zone`."""
+    if attrs["Connector"]:
+        return src_zone not in (s[0], t[0])
+    if attrs["Direction"] == directions.from_home:
+        return s[0] == src_zone
+    if attrs["Direction"] == directions.to_home:
+        return t[0] == src_zone
+    return True
+
+
 def prepare_zone_graph(
     g: nx.MultiDiGraph, src_zone: str, directions: Directions
 ) -> nx.MultiDiGraph:
@@ -186,20 +200,17 @@ def prepare_zone_graph(
     Keeps from-home edges leaving the zone, to-home edges entering it, all
     non-home-based edges (tours may pass through the home zone) and connectors outside
     the home zone; isolated nodes are dropped.
+
+    This is the reference for `ZoneGraphs`, which answers the same questions without
+    copying the graph for every zone.
     """
-
-    def usable(s: Node, t: Node, attrs: dict) -> bool:
-        if attrs["Connector"]:
-            return src_zone not in (s[0], t[0])
-        if attrs["Direction"] == directions.from_home:
-            return s[0] == src_zone
-        if attrs["Direction"] == directions.to_home:
-            return t[0] == src_zone
-        return True
-
     gf = g.copy()
     gf.remove_edges_from(
-        [(s, t, k) for s, t, k, attrs in g.edges(keys=True, data=True) if not usable(s, t, attrs)]
+        [
+            (s, t, k)
+            for s, t, k, attrs in g.edges(keys=True, data=True)
+            if not edge_usable(src_zone, s, t, attrs, directions)
+        ]
     )
     gf.remove_nodes_from(list(nx.isolates(gf)))
     return gf
@@ -216,3 +227,84 @@ def filter_edges_by_direction(g: nx.MultiDiGraph, direction: str) -> nx.MultiDiG
         ]
     )
     return gf
+
+
+class ZoneEdges:
+    """The edges at the home nodes of one zone that its tours can use, with their costs.
+
+    ``succ[h][v]`` and ``pred[h][u]`` map to the maximum of each cost type over the
+    parallel edges h -> v and u -> h, in the order of the graph's adjacency.
+    """
+
+    def __init__(self, succ: dict, pred: dict):
+        self.succ, self.pred = succ, pred
+
+    def successors(self, node: Node) -> list[Node]:
+        return list(self.succ[node])
+
+    def predecessors(self, node: Node) -> list[Node]:
+        return list(self.pred[node])
+
+
+class ZoneGraphs:
+    """What the tour search needs from the OD graph, for any home zone.
+
+    The search for the tours of a home zone only differs from that of another zone at
+    the nodes of the home zone itself: elsewhere the usable edges are the non-home-based
+    edges and the connectors, whatever the home zone is. So the non-home-based graph is
+    built once, and per zone only the edges at the zone's own nodes are looked at,
+    instead of copying and filtering the whole graph for every zone.
+    """
+
+    def __init__(
+        self,
+        g: nx.MultiDiGraph,
+        directions: Directions,
+        cost_types: Sequence[str],
+        ordered_tps: Sequence[str],
+    ):
+        self.g, self.directions, self.cost_types = g, directions, list(cost_types)
+        # The weights bounding a path, in the order the search takes its limits
+        self.weights = [*cost_types, "Length", "HeightDiff"]
+        tp_rank = {tp: i for i, tp in enumerate(ordered_tps)}
+        by_zone: dict[str, list[Node]] = defaultdict(list)
+        for node, zone in g.nodes(data="Zone"):
+            by_zone[zone].append(node)
+        self._nodes = {z: sorted(ns, key=lambda n: tp_rank[n[1]]) for z, ns in by_zone.items()}
+        self.zones = sorted(self._nodes)
+        # Non-home-based edges and connectors; parallel edges are collapsed as nx does
+        nhb = nx.DiGraph(filter_edges_by_direction(g, directions.non_home))
+        self._nhb_adj = weighted_adjacency(nhb.adj, self.weights)
+
+    def home_nodes(self, zone: str) -> list[Node]:
+        """The zone's nodes in chronological order."""
+        return self._nodes[zone]
+
+    def nhb_adjacency(self, zone: str) -> dict[Node, dict[Node, tuple]]:
+        """The non-home-based graph for tours based in `zone`, as a `weighted_adjacency`:
+        the connectors between the zone's own nodes can't be used."""
+        adj = self._nhb_adj.copy()
+        for n in self._nodes[zone]:
+            if n in adj:
+                adj[n] = {v: w for v, w in adj[n].items() if v[0] != zone}
+        return adj
+
+    def zone_edges(self, zone: str) -> ZoneEdges:
+        """The usable edges at the zone's nodes."""
+        g, d = self.g, self.directions
+        succ: dict[Node, dict[Node, dict[str, float]]] = {}
+        pred: dict[Node, dict[Node, dict[str, float]]] = {}
+        for h in self._nodes[zone]:
+            out = succ[h] = {}
+            for _, v, attrs in g.out_edges(h, data=True):
+                if edge_usable(zone, h, v, attrs, d):
+                    self._merge(out.setdefault(v, {}), attrs)
+            inc = pred[h] = {}
+            for u, _, attrs in g.in_edges(h, data=True):
+                if edge_usable(zone, u, h, attrs, d):
+                    self._merge(inc.setdefault(u, {}), attrs)
+        return ZoneEdges(succ, pred)
+
+    def _merge(self, costs: dict[str, float], attrs: Mapping) -> None:
+        for w in self.cost_types:
+            costs[w] = max(costs.get(w, attrs.get(w, 0)), attrs.get(w, 0))

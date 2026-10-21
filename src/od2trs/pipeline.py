@@ -21,6 +21,9 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Results:
+    """What a run produces. `tours` is the compact table of `od2trs.tourtable`; its
+    `expand_tours` gives the full one, with the per-leg columns, as exported."""
+
     od_mdl: pd.Series | None
     tours: pd.DataFrame | None
     distr_obs: pd.DataFrame | None
@@ -85,11 +88,11 @@ def run(cfg: Config) -> Results:
             raise ValueError("tours.identify = false requires inputs.tours")
         tours = io.read_tours(cfg.inputs.path("tours"))
         if distr_obs is not None:
-            tours = distr.filter_tours_by_distr(tours, distr_obs)
+            tours = distr.filter_tours_by_distr(tours, distr_obs, od)
             log.info("Tours after distribution filtering: %d", len(tours))
 
     if tours is not None and cfg.run.export_flat:
-        io.write_tours(tours, cfg.outputs.path("tours"))
+        io.write_tours(tours, cfg.outputs.path("tours"), od)
 
     od_mdl = None
     if oc.run and tours is not None:
@@ -101,7 +104,7 @@ def run(cfg: Config) -> Results:
             tours["Timesused"] = timesused
             od_mdl = opt.results_to_od(tours, od)
             io.write_od(od_mdl, cfg.outputs.path("od"))
-            io.write_tours(tours, cfg.outputs.path("tours"))
+            io.write_tours(tours, cfg.outputs.path("tours"), od)
 
     elapsed = time.time() - start
     log.info("Done in %.1fs", elapsed)
