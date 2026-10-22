@@ -43,7 +43,13 @@ def run(cfg: Config) -> Results:
     cfg.outputs.path("config").write_text(cfg.model_dump_json(indent=2))
 
     costs = io.read_costs(cfg.inputs.path("costs"))
-    od = io.read_od(cfg.inputs.path("od"), tc.trips_thresh, tc.purpose_groups, tc.ordered_tps)
+    od = io.read_od(
+        cfg.inputs.path("od"),
+        tc.trips_thresh,
+        tc.purpose_groups,
+        tc.ordered_tps,
+        tc.keep_intrazonal,
+    )
     ntrs = count_tours(od, tc.directions.from_home)
     zones_path = cfg.inputs.path("zones_info")
     zones_info = io.read_zones_info(zones_path) if zones_path and zones_path.exists() else None

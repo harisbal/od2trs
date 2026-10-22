@@ -28,6 +28,7 @@ Legacy `.ini` configs are still accepted.
 | `excl_edges_od_perc` | `0.0` | Share of OD trips excluded by simplifying the network (`0` disables it). |
 | `simplify_net_method` | `pagerank` | Centrality used to rank nodes: `pagerank`, `eigenvector`, `subgraph_centrality`, `subgraph_centrality_exp`, `current_flow_betweeness`, `current_flow_closeness`, `communicability_betweenness`. |
 | `trips_thresh` | `1` | OD cells with fewer trips are dropped. |
+| `keep_intrazonal` | `false` | Keep intrazonal OD cells (`Orig == Dest`). The costs file then needs a row for each of them. The current tour search never builds a tour that uses one, because it does not revisit a zone within a time period. |
 | `purpose_to_activities` | `{}` | Purpose → allowed `(activity, activity)` pairs, e.g. `HB = [["Home", "Other"]]`. |
 | `purpose_groups` | `{}` | OD column → `{value: group}`; values without a group are dropped. |
 | `timeperiods` | required | Ordered time periods, `name = [start, end]`. |

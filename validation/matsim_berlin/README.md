@@ -47,9 +47,11 @@ uv run --group validation python validation/matsim_berlin/run.py \
 | `zones` | `layer` | `Prognoseraum` (60 zones), `Bezirksregion` (138), `Planungsraum` (447) or `h3`. |
 | | `h3_resolution` | H3 resolution for `layer = "h3"`, cells clipped to Berlin. |
 | | `detour_factor` | Distance cost = factor × centroid distance (m). |
+| | `intrazonal_distance` | Distance (m) of an intrazonal leg, with `truth.keep_intrazonal`. Default for `h3`: the average edge length of a cell (about 531 m at resolution 8); the other layers need a value. |
 | `population` | `subpopulation`, `persons_frac`, `seed` | Which persons, and a share of them to keep. |
 | `truth` | `exclude_modes` | Drop tours with a leg in any of these MATSim main modes; `["walk"]` (the default in `experiment.toml`) keeps vehicle tours only. Whole tours are dropped, since removing single legs would break the chain. |
-| | `drop_unrepresentable` | Drop tours od2trs cannot produce: with intrazonal legs (od2trs drops intrazonal trips), more than `max_legs` legs or above `max_costs`. |
+| | `drop_unrepresentable` | Drop tours od2trs cannot produce: with intrazonal legs (od2trs drops intrazonal trips unless told otherwise), more than `max_legs` legs or above `max_costs`. |
+| | `keep_intrazonal` | Keep tours with intrazonal legs and set od2trs's `keep_intrazonal`. The current tour search cannot build them, so they only lower the recall until the layered identification replaces it. |
 | `activities` | prefix → category | Activity type prefix to category; unmatched types are `Other`. Categories need distinct initials. |
 | `distr_obs` | `mode` | `none` (no distribution constraints), `exact` (shares of the truth tours), `sample` (shares of the tours of `sample_frac` of the persons) or `noise` (exact shares × log-normal noise with sd `noise_sd`, renormalised). |
 | | `dims`, `distance_bins` | Distribution dimensions (`Distance_grp`, `Timeperiods_seq`, `Transports_seq`) and the distance bins. |

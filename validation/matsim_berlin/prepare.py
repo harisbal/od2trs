@@ -12,6 +12,7 @@ import logging
 from pathlib import Path
 
 import geopandas as gpd
+import h3
 import numpy as np
 import pandas as pd
 from data import (
@@ -66,6 +67,7 @@ def od2trs_config(exp: Experiment, run_dir: Path) -> dict:
             "purpose_to_activities": purpose_scheme(exp.activities),
             "distr_dims": exp.distr_obs.dims if with_distr else [],
             "directions": DIRECTIONS,
+            "keep_intrazonal": exp.truth.keep_intrazonal,
         },
         "optimisation": {"distribution_constraints": with_distr},
         "inputs": {
@@ -78,6 +80,18 @@ def od2trs_config(exp: Experiment, run_dir: Path) -> dict:
         "outputs": {"dir": run_dir / "od2trs"},
     }
     return _deep_merge(exp.od2trs, generated)
+
+
+def intrazonal_distance(exp: Experiment) -> float:
+    """Distance (m) of a leg within a zone: the configured value or, for H3 zones, the average
+    edge length of a cell."""
+    if exp.zones.intrazonal_distance is not None:
+        return exp.zones.intrazonal_distance
+    if exp.zones.layer == "h3":
+        return h3.average_hexagon_edge_length(exp.zones.h3_resolution, unit="m")
+    raise ValueError(
+        f"Set zones.intrazonal_distance (m): the zone layer {exp.zones.layer!r} has no default"
+    )
 
 
 def truth_legs(
@@ -120,6 +134,9 @@ def truth_legs(
     legs["Distance"] = exp.zones.detour_factor * np.hypot(
         legs["Orig"].map(cx) - legs["Dest"].map(cx), legs["Orig"].map(cy) - legs["Dest"].map(cy)
     )
+    if exp.truth.keep_intrazonal:
+        # The centroid distance of an intrazonal leg is 0
+        legs.loc[legs["Orig"] == legs["Dest"], "Distance"] = intrazonal_distance(exp)
 
     by_tour = legs.groupby("Tourid")
     first_act, last_act = by_tour["Act_orig"].first(), by_tour["Act_dest"].last()
@@ -136,7 +153,8 @@ def truth_legs(
         }
     )
     if exp.truth.drop_unrepresentable:
-        tour_flags["intrazonal"] = by_tour.apply(lambda t: (t["Orig"] == t["Dest"]).any())
+        if not exp.truth.keep_intrazonal:
+            tour_flags["intrazonal"] = by_tour.apply(lambda t: (t["Orig"] == t["Dest"]).any())
         tour_flags["above_max_legs"] = by_tour.size() > exp.max_legs
         if "Distance" in exp.max_costs:
             # Rounded as od2trs does

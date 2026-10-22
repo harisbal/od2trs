@@ -54,6 +54,8 @@ class ToursConfig(_Model):
     simplify_net_method: CentralityMethod = "pagerank"
     # OD cells with fewer trips are dropped
     trips_thresh: float = 1
+    # Keep intrazonal OD cells (Orig == Dest); the costs file then needs a row for each of them
+    keep_intrazonal: bool = False
     # Purpose -> allowed (activity, activity) pairs, e.g. {HB = [["Home", "Other"]]}
     purpose_to_activities: dict[str, list[tuple[str, str]]] = Field(default_factory=dict)
     directions: Directions = Field(default_factory=Directions)
@@ -178,6 +180,7 @@ def _legacy_ini_to_dict(path: Path) -> dict:
         "excl_edges_od_perc": get("TOURS", "excl_edges_od_perc", 0.0),
         "simplify_net_method": get("TOURS", "simplify_net_method", "pagerank"),
         "trips_thresh": get("TOURS", "trips_thresh", 1),
+        "keep_intrazonal": get("TOURS", "keep_intrazonal", False),
         "purpose_to_activities": get("TOURS", "purpose_to_activities") or {},
         "directions": {
             "from_home": get("TOURS", "fromhome_direction", "FromHome"),

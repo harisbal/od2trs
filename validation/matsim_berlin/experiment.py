@@ -27,6 +27,9 @@ class Zones(_Model):
     h3_resolution: int = 8
     # Multiplier of the centroid distance used as the Distance cost
     detour_factor: float = 1.0
+    # Distance (m) of an intrazonal leg, used with truth.keep_intrazonal. Default for h3: the
+    # average edge length of a cell; other layers need a value
+    intrazonal_distance: float | None = None
 
 
 class Population(_Model):
@@ -41,6 +44,9 @@ class Truth(_Model):
     exclude_modes: list[str] = Field(default_factory=list)
     # Drop tours od2trs cannot produce (intrazonal legs, more than max_legs, above max_costs)
     drop_unrepresentable: bool = True
+    # Keep tours with intrazonal legs although the tour search cannot build them yet; also
+    # tells od2trs to keep the intrazonal OD cells
+    keep_intrazonal: bool = False
 
 
 class DistrObs(_Model):

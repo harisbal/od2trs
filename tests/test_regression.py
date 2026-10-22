@@ -125,7 +125,13 @@ def result(request, tmp_path_factory):
 
 def processed_od(cfg: Config) -> pd.DataFrame:
     tc = cfg.tours
-    return read_od(cfg.inputs.path("od"), tc.trips_thresh, tc.purpose_groups, tc.ordered_tps)
+    return read_od(
+        cfg.inputs.path("od"),
+        tc.trips_thresh,
+        tc.purpose_groups,
+        tc.ordered_tps,
+        tc.keep_intrazonal,
+    )
 
 
 def test_od_matches_original(result):

@@ -106,8 +106,8 @@ How the file is processed:
 - Values of a column listed in `purpose_groups` are replaced by their group; **values
   without a group are dropped**. This is how you merge purposes
   (`{Purpose = {HBW = "HB", HBO = "HB"}}`) or exclude them.
-- Cells with fewer than `trips_thresh` trips and **intrazonal trips** (`Orig == Dest`)
-  are dropped. Remaining trips are rounded to integers.
+- Cells with fewer than `trips_thresh` trips and **intrazonal trips** (`Orig == Dest`,
+  unless `keep_intrazonal` is set) are dropped. Remaining trips are rounded to integers.
 - Every time period in the file must be listed in `[tours.timeperiods]`; the order
   there defines chronological order.
 - A `Transport` column, if present, becomes a tour dimension that can be used in

@@ -20,7 +20,13 @@ def build_graph(config: str) -> tuple[nx.MultiDiGraph, Config]:
     cfg = Config.load(CONFIGS / config)
     tc = cfg.tours
     costs = io.read_costs(cfg.inputs.path("costs"))
-    od = io.read_od(cfg.inputs.path("od"), tc.trips_thresh, tc.purpose_groups, tc.ordered_tps)
+    od = io.read_od(
+        cfg.inputs.path("od"),
+        tc.trips_thresh,
+        tc.purpose_groups,
+        tc.ordered_tps,
+        tc.keep_intrazonal,
+    )
     od_costs = od.join(costs).dropna(axis=1)
     return gr.od_to_graph(od_costs, tc.ordered_tps, costs.columns), cfg
 

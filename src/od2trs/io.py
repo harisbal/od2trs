@@ -47,13 +47,15 @@ def read_od(
     trips_thresh: float,
     groups: dict[str, dict[str, str]],
     ordered_tps: list[str],
+    keep_intrazonal: bool = False,
 ) -> pd.DataFrame:
     """Read an OD file: one key column per dimension, the trips in the last column.
 
     Returns a frame indexed by the key columns (in file order) with columns
     ``Odpairid`` and ``Trips``. Values of a grouped column (``groups``) are mapped to
     their group, and values without a group are dropped. Odpairids are assigned
-    before filtering by ``trips_thresh`` and removing intrazonal trips.
+    before filtering by ``trips_thresh`` and removing intrazonal trips (unless
+    ``keep_intrazonal``).
     """
     # Key columns are read as text so csv zone ids keep their leading zeros
     od = read_table(path, dtype=str).rename(columns=str.capitalize)
@@ -76,7 +78,8 @@ def read_od(
     intrazonal = od.index.get_level_values("Orig").astype(str) == od.index.get_level_values(
         "Dest"
     ).astype(str)
-    od = od[~intrazonal]
+    if not keep_intrazonal:
+        od = od[~intrazonal]
     trips_after = od["Trips"].sum()
     log.info(
         "OD trips: %s before filtering, %s after (ratio %.4f)",
