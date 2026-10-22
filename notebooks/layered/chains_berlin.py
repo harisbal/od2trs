@@ -1,47 +1,85 @@
-import sys, time
+"""Candidate tours per activity chain on the Berlin validation OD, and the recall of the truth.
+
+usage: python chains_berlin.py [RUN_DIR]
+
+For every chain of the truth tours, counts the tours of the layered graph (all home zones, no
+distance cap, no distribution filter) and checks that each truth tour is a path of that graph.
+RUN_DIR is a validation run with `inputs/od.parquet`, `truth_tours.parquet` and
+`experiment.json` (default: the 16-group vehicle run).
+"""
+
+import json
+import sys
 from multiprocessing import Pool
-sys.path.insert(0, "/home/harisbal/Projects/od2trs/notebooks/layered")
+from pathlib import Path
+
 import pandas as pd
-from layered_sparse import Layers, purpose_of
+from layered_sparse import Layers, direction_of, purpose_of, sweep
 
-RUN = "/home/harisbal/Projects/od2trs/validation/matsim_berlin/runs/berlin-1pct-h3r8-veh-dist"
-od = pd.read_parquet(f"{RUN}/inputs/od.parquet"); od = od[(od.Trips >= 1) & (od.Orig != od.Dest)]
-TPS = ["OP1", "AM", "IP1", "IP2", "PM", "IP3", "OP2"]
-L = Layers(od, TPS)
-truth = pd.read_parquet(f"{RUN}/truth_tours.parquet")
-truth["chain"] = truth.Acts.map(tuple)
+DEFAULT_RUN = Path(__file__).parents[2] / "validation/matsim_berlin/runs/berlin-1pct-h3r8-veh-dist"
 
-def pool(acts):
-    tot = edges = homes = 0
-    for h in L.homes:
-        c, e, _ = L.sweep(list(acts), h)
-        tot += c; edges += e; homes += c > 0
-    return acts, tot, homes
 
-def in_pool(row):
-    """Is every leg of the truth tour an OD edge of the right purpose, with non-decreasing periods?"""
-    acts, o, t = row.Acts, row.Origs, row.Timeperiods
-    d = list(o[1:]) + [o[0]]
-    ok = all(TPS.index(a) <= TPS.index(b) for a, b in zip(t, t[1:]))
-    for i, (a, b) in enumerate(zip(acts, acts[1:])):
-        direction = "FromHome" if i == 0 else "ToHome" if i == len(acts) - 2 else "NonHome"
-        ok = ok and ODSET.get((purpose_of(a, b), direction, o[i], d[i], t[i]), 0) > 0
-    return ok
+def load(run: Path) -> tuple[pd.DataFrame, pd.DataFrame, list[str]]:
+    """The OD as od2trs reads it, the truth tours and the periods in chronological order."""
+    od = pd.read_parquet(run / "inputs/od.parquet")
+    od = od[(od["Trips"] >= 1) & (od["Orig"] != od["Dest"])]
+    truth = pd.read_parquet(run / "truth_tours.parquet")
+    tps = list(json.loads((run / "experiment.json").read_text())["timeperiods"])
+    return od, truth, tps
+
+
+def truth_is_in_pool(truth: pd.DataFrame, od: pd.DataFrame, tps: list[str]) -> pd.Series:
+    """A truth tour is a path of the layered graph if each leg is an OD edge with the purpose
+    and direction its activities give, and the periods never decrease."""
+    od = od.assign(Direction=od["Direction"].replace({"NonHomeBased": "NonHome"}))
+    edges = set(zip(od["Purpose"], od["Direction"], od["Orig"], od["Dest"], od["Timeperiod"], strict=True))
+    rank = {tp: i for i, tp in enumerate(tps)}
+
+    def check(tour) -> bool:
+        n = tour.Nolegs
+        dests = [*tour.Origs[1:], tour.Origs[0]]
+        legs = zip(tour.Acts, tour.Acts[1:], tour.Origs, dests, tour.Timeperiods, strict=False)
+        in_od = all(
+            (purpose_of(a, b), direction_of(i, n), o, d, tp) in edges
+            for i, (a, b, o, d, tp) in enumerate(legs)
+        )
+        periods = [rank[tp] for tp in tour.Timeperiods]
+        return in_od and periods == sorted(periods)
+
+    return pd.Series([check(t) for t in truth.itertuples()], index=truth.index)
+
+
+_layers = None
+
+
+def _init(od, tps):
+    global _layers
+    _layers = Layers(od, tps)
+
+
+def pool_size(acts: tuple[str, ...]) -> tuple[tuple[str, ...], int, int]:
+    """(chain, tours over all home zones, home zones with at least one tour)."""
+    results = [sweep(_layers, list(acts), home)[0] for home in _layers.homes]
+    return acts, sum(results), sum(r > 0 for r in results)
+
+
+def main(run: Path) -> None:
+    od, truth, tps = load(run)
+    truth["in_pool"] = truth_is_in_pool(truth, od, tps)
+    print("truth tours in the pool, by legs:", truth.groupby("Nolegs")["in_pool"].mean().to_dict())
+
+    truth["chain"] = truth["Acts"].map(tuple)
+    chains = truth["chain"].value_counts()
+    with Pool(initializer=_init, initargs=(od, tps)) as pool:
+        sizes = pool.map(pool_size, chains.index, chunksize=1)
+
+    table = pd.DataFrame(sizes, columns=["chain", "pool", "homes"]).set_index("chain")
+    table["truth"] = chains
+    table["pool/truth"] = (table["pool"] / table["truth"]).round(1)
+    table.index = [">".join(a[0] for a in chain) for chain in table.index]
+    print(table.to_string())
+    print("total pool", table["pool"].sum())
+
 
 if __name__ == "__main__":
-    odn = od.assign(Direction=od.Direction.replace({"NonHomeBased": "NonHome"}))
-    ODSET = {k: 1 for k in zip(odn.Purpose, odn.Direction, odn.Orig, odn.Dest, odn.Timeperiod)}
-    truth["in_pool"] = [in_pool(r) for r in truth.itertuples()]
-    print("truth tours in the layered pool, by legs:", truth.groupby("Nolegs").in_pool.mean().round(4).to_dict(), "all", round(truth.in_pool.mean(), 4))
-    chains = sorted(truth.chain.unique(), key=lambda c: -(truth.chain == c).sum())
-    t0 = time.time()
-    with Pool(8) as p:
-        res = p.map(pool, chains, chunksize=1)
-    rows = []
-    for acts, tot, homes in res:
-        sub = truth[truth.chain == acts]
-        rows.append((">".join(a[0] for a in acts), len(acts) - 1, len(sub), tot, homes))
-    df = pd.DataFrame(rows, columns=["chain", "legs", "truth", "pool", "homes"]).sort_values("truth", ascending=False)
-    df["pool/truth"] = (df.pool / df.truth).round(1)
-    print(df.to_string(index=False))
-    print(df.groupby("legs")[["truth", "pool"]].sum(), "\ntotal pool", df.pool.sum(), f"({time.time()-t0:.0f}s)")
+    main(Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_RUN)
