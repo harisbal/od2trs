@@ -156,41 +156,37 @@ def assign_activities(
 ) -> list[TripChain]:
     """Expand each tour into one copy per consistent activity sequence.
 
-    Each purpose links a pair of activities (e.g. HBW: Home-Work); a purpose may allow
-    several pairs. A sequence is consistent when every leg starts at the activity
-    the previous leg ended at, starting from Home.
+    Each purpose links pairs of activities (e.g. HBW: Home-Work) and every leg picks its
+    own pair, so two legs of one purpose can link different activities. A sequence is
+    consistent when every leg starts at the activity the previous leg ended at, starting
+    from Home.
     """
     result = []
     for tour in tours:
-        purposes = set(leg.purpose for leg in tour.legs)
-        options = {p: v for p, v in purpose_to_acts.items() if p in purposes}
-        for combination in itertools.product(*options.values()):
-            pairs = dict(zip(options, combination, strict=True))
-            acts = _activity_sequence(tour.legs, pairs)
-            if acts is not None:
-                result.append(dataclasses.replace(tour, acts=acts))
+        for acts in _activity_sequences(tour.legs, purpose_to_acts):
+            result.append(dataclasses.replace(tour, acts=acts))
     return result
 
 
-def _activity_sequence(
-    legs: Sequence[Leg], pairs: Mapping[str, tuple[str, str]]
-) -> tuple[str, ...] | None:
-    first = list(pairs[legs[0].purpose])
-    if first[0] != "Home":
-        first.reverse()
-    if first[0] != "Home":
-        raise ValueError("First activity in tour is not Home")
-
-    acts = first
-    for leg in legs[1:]:
-        act1, act2 = pairs[leg.purpose]
-        if act1 == acts[-1]:
-            acts.append(act2)
-        elif act2 == acts[-1]:
-            acts.append(act1)
-        else:
-            return None
-    return tuple(acts)
+def _activity_sequences(
+    legs: Sequence[Leg], purpose_to_acts: Mapping[str, Sequence[tuple[str, str]]]
+) -> list[tuple[str, ...]]:
+    sequences: list[tuple[str, ...]] = [("Home",)]
+    for leg in legs:
+        # A leg can be travelled in either direction of its pair; dict.fromkeys drops the
+        # repeats (e.g. a pair linking an activity to itself, or listed in both orders)
+        sequences = [
+            (*acts, dest)
+            for acts in sequences
+            for orig, dest in dict.fromkeys(
+                (a, b) if a == acts[-1] else (b, a)
+                for a, b in purpose_to_acts.get(leg.purpose, ())
+                if acts[-1] in (a, b)
+            )
+        ]
+        if not sequences:
+            break
+    return sequences
 
 
 class DistributionMatcher:

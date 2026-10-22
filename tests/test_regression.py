@@ -10,6 +10,10 @@ The original assigned Tourids in an order that varied between runs (it iterated
 over sets), so tours are compared as multisets. `objective` is the optimum of the
 original MIP, solved with HiGHS.
 
+The original gave every leg of a purpose the same pair of activities, so it missed tours
+like Home > Work > Work > Other > Home (two NHBW legs, linking Work-Work and Work-Other).
+od2trs assigns the pair per leg; the comparison leaves those extra tours out.
+
 small_distr was captured with one change to the original: a stable sort when trimming
 infrequent distribution groups. The original's unstable sort picked arbitrarily among
 groups tied at the cut-off (9 of 18 equal groups in this case), depending on numpy's
@@ -90,6 +94,16 @@ def tours_to_rows(tours: pd.DataFrame, cfg: Config) -> list[dict]:
     ]
 
 
+def one_pair_per_purpose(row: dict) -> bool:
+    """Whether all legs of a purpose link the same pair of activities (true without any)."""
+    if row["Acts"] is None:
+        return True
+    pairs: dict[str, set] = {}
+    for i, purpose in enumerate(row["Purposes"]):
+        pairs.setdefault(purpose, set()).add(frozenset(row["Acts"][i : i + 2]))
+    return all(len(p) == 1 for p in pairs.values())
+
+
 def golden_tours(case: str, max_costs: dict[str, float] | None = None) -> list[dict]:
     """The original's tours, minus those over `max_costs` (the original meant to drop
     them, but its filter was a no-op)."""
@@ -124,7 +138,7 @@ def test_od_matches_original(result):
 def test_tours_match_original(result):
     case, cfg, res = result
     expected = golden_tours(case, cfg.tours.max_costs)
-    got = tours_to_rows(res.tours, cfg)
+    got = [r for r in tours_to_rows(res.tours, cfg) if one_pair_per_purpose(r)]
     assert len(got) == len(expected)
     assert canonical(got) == canonical(expected)
 

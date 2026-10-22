@@ -36,11 +36,28 @@ PURPOSE_TO_ACTS = {
         (["HBW", "NHBW", "HBW"], [("Home", "Work", "Work", "Home")]),
         (["HBW", "NHBO", "HBO"], []),  # Other-Other can't follow Work
         (["HBO", "NHBO", "NHBO", "HBO"], [("Home", "Other", "Other", "Other", "Home")]),
+        # An errand from work and back, or two trips between the workplaces
+        (
+            ["HBW", "NHBW", "NHBW", "HBW"],
+            [("Home", "Work", "Other", "Work", "Home"), ("Home", "Work", "Work", "Work", "Home")],
+        ),
+        # Each NHBW leg picks its own pair
+        (["HBW", "NHBW", "NHBW", "HBO"], [("Home", "Work", "Work", "Other", "Home")]),
+        (["HBO", "NHBW", "NHBW", "HBW"], [("Home", "Other", "Work", "Work", "Home")]),
     ],
 )
 def test_assign_activities(purposes, expected):
     tour = TripChain(legs=tuple(leg(p) for p in purposes))
     assert [t.acts for t in assign_activities([tour], PURPOSE_TO_ACTS)] == expected
+
+
+def test_a_purpose_can_link_different_activities_on_different_legs():
+    acts = {"HBE": [("Home", "Education")], "HBO": [("Home", "Other")],
+            "NHBO": [("Education", "Other"), ("Other", "Other")]}  # fmt: skip
+    tour = TripChain(legs=tuple(leg(p) for p in ["HBE", "NHBO", "NHBO", "HBO"]))
+    assert [t.acts for t in assign_activities([tour], acts)] == [
+        ("Home", "Education", "Other", "Other", "Home")
+    ]
 
 
 def test_tour_costs():
