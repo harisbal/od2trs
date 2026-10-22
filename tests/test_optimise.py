@@ -47,14 +47,34 @@ def test_a_cell_repeated_in_a_tour_counts_once_in_its_constraint():
     assert used.to_dict() == {1: 2}
 
 
+# With 3 tours, group 1 (tour 1) needs 1 to 3 of them and group 2 at most 2
+DISTR = pd.DataFrame(
+    {"Distrgroupid": [1, 2], "Percentage": [0.67, 0.33]}, index=pd.Index(["a", "b"], name="G")
+)
+GROUPED_TOURS = tours_frame([(0, 1), (0, 2, 1)], Distrgroupid=[1, 2])
+
+
 def test_distribution_shares_are_constrained():
-    distr = pd.DataFrame(
-        {"Distrgroupid": [1, 2], "Percentage": [0.67, 0.33]}, index=pd.Index(["a", "b"], name="G")
-    )
-    tours = tours_frame([(0, 1), (0, 2, 1)], Distrgroupid=[1, 2])
-    # With 3 tours, group 1 (tour 1) needs 1 to 3 of them and group 2 at most 2
-    used = opt.solve(opt.build_model(tours, OD, 3, distr, distr_perc_tolerance=0.01))
+    used = opt.solve(opt.build_model(GROUPED_TOURS, OD, 3, DISTR, distr_perc_tolerance=0.01))
     assert used.to_dict() == {1: 1, 2: 2}
+
+
+def test_soft_distribution_shares_trade_trips_for_the_penalty():
+    # Leaving both groups' tolerance by one tour covers one trip more
+    def used(penalty):
+        model = opt.build_model(GROUPED_TOURS, OD, 3, DISTR, 0.01, distr_penalty=penalty)
+        return opt.solve(model).to_dict()
+
+    assert used(0.25) == {1: 0, 2: 3}
+    assert used(1.0) == {1: 1, 2: 2}
+
+
+def test_soft_distribution_shares_are_always_feasible():
+    distr = pd.DataFrame(
+        {"Distrgroupid": [1], "Percentage": [1.0]}, index=pd.Index(["a"], name="G")
+    )
+    tours = tours_frame([(0, 1)], Distrgroupid=[1])
+    assert opt.solve(opt.build_model(tours, OD, 5, distr, distr_penalty=1.0)).to_dict() == {1: 3}
 
 
 def test_no_solution_gives_none():
@@ -80,3 +100,23 @@ def test_solver_options_are_passed_on():
 def test_no_tours_gives_no_usage():
     empty = tours_frame([])
     assert len(opt.solve(opt.build_model(empty, OD, 0))) == 0
+
+
+def test_cbc_finds_the_same_solution():
+    pytest.importorskip("mip")
+    assert opt.solve_cbc(opt.build_model(TOURS, OD, 3)).to_dict() == {1: 0, 2: 3}
+    with pytest.raises(ValueError, match="not_an_option"):
+        opt.solve_cbc(opt.build_model(TOURS, OD, 3), solver_options={"not_an_option": 1})
+
+
+def test_cbc_enum_options_are_given_by_number_or_name():
+    pytest.importorskip("mip")
+    for lp_method in (3, "barrier"):
+        used = opt.solve_cbc(opt.build_model(TOURS, OD, 3), solver_options={"lp_method": lp_method})
+        assert used.to_dict() == {1: 0, 2: 3}
+
+
+def test_lazy_distribution_shares_are_still_enforced():
+    pytest.importorskip("mip")
+    model = opt.build_model(GROUPED_TOURS, OD, 3, DISTR, distr_perc_tolerance=0.01)
+    assert opt.solve_cbc(model, lazy_distribution=True).to_dict() == {1: 1, 2: 2}

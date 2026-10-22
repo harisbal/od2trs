@@ -97,8 +97,13 @@ def run(cfg: Config) -> Results:
     od_mdl = None
     if oc.run and tours is not None:
         log.info("Phase 2/2: optimise (distribution constraints: %s)", oc.distribution_constraints)
-        model = opt.build_model(tours, od, ntrs, distr_obs, oc.distribution_tolerance)
-        timesused = opt.solve(model, oc.time_limit, oc.solver_options)
+        penalty = oc.distribution_penalty if oc.distribution_mode == "soft" else None
+        model = opt.build_model(tours, od, ntrs, distr_obs, oc.distribution_tolerance, penalty)
+        if oc.solver == "cbc":
+            lazy = oc.distribution_mode == "lazy"
+            timesused = opt.solve_cbc(model, oc.time_limit, oc.solver_options, lazy)
+        else:
+            timesused = opt.solve(model, oc.time_limit, oc.solver_options)
         tours = tours.assign(Timesused=0)
         if timesused is not None:
             tours["Timesused"] = timesused

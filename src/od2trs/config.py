@@ -9,7 +9,7 @@ import tomllib
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CentralityMethod = Literal[
     "pagerank",
@@ -80,8 +80,22 @@ class OptimisationConfig(_Model):
     distribution_tolerance: float = 0.005
     # Seconds
     time_limit: float | None = None
-    # Passed verbatim to HiGHS (e.g. {mip_rel_gap = 0.01, threads = 8})
+    # cbc needs the optional python-mip dependency (od2trs[cbc])
+    solver: Literal["highs", "cbc"] = "highs"
+    # Passed verbatim to the solver: HiGHS options (e.g. {mip_rel_gap = 0.01, threads = 8})
+    # or attributes of python-mip's Model for cbc (e.g. {lp_method = 3, threads = 4})
     solver_options: dict[str, str | int | float | bool] = Field(default_factory=dict)
+    # How the distribution shares are enforced: hard; soft, a group outside its tolerance
+    # costing distribution_penalty per tour (an uncovered trip costs 1); lazy (cbc only),
+    # hard but left out of the LP and checked on each integer solution
+    distribution_mode: Literal["hard", "soft", "lazy"] = "hard"
+    distribution_penalty: float = 1.0
+
+    @model_validator(mode="after")
+    def _lazy_needs_cbc(self) -> OptimisationConfig:
+        if self.distribution_mode == "lazy" and self.solver != "cbc":
+            raise ValueError("distribution_mode = 'lazy' needs solver = 'cbc'")
+        return self
 
 
 class InputPaths(_Model):
