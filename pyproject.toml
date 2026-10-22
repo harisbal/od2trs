@@ -37,6 +37,8 @@ build-backend = "hatchling.build"
 
 [tool.ruff]
 line-length = 100
+# Exploratory notebooks and scripts
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
